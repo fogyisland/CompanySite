@@ -1,265 +1,352 @@
-# 安装注册 API 文档
+# 软件安装与激活 API
 
-## 基础信息
+## 目录
 
-- **基础URL**: `http://your-domain.com` (HTTP端口) 或 `https://your-domain.com` (HTTPS，由Nginx提供)
-- **字符编码**: UTF-8
-- **Content-Type**: `application/json`
+1. [试用注册接口](#1-试用注册接口-post-apiinstall)
+2. [安装状态检查接口](#2-安装状态检查接口-post-apiinstallcheck)
+3. [授权码激活接口](#3-授权码激活接口-post-apiactivate-by-code)
 
 ---
 
-## 1. 提交安装注册
+## 1. 试用注册接口 (POST /api/install)
 
-软件客户端首次运行时调用此接口完成注册。
+客户端首次运行软件时调用此接口进行注册。
 
-### 请求
+### 请求头
 
 ```
-POST /api/install
 Content-Type: application/json
 ```
 
-### 参数
+### 请求参数
 
-| 字段 | 类型 | 必填 | 说明 |
+| 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | softwareName | string | 是 | 软件名称 |
-| softwareVersion | string | 否 | 软件版本号 |
-| userName | string | 是 | 用户姓名 |
+| softwareVersion | string | 否 | 软件版本 |
+| userName | string | 是 | 用户名称 |
 | userEmail | string | 是 | 用户邮箱 |
-| organization | string | 否 | 个人/公司名称 |
+| organization | string | 否 | 组织/公司名称 |
+| macAddress | string | 否 | MAC地址 |
 
 ### 请求示例
 
 ```json
 {
-  "softwareName": "博铭邮件管理百宝箱",
-  "softwareVersion": "2.1.0",
+  "softwareName": "小铭邮件百宝箱",
+  "softwareVersion": "1.0.0",
   "userName": "张三",
   "userEmail": "zhangsan@example.com",
-  "organization": "某某科技有限公司"
+  "organization": "博铭科技",
+  "macAddress": "00-9B-08-43-A2-C9"
 }
 ```
 
-### 响应
+### 成功响应 (201 Created)
 
-**成功 (200)**
 ```json
 {
   "success": true,
   "installation": {
-    "id": 1,
-    "softwareName": "博铭邮件管理百宝箱",
-    "softwareVersion": "2.1.0",
-    "userName": "张三",
-    "userEmail": "zhangsan@example.com",
-    "organization": "某某科技有限公司",
-    "installDate": "2026-03-30",
-    "expireDate": "2026-04-29",
+    "id": 123,
+    "softwareName": "小铭邮件百宝箱",
+    "installDate": "2026-05-03",
+    "expireDate": "2026-06-02",
     "remainingDays": 30
   }
 }
 ```
 
-**失败 (400)**
+### 错误响应
+
+**已注册该软件 (400 Bad Request)**
 ```json
 {
-  "success": false,
+  "error": "该软件已注册",
+  "installation": {
+    "id": 123,
+    "softwareName": "小铭邮件百宝箱",
+    "installDate": "2026-05-03",
+    "expireDate": "2026-06-02",
+    "remainingDays": 15
+  },
+  "remainingDays": 15
+}
+```
+
+**MAC地址已激活 (400 Bad Request)**
+```json
+{
+  "error": "该MAC地址已激活此软件，如需续期请联系管理员",
+  "installation": {
+    "id": 122,
+    "softwareName": "小铭邮件百宝箱",
+    "macAddress": "00-9B-08-43-A2-C9",
+    "installDate": "2026-04-01",
+    "expireDate": "2026-05-01",
+    "remainingDays": 0
+  }
+}
+```
+
+**缺少必填字段 (400 Bad Request)**
+```json
+{
   "error": "请填写必填字段"
 }
 ```
 
 ---
 
-## 2. 查询注册状态
+## 2. 安装状态检查接口 (POST /api/install/check)
 
-软件运行时调用此接口验证注册是否有效。
+客户端定期调用此接口检查安装状态和激活状态。
 
-### 请求
+### 请求头
 
 ```
-POST /api/install/check
 Content-Type: application/json
 ```
 
-### 参数
+### 请求参数
 
-| 字段 | 类型 | 必填 | 说明 |
+| 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | softwareName | string | 是 | 软件名称 |
-| userEmail | string | 是 | 注册时填写的邮箱 |
+| userEmail | string | 否 | 用户邮箱（与MAC二选一） |
+| macAddress | string | 否 | MAC地址（与邮箱二选一） |
+| activationKey | string | 否 | 激活码（如果有） |
 
 ### 请求示例
 
 ```json
 {
-  "softwareName": "博铭邮件管理百宝箱",
-  "userEmail": "zhangsan@example.com"
+  "softwareName": "小铭邮件百宝箱",
+  "userEmail": "zhangsan@example.com",
+  "macAddress": "00-9B-08-43-A2-C9",
+  "activationKey": "XCZ2N-DVGJX-48XSZ-4PVAY-F5WGL"
 }
 ```
 
-### 响应
+### 成功响应 (200 OK)
 
-**已注册且有效**
+**试用期状态**
 ```json
 {
   "registered": true,
   "expired": false,
-  "remainingDays": 25,
   "installation": {
-    "id": 1,
-    "softwareName": "博铭邮件管理百宝箱",
-    "installDate": "2026-03-05",
-    "expireDate": "2026-04-04"
+    "softwareName": "小铭邮件百宝箱",
+    "installDate": "2026-04-01",
+    "expireDate": "2026-05-01",
+    "remainingDays": 28
   }
 }
 ```
 
-**已注册但过期**
+**已激活状态（有授权码）**
 ```json
 {
   "registered": true,
-  "expired": true,
-  "remainingDays": 0,
-  "installation": {
-    "id": 1,
-    "softwareName": "博铭邮件管理百宝箱",
-    "installDate": "2026-02-01",
-    "expireDate": "2026-03-02"
+  "expired": false,
+  "activated": true,
+  "activation": {
+    "activationKey": "XCZ2N-DVGJX-48XSZ-4PVAY-F5WGL",
+    "softwareName": "小铭邮件百宝箱",
+    "activateDate": "2026-05-03",
+    "expireDate": "2027-05-03"
   }
 }
 ```
 
-**未找到注册记录**
+**授权码有效可激活**
 ```json
 {
   "registered": false,
   "expired": false,
-  "remainingDays": 0,
-  "installation": null
+  "activated": false,
+  "message": "授权码有效，可激活"
 }
 ```
 
----
+### 错误响应
 
-## 3. 获取安装记录列表（管理后台）
-
-获取所有安装记录，仅管理员可访问。
-
-### 请求
-
-```
-GET /api/installs
-Cookie: connect.sid=xxx
-```
-
-### 响应
-
-**成功 (200)**
-```json
-[
-  {
-    "id": 1,
-    "software_name": "博铭邮件管理百宝箱",
-    "software_version": "2.1.0",
-    "user_name": "张三",
-    "user_email": "zhangsan@example.com",
-    "organization": "某某科技有限公司",
-    "install_date": "2026-03-30",
-    "expire_date": "2026-04-29",
-    "remainingDays": 30,
-    "created_at": "2026-03-30T10:00:00.000Z"
-  }
-]
-```
-
-**未授权 (401)**
+**找不到安装记录 (404 Not Found)**
 ```json
 {
-  "error": "请先登录"
+  "error": "找不到安装记录"
+}
+```
+
+**授权码已使用 (400 Bad Request)**
+```json
+{
+  "registered": true,
+  "expired": false,
+  "activated": true,
+  "activatedExpired": false,
+  "message": "已激活"
 }
 ```
 
 ---
 
-## 软件客户端集成示例
+## 3. 授权码激活接口 (POST /api/activate-by-code)
 
-### JavaScript
+客户端使用购买获得的授权码进行激活。
 
-```javascript
-async function registerSoftware() {
-  const response = await fetch('/api/install', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      softwareName: '博铭邮件管理百宝箱',
-      softwareVersion: '2.1.0',
-      userName: '张三',
-      userEmail: 'zhangsan@example.com',
-      organization: '某某科技有限公司'
-    })
-  });
-  const data = await response.json();
-  if (data.success) {
-    console.log('注册成功，剩余天数:', data.installation.remainingDays);
-  }
+### 请求头
+
+```
+Content-Type: application/json
+```
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| serial | string | 否 | 授权码（与activationCode二选一） |
+| activationCode | string | 否 | 授权码（与serial二选一） |
+| macAddress | string | 是 | MAC地址 |
+| userName | string | 否 | 用户名称 |
+| userEmail | string | 否 | 用户邮箱 |
+| activateDate | string | 否 | 激活日期（客户端首次运行日期） |
+
+### 请求示例
+
+```json
+{
+  "serial": "XCZ2N-DVGJX-48XSZ-4PVAY-F5WGL",
+  "macAddress": "00-9B-08-43-A2-C9",
+  "userEmail": "zhangsan@example.com",
+  "userName": "张三",
+  "activateDate": "2026-05-03"
 }
+```
 
-async function checkRegistration() {
-  const response = await fetch('/api/install/check', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      softwareName: '博铭邮件管理百宝箱',
-      userEmail: 'zhangsan@example.com'
-    })
-  });
-  const data = await response.json();
-  if (data.registered && !data.expired) {
-    console.log('注册有效，剩余天数:', data.remainingDays);
-  } else {
-    console.log('注册无效或已过期');
+### 成功响应 (200 OK)
+
+**首次激活成功**
+```json
+{
+  "success": true,
+  "message": "激活成功",
+  "softwareName": "小铭邮件百宝箱",
+  "duration": "一年授权",
+  "totalDays": 365,
+  "registrationDate": "2026-05-03T10:30:00.000Z",
+  "activateDate": "2026-05-03T10:30:00.000Z",
+  "expireDate": "2027-05-03T10:30:00.000Z",
+  "isRenewal": false
+}
+```
+
+**续期成功**
+```json
+{
+  "success": true,
+  "message": "续期成功",
+  "softwareName": "小铭邮件百宝箱",
+  "duration": "一年授权",
+  "totalDays": 365,
+  "registrationDate": "2026-05-03T10:30:00.000Z",
+  "activateDate": "2026-05-03T10:30:00.000Z",
+  "expireDate": "2028-05-03T10:30:00.000Z",
+  "isRenewal": true
+}
+```
+
+### 错误响应
+
+**缺少授权码 (400 Bad Request)**
+```json
+{
+  "error": "请输入授权码"
+}
+```
+
+**授权码无效或订单未支付 (404 Not Found)**
+```json
+{
+  "error": "授权码无效或订单未支付"
+}
+```
+
+**授权码已被使用 (400 Bad Request)**
+```json
+{
+  "error": "该授权码已被使用"
+}
+```
+
+**MAC地址已激活此软件 (400 Bad Request)**
+```json
+{
+  "error": "该MAC地址已激活此软件，如需续期请联系管理员",
+  "existingActivation": {
+    "id": 123,
+    "softwareName": "小铭邮件百宝箱",
+    "macAddress": "00-9B-08-43-A2-C9",
+    "activateDate": "2026-04-01",
+    "expireDate": "2026-05-01"
   }
 }
 ```
 
-### Python
+---
 
-```python
-import requests
-import json
+## 客户端集成指南
 
-def register_software():
-    response = requests.post(
-        'http://your-domain.com/api/install',
-        headers={'Content-Type': 'application/json'},
-        json={
-            'softwareName': '博铭邮件管理百宝箱',
-            'softwareVersion': '2.1.0',
-            'userName': '张三',
-            'userEmail': 'zhangsan@example.com',
-            'organization': '某某科技有限公司'
-        }
-    )
-    data = response.json()
-    if data.get('success'):
-        print(f"注册成功，剩余天数: {data['installation']['remainingDays']}")
+### 首次运行流程
 
-def check_registration():
-    response = requests.post(
-        'http://your-domain.com/api/install/check',
-        headers={'Content-Type': 'application/json'},
-        json={
-            'softwareName': '博铭邮件管理百宝箱',
-            'userEmail': 'zhangsan@example.com'
-        }
-    )
-    data = response.json()
-    if data['registered'] and not data['expired']:
-        print(f"注册有效，剩余天数: {data['remainingDays']}")
-    else:
-        print("注册无效或已过期")
 ```
+1. 软件启动
+2. 读取注册表中的安装日期 (installDate)
+3. 调用 POST /api/install 进行试用注册
+4. 如果返回成功，保存 installation 信息
+5. 定期调用 POST /api/install/check 检查状态
+```
+
+### 激活流程
+
+```
+1. 用户输入授权码
+2. 软件调用 POST /api/activate-by-code
+3. 传入: serial, macAddress, userEmail, activateDate
+4. 成功则保存激活信息到注册表
+5. 显示激活成功和到期日期
+```
+
+### 定期检查流程
+
+```
+1. 软件启动时调用 POST /api/install/check
+2. 传入: softwareName, macAddress, activationKey（如有）
+3. 根据返回的 registered/activated/expired 状态
+   - 未注册: 提示用户注册
+   - 已过期: 提示用户续期
+   - 已激活: 正常启动
+```
+
+---
+
+## 激活期限计算规则
+
+| 授权类型 | 期限 |
+|------|------|
+| 试用注册 | 固定30天 |
+| 一个月授权 | 30天 |
+| 三个月授权 | 90天 |
+| 半年授权 | 180天 |
+| 一年授权 | 365天 |
+| 两年授权 | 730天 |
+| 永久授权 | 36500天（100年） |
+
+### 续期规则
+
+如果用户已有激活记录，续期时：
+- 从当前到期日开始计算新的到期日
+- 如果当前已过期，从今天开始计算
 
 ---
 
@@ -268,6 +355,7 @@ def check_registration():
 | HTTP状态码 | 说明 |
 |------------|------|
 | 200 | 请求成功 |
+| 201 | 创建成功（试用注册） |
 | 400 | 请求参数错误 |
-| 401 | 未授权（仅管理接口） |
+| 404 | 找不到资源 |
 | 500 | 服务器内部错误 |
