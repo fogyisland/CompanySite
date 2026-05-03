@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - CardDAV 设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 900px; }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .form-group small {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-light);
+      font-size: 12px;
+    }
+    .server-list {
+      margin-top: 20px;
+    }
+    .server-item {
+      background: #f8f9fa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+    }
+    .server-item h4 {
+      margin: 0 0 10px 0;
+      color: var(--primary);
+    }
+    .server-info {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      font-size: 14px;
+    }
+    .server-info span {
+      color: var(--text-light);
+    }
+    .server-info strong {
+      color: var(--text);
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .btn-copy {
+      background: var(--secondary);
+      color: var(--text);
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-copy:hover {
+      background: var(--border);
+    }
+    .template-box {
+      background: #fff3e0;
+      border: 1px solid #ff9800;
+      border-radius: 6px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+    }
+    .template-box h4 {
+      color: #e65100;
+      margin: 0 0 10px 0;
+    }
+    .template-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .template-btn {
+      padding: 8px 16px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .template-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success { background: #ecfdf5; color: #10b981; display: block; }
+    .message.error { background: #fef2f2; color: #d32f2f; display: block; }
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-light);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-product" class="logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+  </header>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <main class="admin-container">
+    <h1 style="font-size: 24px; margin-bottom: 10px;">CardDAV 配置</h1>
+    <p style="color: var(--text-light); margin-bottom: 30px;">配置 CardDAV 服务器地址，供本地通讯录应用同步联系人使用</p>
+
+    <div class="message" id="message"></div>
+
+    <!-- 常用模板 -->
+    <div class="template-box">
+      <h4>快速添加服务器模板</h4>
+      <div class="template-list">
+        <button class="template-btn" onclick="addTemplate('google')">Google Contacts</button>
+        <button class="template-btn" onclick="addTemplate('icloud')">iCloud</button>
+        <button class="template-btn" onclick="addTemplate('outlook')">Outlook</button>
+      </div>
+    </div>
+
+    <!-- 服务器列表 -->
+    <div class="form-card">
+      <h3 class="section-title">CardDAV 服务器列表</h3>
+
+      <div id="server-list" class="server-list">
+        <div class="empty-state">暂无配置的服务器</div>
+      </div>
+    </div>
+
+    <!-- 添加/编辑表单 -->
+    <div class="form-card">
+      <h3 class="section-title">添加 CardDAV 服务器</h3>
+
+      <form id="server-form">
+        <div class="form-group">
+          <label>服务器名称</label>
+          <input type="text" id="server-name" placeholder="例如：我的 Google 通讯录">
+        </div>
+
+        <div class="form-group">
+          <label>CardDAV 服务器地址</label>
+          <input type="text" id="server-url" placeholder="https://www.googleapis.com/carddav/v1/principals/">
+          <small>CardDAV 服务器的 URL 地址</small>
+        </div>
+
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" id="server-user" placeholder="您的邮箱或用户名">
+        </div>
+
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="server-pass" placeholder="应用专用密码（如 Google）">
+          <small>建议使用应用专用密码，不要使用登录密码</small>
+        </div>
+
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary" onclick="addServer()">添加服务器</button>
+          <button type="button" class="btn btn-outline" onclick="clearForm()">清空表单</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    let carddavConfig = { enabled: true, servers: [] };
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - CardDAV 设置';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadCardDav() {
+      try {
+        const response = await fetch('/api/carddav');
+        carddavConfig = await response.json();
+        renderServerList();
+      } catch (error) {
+        console.error('Error loading CardDAV:', error);
+        showMessage('加载 CardDAV 配置失败', 'error');
+      }
+    }
+
+    function renderServerList() {
+      const container = document.getElementById('server-list');
+      const servers = carddavConfig.servers || [];
+
+      if (servers.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无配置的服务器，点击下方表单添加</div>';
+        return;
+      }
+
+      container.innerHTML = servers.map((server, index) => `
+        <div class="server-item">
+          <h4>${escapeHtml(server.name)}</h4>
+          <div class="server-info">
+            <div><span>服务器地址：</span><strong style="font-family: monospace; font-size: 12px;">${escapeHtml(server.url)}</strong></div>
+            <div><span>用户名：</span><strong>${escapeHtml(server.user || '-')}</strong></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn-copy" onclick="copyConfig(${escapeHtml(index)})">复制配置</button>
+            <button class="btn-copy" onclick="deleteServer(${escapeHtml(index)})">删除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function addTemplate(type) {
+      const templates = {
+        google: {
+          name: 'Google Contacts',
+          url: 'https://www.googleapis.com/carddav/v1/principals/',
+          user: '',
+          pass: ''
+        },
+        icloud: {
+          name: 'iCloud',
+          url: 'https://contacts.icloud.com/',
+          user: '',
+          pass: ''
+        },
+        outlook: {
+          name: 'Outlook',
+          url: 'https://outlook.office.com/api/conacts/',
+          user: '',
+          pass: ''
+        }
+      };
+
+      if (templates[type]) {
+        document.getElementById('server-name').value = templates[type].name;
+        document.getElementById('server-url').value = templates[type].url;
+        document.getElementById('server-user').value = templates[type].user;
+        document.getElementById('server-pass').value = templates[type].pass;
+      }
+    }
+
+    async function addServer() {
+      const name = document.getElementById('server-name').value.trim();
+      const url = document.getElementById('server-url').value.trim();
+      const user = document.getElementById('server-user').value.trim();
+      const pass = document.getElementById('server-pass').value;
+
+      if (!name || !url) {
+        showMessage('请填写服务器名称和地址', 'error');
+        return;
+      }
+
+      const server = { name, url, user, pass };
+
+      // 如果密码为空，不保存
+      if (!pass) {
+        delete server.pass;
+      }
+
+      carddavConfig.servers = carddavConfig.servers || [];
+      carddavConfig.servers.push(server);
+
+      try {
+        const response = await fetch('/api/carddav', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(carddavConfig),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('服务器添加成功', 'success');
+          renderServerList();
+          clearForm();
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        showMessage('保存失败: ' + error.message, 'error');
+      }
+    }
+
+    async function deleteServer(index) {
+      if (!confirm('确定要删除这个服务器配置吗？')) return;
+
+      carddavConfig.servers.splice(index, 1);
+
+      try {
+        const response = await fetch('/api/carddav', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(carddavConfig),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('服务器已删除', 'success');
+          renderServerList();
+        } else {
+          showMessage('删除失败', 'error');
+        }
+      } catch (error) {
+        showMessage('删除失败: ' + error.message, 'error');
+      }
+    }
+
+    function copyConfig(index) {
+      const server = carddavConfig.servers[index];
+      const config = `名称: ${server.name}
+地址: ${server.url}
+用户名: ${server.user || '(空)'}
+密码: ${server.pass ? '(已设置)' : '(空)'}`;
+
+      navigator.clipboard.writeText(config).then(() => {
+        showMessage('配置信息已复制到剪贴板', 'success');
+      }).catch(() => {
+        // 降级方案
+        const textarea = document.createElement('textarea');
+        textarea.value = config;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showMessage('配置信息已复制到剪贴板', 'success');
+      });
+    }
+
+    function clearForm() {
+      document.getElementById('server-form').reset();
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadCardDav();
+    });
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

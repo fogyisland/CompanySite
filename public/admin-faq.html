@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - FAQ管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 1000px; }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .page-header h1 {
+      font-size: 24px;
+    }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .faq-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .faq-table th,
+    .faq-table td {
+      padding: 15px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .faq-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .faq-table tr:hover {
+      background: #f8f9fa;
+    }
+    .faq-table .actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-edit,
+    .btn-delete {
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-edit {
+      background: var(--primary);
+      color: var(--white);
+    }
+    .btn-delete {
+      background: #fef2f2;
+      color: #d32f2f;
+    }
+    .btn-add {
+      padding: 10px 20px;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-add:hover {
+      background: var(--primary-dark);
+    }
+    .btn-cancel {
+      padding: 10px 20px;
+      background: var(--white);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .btn-cancel:hover {
+      background: #f8f9fa;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-light);
+    }
+    .edit-form {
+      display: none;
+    }
+    .edit-form.active {
+      display: block;
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: var(--success);
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-product" class="logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+  </header>
+  <div class="ribbon-bar"></div>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <!-- Admin Content -->
+  <main class="admin-container">
+    <div class="page-header">
+      <h1>FAQ管理</h1>
+      <button class="btn-add" onclick="showAddForm()">添加FAQ</button>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <!-- Add/Edit Form -->
+    <div class="form-card edit-form" id="edit-form">
+      <h3 style="margin-bottom: 20px;" id="form-title">添加FAQ</h3>
+      <input type="hidden" id="faq-id">
+      <div class="form-group">
+        <label>问题</label>
+        <input type="text" id="faq-question" placeholder="请输入问题">
+      </div>
+      <div class="form-group">
+        <label>答案</label>
+        <textarea id="faq-answer" placeholder="请输入答案"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn-add" onclick="saveFaq()">保存</button>
+        <button class="btn-cancel" onclick="hideForm()">取消</button>
+      </div>
+    </div>
+
+    <!-- FAQ List -->
+    <div class="form-card">
+      <table class="faq-table">
+        <thead>
+          <tr>
+            <th style="width: 50px;">ID</th>
+            <th>问题</th>
+            <th>答案</th>
+            <th style="width: 150px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="faq-table">
+          <!-- FAQs loaded dynamically -->
+        </tbody>
+      </table>
+      <div class="empty-state" id="empty-state" style="display: none;">
+        <p>暂无FAQ，请点击"添加FAQ"创建</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    let faqs = [];
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - FAQ管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    // 加载FAQs
+    async function loadFaqs() {
+      try {
+        const response = await fetch('/api/faqs', { credentials: 'include' });
+        faqs = await response.json();
+        renderTable();
+      } catch (error) {
+        console.error('Error loading FAQs:', error);
+        showMessage('加载FAQ失败', 'error');
+      }
+    }
+
+    // 渲染表格
+    function renderTable() {
+      const tbody = document.getElementById('faq-table');
+      const emptyState = document.getElementById('empty-state');
+
+      if (!faqs || faqs.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      tbody.innerHTML = faqs.map(faq => `
+        <tr>
+          <td>${escapeHtml(faq.id)}</td>
+          <td>${escapeHtml(faq.question)}</td>
+          <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(faq.answer)}</td>
+          <td class="actions">
+            <button class="btn-edit" onclick="editFaq(${escapeHtml(faq.id)})">编辑</button>
+            <button class="btn-delete" onclick="deleteFaq(${escapeHtml(faq.id)})">删除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // 显示添加表单
+    function showAddForm() {
+      document.getElementById('form-title').textContent = '添加FAQ';
+      document.getElementById('faq-id').value = '';
+      document.getElementById('faq-question').value = '';
+      document.getElementById('faq-answer').value = '';
+      document.getElementById('edit-form').classList.add('active');
+    }
+
+    // 编辑FAQ
+    function editFaq(id) {
+      const faq = faqs.find(f => f.id === id);
+      if (!faq) return;
+
+      document.getElementById('form-title').textContent = '编辑FAQ';
+      document.getElementById('faq-id').value = faq.id;
+      document.getElementById('faq-question').value = faq.question;
+      document.getElementById('faq-answer').value = faq.answer;
+      document.getElementById('edit-form').classList.add('active');
+    }
+
+    // 隐藏表单
+    function hideForm() {
+      document.getElementById('edit-form').classList.remove('active');
+    }
+
+    // 保存FAQ
+    async function saveFaq() {
+      const id = document.getElementById('faq-id').value;
+      const question = document.getElementById('faq-question').value.trim();
+      const answer = document.getElementById('faq-answer').value.trim();
+
+      if (!question || !answer) {
+        showMessage('问题和答案不能为空', 'error');
+        return;
+      }
+
+      try {
+        let response;
+        if (id) {
+          // 更新
+          response = await fetch('/api/faqs/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, answer }),
+            credentials: 'include'
+          });
+        } else {
+          // 添加
+          response = await fetch('/api/faqs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, answer }),
+            credentials: 'include'
+          });
+        }
+
+        if (response.ok) {
+          showMessage(id ? 'FAQ更新成功' : 'FAQ添加成功', 'success');
+          hideForm();
+          loadFaqs();
+        } else {
+          const data = await response.json();
+          showMessage(data.error || '保存失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving FAQ:', error);
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    // 删除FAQ
+    async function deleteFaq(id) {
+      if (!confirm('确定要删除这个FAQ吗？')) return;
+
+      try {
+        const response = await fetch('/api/faqs/' + id, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('FAQ删除成功', 'success');
+          loadFaqs();
+        } else {
+          showMessage('删除失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting FAQ:', error);
+        showMessage('删除失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadFaqs();
+    });
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

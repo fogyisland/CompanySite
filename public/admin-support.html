@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 技术支持管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 1400px; }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .page-header h1 { font-size: 24px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    .stat-card .label {
+      color: var(--text-light);
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    .tickets-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .tickets-table th,
+    .tickets-table td {
+      padding: 15px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .tickets-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .tickets-table tr:hover {
+      background: #f8f9fa;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .status-badge.open { background: #fff3e0; color: #e65100; }
+    .status-badge.replied { background: #e3f2fd; color: #1565c0; }
+    .status-badge.resolved { background: #ecfdf5; color: #10b981; }
+    .status-badge.closed { background: #f5f5f5; color: #757575; }
+    .priority-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .priority-badge.high { background: #ffebee; color: #c62828; }
+    .priority-badge.normal { background: #e3f2fd; color: #1565c0; }
+    .priority-badge.low { background: #f5f5f5; color: #757575; }
+    .btn-view {
+      padding: 6px 12px;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-view:hover { background: var(--primary-dark); }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-light);
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success { background: #ecfdf5; color: #10b981; display: block; }
+    .message.error { background: #fef2f2; color: #d32f2f; display: block; }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: var(--white);
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 800px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h3 { margin-bottom: 20px; }
+    .modal-close {
+      float: right;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .ticket-detail-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .ticket-detail-item:last-child { border-bottom: none; }
+    .ticket-detail-item .label {
+      font-weight: 500;
+      color: var(--text-light);
+    }
+    .replies-section {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid var(--border);
+    }
+    .replies-section h4 {
+      margin-bottom: 15px;
+    }
+    .reply-item {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .reply-item.admin {
+      background: #e3f2fd;
+      margin-left: 50px;
+    }
+    .reply-item.user {
+      background: #f5f5f5;
+    }
+    .reply-item .reply-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+    .reply-item .reply-content {
+      line-height: 1.6;
+    }
+    .reply-form {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid var(--border);
+    }
+    .reply-form textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .reply-form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      justify-content: flex-end;
+    }
+    .btn-reply {
+      padding: 10px 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-resolve {
+      padding: 10px 20px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .search-box {
+      margin-bottom: 20px;
+    }
+    .search-box input {
+      padding: 10px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 300px;
+      font-size: 14px;
+    }
+    .search-box select {
+      padding: 10px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-product" class="logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+  </header>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <main class="admin-container">
+    <div class="page-header">
+      <h1>技术支持工单</h1>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="number" id="total-tickets">0</div>
+        <div class="label">总工单</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="open-tickets">0</div>
+        <div class="label">待处理</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="replied-tickets">0</div>
+        <div class="label">已回复</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="resolved-tickets">0</div>
+        <div class="label">已解决</div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="form-card">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="搜索主题、姓名或邮箱..." oninput="filterTickets()">
+        <select id="status-filter" onchange="filterTickets()">
+          <option value="">全部状态</option>
+          <option value="open">待处理</option>
+          <option value="replied">已回复</option>
+          <option value="resolved">已解决</option>
+          <option value="closed">已关闭</option>
+        </select>
+      </div>
+
+      <!-- Tickets Table -->
+      <table class="tickets-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>主题</th>
+            <th>提交人</th>
+            <th>邮箱</th>
+            <th>优先级</th>
+            <th>状态</th>
+            <th>提交时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tickets-tbody">
+          <tr><td colspan="8" class="empty-state">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal for Ticket Detail -->
+  <div class="modal" id="detail-modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <h3>工单详情 - #<span id="modal-ticket-id"></span></h3>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script>
+    let tickets = [];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 技术支持管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadTickets() {
+      try {
+        const response = await fetch('/api/support', { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        tickets = await response.json();
+        renderStats();
+        renderTable();
+      } catch (error) {
+        console.error('Error loading tickets:', error);
+        showMessage('加载工单失败', 'error');
+      }
+    }
+
+    function renderStats() {
+      const total = tickets.length;
+      const open = tickets.filter(t => t.status === 'open').length;
+      const replied = tickets.filter(t => t.status === 'replied').length;
+      const resolved = tickets.filter(t => t.status === 'resolved').length;
+
+      document.getElementById('total-tickets').textContent = total;
+      document.getElementById('open-tickets').textContent = open;
+      document.getElementById('replied-tickets').textContent = replied;
+      document.getElementById('resolved-tickets').textContent = resolved;
+    }
+
+    function filterTickets() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const statusFilter = document.getElementById('status-filter').value;
+
+      const filtered = tickets.filter(t => {
+        const matchSearch = !search ||
+          t.subject.toLowerCase().includes(search) ||
+          (t.userName && t.userName.toLowerCase().includes(search)) ||
+          (t.userEmail && t.userEmail.toLowerCase().includes(search));
+        const matchStatus = !statusFilter || t.status === statusFilter;
+        return matchSearch && matchStatus;
+      });
+
+      renderTableData(filtered);
+    }
+
+    function renderTable() {
+      renderTableData(tickets);
+    }
+
+    function renderTableData(data) {
+      const tbody = document.getElementById('tickets-tbody');
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无工单</td></tr>';
+        return;
+      }
+
+      data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      tbody.innerHTML = data.map(ticket => {
+        const statusClass = ticket.status;
+        const statusText = { open: '待处理', replied: '已回复', resolved: '已解决', closed: '已关闭' }[ticket.status] || ticket.status;
+        const priorityClass = ticket.priority || 'normal';
+        const priorityText = { high: '紧急', normal: '普通', low: '低' }[ticket.priority] || '普通';
+
+        return `
+          <tr>
+            <td>#${escapeHtml(ticket.id)}</td>
+            <td>${escapeHtml(ticket.subject)}</td>
+            <td>${escapeHtml(ticket.userName)}</td>
+            <td>${escapeHtml(ticket.userEmail)}</td>
+            <td><span class="priority-badge ${escapeHtml(priorityClass)}">${escapeHtml(priorityText)}</span></td>
+            <td><span class="status-badge ${escapeHtml(statusClass)}">${escapeHtml(statusText)}</span></td>
+            <td>${formatDate(ticket.createdAt)}</td>
+            <td>
+              <button class="btn-view" onclick="showDetail(${escapeHtml(ticket.id)})">查看</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleString('zh-CN');
+    }
+
+    async function showDetail(id) {
+      const ticket = tickets.find(t => t.id === id);
+      if (!ticket) return;
+
+      const replies = ticket.replies || [];
+      const statusText = { open: '待处理', replied: '已回复', resolved: '已解决', closed: '已关闭' }[ticket.status] || ticket.status;
+      const priorityText = { high: '紧急', normal: '普通', low: '低' }[ticket.priority] || '普通';
+
+      let repliesHtml = '';
+      if (replies.length === 0) {
+        repliesHtml = '<p style="color: var(--text-light); text-align: center;">暂无回复</p>';
+      } else {
+        repliesHtml = replies.map(reply => `
+          <div class="reply-item ${reply.adminName ? 'admin' : 'user'}">
+            <div class="reply-header">
+              <span>${reply.adminName || escapeHtml(ticket.userName)}</span>
+              <span>${formatDate(reply.createdAt)}</span>
+            </div>
+            <div class="reply-content">${reply.content}</div>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('modal-ticket-id').textContent = ticket.id;
+      document.getElementById('modal-content').innerHTML = `
+        <div class="ticket-detail-item">
+          <span class="label">主题：</span>
+          <span>${escapeHtml(ticket.subject)}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">提交人：</span>
+          <span>${escapeHtml(ticket.userName)}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">邮箱：</span>
+          <span><a href="mailto:${escapeHtml(ticket.userEmail)}">${escapeHtml(ticket.userEmail)}</a></span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">电话：</span>
+          <span>${escapeHtml(ticket.userPhone || '-')}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">优先级：</span>
+          <span class="priority-badge ${ticket.priority || 'normal'}">${priorityText}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">状态：</span>
+          <span class="status-badge ${ticket.status}">${statusText}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">提交时间：</span>
+          <span>${formatDate(ticket.createdAt)}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">问题描述：</span>
+          <span style="white-space: pre-wrap;">${escapeHtml(ticket.description)}</span>
+        </div>
+
+        <div class="replies-section">
+          <h4>回复历史</h4>
+          ${repliesHtml}
+        </div>
+
+        <div class="reply-form">
+          <h4>添加回复</h4>
+          <textarea id="reply-content" placeholder="输入回复内容..."></textarea>
+          <div class="reply-form-actions">
+            <input type="checkbox" id="resolve-checkbox">
+            <label for="resolve-checkbox">同时标记为已解决</label>
+            <button class="btn-resolve" onclick="submitReply(${ticket.id})">发送回复</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('detail-modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('active');
+    }
+
+    async function submitReply(id) {
+      const content = document.getElementById('reply-content').value.trim();
+      const isResolved = document.getElementById('resolve-checkbox').checked;
+
+      if (!content) {
+        alert('请输入回复内容');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/support/' + id + '/reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, isResolved }),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('回复已发送', 'success');
+          document.getElementById('reply-content').value = '';
+          document.getElementById('resolve-checkbox').checked = false;
+          closeModal();
+          loadTickets();
+        } else {
+          const data = await response.json();
+          showMessage(data.error || '发送失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showMessage('发送失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadTickets();
+    });
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

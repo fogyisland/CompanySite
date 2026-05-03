@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>关于我们 - 博铭科技</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .about-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    .about-hero {
+      text-align: center;
+      padding: 120px 20px;
+      background: linear-gradient(rgba(19, 60, 138, 0.85), rgba(19, 60, 138, 0.95)), url('/uploads/about/office.jpg') center/cover no-repeat;
+      border-radius: 12px;
+      color: var(--white);
+      margin-bottom: 50px;
+    }
+    .about-hero h1 {
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+    .about-hero p {
+      font-size: 18px;
+      opacity: 0.9;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.8;
+    }
+    .about-section {
+      margin-bottom: 50px;
+    }
+    .about-section h2 {
+      font-size: 26px;
+      color: var(--primary);
+      margin-bottom: 25px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+    .about-section p {
+      line-height: 1.9;
+      color: var(--text);
+      margin-bottom: 15px;
+    }
+    .about-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin: 30px 0;
+    }
+    .service-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 30px;
+      transition: all 0.3s;
+    }
+    .service-card:hover {
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      transform: translateY(-3px);
+    }
+    .service-card h3 {
+      font-size: 20px;
+      color: var(--primary);
+      margin-bottom: 15px;
+    }
+    .service-card ul {
+      list-style: none;
+      padding: 0;
+    }
+    .service-card li {
+      padding: 8px 0;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+    }
+    .service-card li:last-child {
+      border-bottom: none;
+    }
+    .vision-section {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      padding: 40px;
+      border-radius: 10px;
+      margin-top: 40px;
+    }
+    .vision-section h2 {
+      border-bottom: none;
+      text-align: center;
+    }
+    .vision-section p {
+      text-align: center;
+      font-size: 17px;
+    }
+    .team-section {
+      text-align: center;
+      margin: 40px 0;
+    }
+    .team-section img {
+      max-width: 200px;
+      border-radius: 50%;
+      margin-bottom: 20px;
+    }
+    .team-section h3 {
+      font-size: 22px;
+      color: var(--primary);
+      margin-bottom: 5px;
+    }
+    .team-section p {
+      color: var(--text-light);
+    }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin: 40px 0;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 30px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .stat-item .number {
+      font-size: 36px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    .stat-item .label {
+      font-size: 14px;
+      color: var(--text-light);
+      margin-top: 5px;
+    }
+    .intro-text {
+      font-size: 17px;
+      line-height: 2;
+      text-align: justify;
+    }
+    @media (max-width: 768px) {
+      .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .about-hero h1 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo" id="header-logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="about-container">
+    <div class="about-hero">
+      <h1>关于博铭科技</h1>
+      <p>博铭科技成立于2018年3月1日，由徐鹏先生创立。公司采用灵活高效的移动办公模式，致力于为客户提供高质量的IT产品，专业服务及创新解决方案。</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="number">2018</div>
+        <div class="label">公司成立</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">8+</div>
+        <div class="label">服务年限</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">500+</div>
+        <div class="label">服务客户</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">50+</div>
+        <div class="label">技术认证</div>
+      </div>
+    </div>
+
+    <div class="about-section">
+      <h2>业务方向</h2>
+      <p class="intro-text">博铭科技专注于企业级IT服务，涵盖软件开发、产品销售、顾问咨询、培训及系统部署，形成完整的服务链条。</p>
+
+      <div class="about-grid">
+        <div class="service-card">
+          <h3>一、软件产品销售</h3>
+          <ul>
+            <li>微软系列产品</li>
+            <li>证书及相关服务</li>
+            <li>防病毒系列产品</li>
+            <li>邮件增值系列产品</li>
+          </ul>
+        </div>
+
+        <div class="service-card">
+          <h3>二、软件开发与定制</h3>
+          <ul>
+            <li>基于微软技术栈的应用开发（.NET、PowerShell等）</li>
+            <li>SharePoint二次开发与定制</li>
+            <li>数据库相关开发（SQL Server、MySQL）</li>
+            <li>企业级应用系统设计与实现</li>
+          </ul>
+        </div>
+
+        <div class="service-card">
+          <h3>三、IT业务顾问咨询</h3>
+          <ul>
+            <li>IT架构咨询：评估物理与应用架构的合理性</li>
+            <li>IT安全咨询：识别并修复内部安全漏洞</li>
+            <li>IT战略咨询：制定清晰的IT发展方向</li>
+          </ul>
+        </div>
+
+        <div class="service-card">
+          <h3>四、企业定制化培训</h3>
+          <ul>
+            <li>微软AD系列培训</li>
+            <li>Exchange系列培训</li>
+            <li>SQL/MySQL高级管理培训</li>
+            <li>ITIL/PowerBI培训</li>
+          </ul>
+        </div>
+
+        <div class="service-card">
+          <h3>五、系统部署与集成</h3>
+          <ul>
+            <li>AD/Exchange/Skype部署与优化</li>
+            <li>SharePoint部署与开发</li>
+            <li>数据库高可用架构</li>
+            <li>VMware部署服务</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="vision-section">
+      <h2>发展愿景</h2>
+      <p>博铭科技将持续聚焦企业级IT服务，以软件产品销售与定制开发为核心驱动，结合顾问咨询、培训与系统集成，致力于成为技术领先、客户为本的专业科技公司。</p>
+    </div>
+
+    <div class="team-section">
+      <img src="/uploads/about/team.jpg" alt="博铭科技团队" onerror="this.style.display='none'">
+      <h3>徐鹏</h3>
+      <p>创始人兼首席执行官</p>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3 id="footer-brand-name">博铭科技</h3>
+          <p id="footer-brand-desc">企业级IT服务专家</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <ul>
+            <li><a href="/">软件产品</a></li>
+            <li><a href="/docs">下载中心</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <ul>
+            <li><a href="/help">帮助中心</a></li>
+            <li><a href="/faq">常见问题</a></li>
+            <li><a href="/docs">文档资料</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>公司</h4>
+          <ul>
+            <li><a href="/about">关于我们</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+            <li><a href="/privacy">隐私政策</a></li>
+            <li><a href="/terms">服务条款</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 <span id="footer-copyright">博铭科技</span>. 保留所有权利。</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    async function loadSiteSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = settings.companyName;
+          document.getElementById('footer-copyright').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 关于我们';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadSiteSettings);
+  </script>
+</body>
+</html>

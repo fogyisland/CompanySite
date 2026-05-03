@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 邮件设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 900px; }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+    }
+    .form-section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .form-group small {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-light);
+      font-size: 12px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-back {
+      background: var(--secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-back:hover {
+      background: var(--border);
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: var(--success);
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+    .info-box {
+      background: #e3f2fd;
+      border: 1px solid #1976d2;
+      border-radius: 6px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+    }
+    .info-box h4 {
+      color: #1976d2;
+      margin-bottom: 8px;
+    }
+    .info-box p {
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .test-section {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .test-section .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .status-indicator.active {
+      background: #10b981;
+    }
+    .status-indicator.inactive {
+      background: #d32f2f;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-email" class="logo" id="header-logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+  </header>
+  <div class="ribbon-bar"></div>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <!-- Admin Content -->
+  <main class="admin-container">
+    <h1 style="font-size: 24px; margin-bottom: 10px;">邮件设置</h1>
+    <p style="color: var(--text-light); margin-bottom: 30px;">配置SMTP服务器以发送邮件</p>
+
+    <div class="message" id="message"></div>
+
+    <div class="info-box">
+      <h4>SMTP 配置说明</h4>
+      <p>配置邮件发送服务器，用于发送订单确认、用户注册验证等邮件。常见邮箱服务推荐使用专用密码而非登录密码。</p>
+    </div>
+
+    <div class="form-card">
+      <form id="email-form">
+        <div class="form-section">
+          <h3 class="section-title">SMTP 服务器</h3>
+
+          <div class="form-group">
+            <label for="host">SMTP 主机地址</label>
+            <input type="text" id="host" placeholder="smtp.gmail.com 或 smtp.qq.com">
+            <small>例如：smtp.gmail.com, smtp.qq.com, smtp.163.com</small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="port">端口</label>
+              <input type="number" id="port" value="587" placeholder="587">
+              <small>常用端口：587（TLS）, 465（SSL）, 25（未加密）</small>
+            </div>
+            <div class="form-group">
+              <label for="secure">加密方式</label>
+              <select id="secure">
+                <option value="false">TLS / STARTTLS</option>
+                <option value="true">SSL / SMTPS</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title">认证信息</h3>
+
+          <div class="form-group">
+            <label for="user">用户名 / 邮箱</label>
+            <input type="text" id="user" placeholder="your-email@example.com">
+            <small>SMTP服务器认证用户名，通常是完整的邮箱地址</small>
+          </div>
+
+          <div class="form-group">
+            <label for="password">密码 / 授权码</label>
+            <input type="password" id="password" placeholder="输入密码或授权码">
+            <small>注意：Gmail需要使用"应用专用密码"，QQ邮箱使用"授权码"</small>
+          </div>
+
+          <div class="form-group">
+            <label for="from">发件人地址</label>
+            <input type="email" id="from" placeholder="noreply@example.com">
+            <small>邮件中显示的发件人地址</small>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="/admin-settings" class="btn-back">&larr; 返回</a>
+          <button type="submit" class="btn btn-primary">保存设置</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="form-card">
+      <div class="form-section">
+        <h3 class="section-title">
+          <span id="config-status">
+            <span class="status-indicator inactive"></span>未配置
+          </span>
+        </h3>
+        <p style="color: var(--text-light); margin-bottom: 15px;">保存配置后，使用以下功能测试邮件发送是否正常：</p>
+
+        <div class="test-section">
+          <div class="form-group">
+            <label for="test-email">测试收件人</label>
+            <input type="email" id="test-email" placeholder="输入测试收件人邮箱">
+          </div>
+          <button type="button" class="btn btn-outline" onclick="sendTestEmail()">发送测试邮件</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let emailConfig = {};
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 邮件设置';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    // 加载邮件配置
+    async function loadEmailConfig() {
+      try {
+        const response = await fetch('/api/email/config', { credentials: 'include' });
+        emailConfig = await response.json();
+
+        document.getElementById('host').value = emailConfig.host || '';
+        document.getElementById('port').value = emailConfig.port || 587;
+        document.getElementById('secure').value = emailConfig.secure ? 'true' : 'false';
+        document.getElementById('user').value = emailConfig.user || '';
+        document.getElementById('password').value = '';
+        document.getElementById('from').value = emailConfig.from || '';
+
+        // 更新状态
+        if (emailConfig.host && emailConfig.user) {
+          document.getElementById('config-status').innerHTML =
+            '<span class="status-indicator active"></span>已配置';
+        }
+      } catch (error) {
+        console.error('Error loading email config:', error);
+      }
+    }
+
+    // 保存邮件配置
+    document.getElementById('email-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        host: document.getElementById('host').value,
+        port: parseInt(document.getElementById('port').value) || 587,
+        secure: document.getElementById('secure').value === 'true',
+        user: document.getElementById('user').value,
+        password: document.getElementById('password').value,
+        from: document.getElementById('from').value
+      };
+
+      try {
+        const response = await fetch('/api/email/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('邮件设置保存成功', 'success');
+          loadEmailConfig();
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        showMessage('保存失败', 'error');
+      }
+    });
+
+    // 发送测试邮件
+    async function sendTestEmail() {
+      const to = document.getElementById('test-email').value.trim();
+
+      if (!to) {
+        showMessage('请输入测试收件人邮箱', 'error');
+        return;
+      }
+
+      if (!emailConfig.host) {
+        showMessage('请先保存邮件配置', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/email/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to }),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage('测试邮件发送成功！', 'success');
+        } else {
+          showMessage(data.error || '发送失败', 'error');
+        }
+      } catch (error) {
+        showMessage('发送失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => { msg.className = 'message'; }, 5000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadEmailConfig();
+    });
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

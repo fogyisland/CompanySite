@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>联系我们 - 博铭科技</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .contact-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 20px;
+    }
+    .contact-header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    .contact-header h1 {
+      font-size: 36px;
+      color: var(--text);
+      margin-bottom: 15px;
+    }
+    .contact-header p {
+      font-size: 18px;
+      color: var(--text-light);
+    }
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 30px;
+      margin-bottom: 50px;
+    }
+    .contact-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .contact-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .contact-card .icon {
+      width: 60px;
+      height: 60px;
+      background: var(--secondary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 24px;
+    }
+    .contact-card h3 {
+      font-size: 18px;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .contact-card p {
+      color: var(--text-light);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .contact-card a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .contact-card a:hover {
+      text-decoration: underline;
+    }
+    .contact-form-section {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px;
+    }
+    .contact-form-section h2 {
+      font-size: 24px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 15px;
+      font-family: inherit;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 600px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 15px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-submit:hover {
+      background: var(--primary-dark);
+    }
+    .btn-submit:disabled {
+      background: var(--text-light);
+      cursor: not-allowed;
+    }
+    .message {
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: #10b981;
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+    .support-link {
+      text-align: center;
+      margin-top: 30px;
+      color: var(--text-light);
+    }
+    .support-link a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .support-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+      <div class="nav-actions">
+        <a href="#" id="cart-btn" class="cart-btn">
+          🛒
+          <span id="cart-badge" style="display: none;">0</span>
+        </a>
+        <a href="/#products" class="btn btn-primary btn-small">立即购买</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="contact-container">
+      <div class="contact-header">
+        <h1>联系我们</h1>
+        <p>有任何问题或建议？我们随时为您服务</p>
+      </div>
+
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="icon">📧</div>
+          <h3>电子邮件</h3>
+          <p>如果您有任何问题，可以通过电子邮件联系我们</p>
+          <p><a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a></p>
+        </div>
+
+        <div class="contact-card">
+          <div class="icon">💬</div>
+          <h3>技术支持</h3>
+          <p>遇到技术问题？我们的技术支持团队随时为您服务</p>
+          <p><a href="/support">提交工单 →</a></p>
+        </div>
+
+        <div class="contact-card">
+          <div class="icon">🕐</div>
+          <h3>响应时间</h3>
+          <p>我们通常在 24 小时内回复您的邮件</p>
+          <p>工作日: 9:00 - 18:00</p>
+        </div>
+      </div>
+
+      <div class="contact-form-section">
+        <h2>发送邮件</h2>
+        <div class="message" id="message"></div>
+        <form id="contact-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="userName">姓名 *</label>
+              <input type="text" id="userName" name="userName" required placeholder="请输入您的姓名">
+            </div>
+            <div class="form-group">
+              <label for="userEmail">邮箱 *</label>
+              <input type="email" id="userEmail" name="userEmail" required placeholder="请输入您的邮箱">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="userPhone">电话</label>
+              <input type="tel" id="userPhone" name="userPhone" placeholder="请输入您的电话（可选）">
+            </div>
+            <div class="form-group">
+              <label for="subject">主题 *</label>
+              <input type="text" id="subject" name="subject" required placeholder="请输入邮件主题">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description">内容 *</label>
+            <textarea id="description" name="description" required placeholder="请详细描述您的问题或建议"></textarea>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submit-btn">发送邮件</button>
+        </form>
+
+        <p class="support-link">
+          如果您需要技术支持和问题追踪，<a href="/support">点击这里提交技术支持工单</a>
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3 id="footer-brand-name">博铭科技</h3>
+          <p id="footer-brand-desc">专业软件解决方案</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <ul>
+            <li><a href="/#products">全部产品</a></li>
+            <li><a href="/about">关于我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <ul>
+            <li><a href="/support">技术支持</a></li>
+            <li><a href="/faq">常见问题</a></li>
+            <li><a href="/contact">联系我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>联系方式</h4>
+          <ul>
+            <li><a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <span id="footer-year"></span> <span id="footer-company-bottom">博铭科技</span>. 保留所有权利.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Cart Modal -->
+  <div id="cart-modal" class="cart-modal">
+    <div class="cart-modal-content">
+      <div class="cart-modal-header">
+        <h3>购物车</h3>
+        <button class="cart-modal-close" onclick="closeCartModal()">&times;</button>
+      </div>
+      <div id="cart-content" class="cart-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/js/cart.js"></script>
+  <script>
+    // Load settings
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = settings.companyName;
+          document.getElementById('footer-brand-name').textContent = settings.companyName;
+          document.getElementById('footer-brand-desc').textContent = '专业软件解决方案';
+          document.getElementById('footer-company-bottom').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 联系我们';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.getElementById('contact-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('submit-btn');
+      const messageEl = document.getElementById('message');
+
+      const data = {
+        userName: document.getElementById('userName').value,
+        userEmail: document.getElementById('userEmail').value,
+        userPhone: document.getElementById('userPhone').value,
+        subject: document.getElementById('subject').value,
+        description: document.getElementById('description').value
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '发送中...';
+      messageEl.className = 'message';
+      messageEl.style.display = 'none';
+
+      try {
+        const response = await fetch('/api/support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          messageEl.textContent = '邮件已发送成功！我们会尽快与您联系。';
+          messageEl.className = 'message success';
+          document.getElementById('contact-form').reset();
+        } else {
+          messageEl.textContent = result.error || '发送失败，请稍后重试。';
+          messageEl.className = 'message error';
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        messageEl.textContent = '网络错误，请稍后重试。';
+        messageEl.className = 'message error';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '发送邮件';
+      }
+    });
+
+    // Set current year
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 管理员登录</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 50px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .login-logo .logo {
+      justify-content: center;
+    }
+    .login-logo h2 {
+      margin-top: 15px;
+      color: var(--text);
+    }
+    .admin-badge {
+      background: var(--primary);
+      color: var(--white);
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+    .login-form {
+      margin-top: 30px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .form-group input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 15px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .login-btn:hover {
+      background: var(--primary-dark);
+    }
+    .error-message {
+      background: #fef2f2;
+      color: #d32f2f;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      text-align: center;
+      display: none;
+    }
+    .error-message.show {
+      display: block;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .back-link a {
+      color: var(--text-light);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .back-link a:hover {
+      color: var(--primary);
+    }
+    .user-link {
+      text-align: center;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid var(--border);
+      color: var(--text-light);
+      font-size: 14px;
+    }
+    .user-link a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .captcha-container {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .captcha-container input {
+      flex: 1;
+    }
+    .captcha-img {
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-logo">
+      <span class="admin-badge">管理员</span>
+      <a href="/" class="logo">
+        <div class="logo-icon" id="login-logo-icon">SV</div>
+        <span class="logo-text" id="login-logo-text">博铭科技</span>
+      </a>
+      <h2>管理员登录</h2>
+    </div>
+
+    <div class="error-message" id="error-message"></div>
+
+    <form class="login-form" id="login-form">
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" name="username" required placeholder="请输入用户名">
+      </div>
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" name="password" required placeholder="请输入密码">
+      </div>
+      <div class="form-group">
+        <label for="captcha">验证码</label>
+        <div class="captcha-container">
+          <input type="text" id="captcha" name="captcha" required placeholder="请输入验证码" maxlength="4">
+          <img src="/api/captcha" alt="验证码" class="captcha-img" id="captcha-img" title="点击刷新">
+        </div>
+      </div>
+      <button type="submit" class="login-btn">登 录</button>
+    </form>
+
+    <div class="user-link">
+      我是用户，<a href="/user-login">前往用户登录</a>
+    </div>
+
+    <div class="back-link">
+      <a href="/">&larr; 返回网站</a>
+    </div>
+  </div>
+
+  <script>
+    async function loadLoginSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('login-logo-text').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 管理员登录';
+        }
+
+        if (settings.logo) {
+          document.getElementById('login-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '" alt="Logo" id="login-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    function refreshCaptcha() {
+      document.getElementById('captcha-img').src = '/api/captcha?' + Date.now();
+    }
+
+    document.getElementById('captcha-img').addEventListener('click', refreshCaptcha);
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const captcha = document.getElementById('captcha').value;
+      const errorMessage = document.getElementById('error-message');
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, captcha }),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          window.location.href = '/admin-overview';
+        } else {
+          errorMessage.textContent = data.error || '登录失败';
+          errorMessage.classList.add('show');
+          refreshCaptcha();
+        }
+      } catch (error) {
+        errorMessage.textContent = '网络错误，请稍后重试';
+        errorMessage.classList.add('show');
+      }
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLoginSettings();
+      refreshCaptcha();
+    });
+  </script>
+</body>
+</html>

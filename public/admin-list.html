@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 管理后台</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 1200px; }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    .stat-card .label {
+      font-size: 14px;
+      color: var(--text-light);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-list" class="logo" id="header-logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+    </div>
+  </header>
+  <div class="ribbon-bar"></div>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <!-- Admin Content -->
+  <main class="admin-container">
+    <div class="admin-header">
+      <h1>产品管理</h1>
+      <div class="admin-actions">
+        <a href="/" class="btn btn-outline btn-small">查看网站</a>
+        <a href="/admin.html" class="btn btn-primary btn-small">+ 添加产品</a>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="number" id="total-products">0</div>
+        <div class="label">全部产品</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="featured-products">0</div>
+        <div class="label">精选产品</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="total-value">¥0</div>
+        <div class="label">产品总值</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="categories">0</div>
+        <div class="label">产品分类</div>
+      </div>
+    </div>
+
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>名称</th>
+          <th>分类</th>
+          <th>价格方案</th>
+          <th>版本</th>
+          <th>平台</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="products-table">
+        <!-- Products loaded dynamically -->
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    let products = [];
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 产品管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadProducts() {
+      try {
+        const response = await fetch('/api/products', { credentials: 'include' });
+        products = await response.json();
+        renderTable();
+        updateStats();
+      } catch (error) {
+        console.error('Error loading products:', error);
+        alert('加载产品失败');
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('products-table');
+
+      if (!products || products.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center; padding: 40px;">
+              暂无产品。点击"添加产品"创建一个新产品。
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = products.map(product => {
+        const savedTiers = product.pricingTiers || product.pricing_tiers;
+        const hasTiers = savedTiers && savedTiers.length > 0;
+        let priceDisplay = '¥' + product.price;
+
+        if (hasTiers) {
+          const tierPrices = savedTiers.map(t => t.label + ':¥' + t.price).join(' / ');
+          priceDisplay = `<span style="color: var(--primary);">多方案</span><br><small>${tierPrices}</small>`;
+        }
+
+        return `
+          <tr>
+            <td>${escapeHtml(product.id)}</td>
+            <td><strong>${escapeHtml(product.name)}</strong></td>
+            <td>${escapeHtml(product.category)}</td>
+            <td>${priceDisplay}</td>
+            <td>${escapeHtml(product.version)}</td>
+            <td>${escapeHtml(product.platform)}</td>
+            <td class="table-actions">
+              <a href="/admin.html?id=${escapeHtml(product.id)}" class="btn-edit" style="text-decoration:none;">编辑</a>
+              <button class="btn-delete" onclick="deleteProduct(${escapeHtml(product.id)})">删除</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateStats() {
+      const total = products.length;
+      const featured = products.filter(p => p.featured).length;
+      const totalValue = products.reduce((sum, p) => sum + p.price, 0);
+      const categories = [...new Set(products.map(p => p.category))].length;
+
+      document.getElementById('total-products').textContent = total;
+      document.getElementById('featured-products').textContent = featured;
+      document.getElementById('total-value').textContent = '¥' + totalValue;
+      document.getElementById('categories').textContent = categories;
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('确定要删除此产品吗？')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/products/${id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          alert('产品删除成功');
+          loadProducts();
+        } else {
+          alert('删除产品失败');
+        }
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        alert('删除产品时出错');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadProducts();
+    });
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

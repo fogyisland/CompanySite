@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 网站设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 800px; }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 40px;
+    }
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+    }
+    .form-section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 15px;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .logo-upload {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .logo-preview {
+      width: 120px;
+      height: 120px;
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--secondary);
+    }
+    .logo-preview img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .logo-preview .placeholder {
+      color: var(--text-light);
+      font-size: 14px;
+      text-align: center;
+    }
+    .upload-btn {
+      padding: 10px 20px;
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .upload-btn:hover {
+      background: var(--border);
+    }
+    #logo-input {
+      display: none;
+    }
+    .form-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-back {
+      background: var(--secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-back:hover {
+      background: var(--border);
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: var(--success);
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-settings" class="logo" id="header-logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a>
+          </li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+  </header>
+  <div class="ribbon-bar"></div>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+            <li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <!-- Admin Content -->
+  <main class="admin-container">
+    <h1 style="font-size: 24px; margin-bottom: 30px;">网站设置</h1>
+
+    <div class="message" id="message"></div>
+
+    <div class="form-card">
+      <form id="settings-form">
+        <div class="form-section">
+          <h3 class="section-title">Logo 设置</h3>
+
+          <div class="form-group">
+            <label>上传 Logo</label>
+            <div class="logo-upload">
+              <div class="logo-preview" id="logo-preview">
+                <span class="placeholder">暂无Logo</span>
+              </div>
+              <div>
+                <button type="button" class="upload-btn" onclick="document.getElementById('logo-input').click()">选择图片</button>
+                <p style="margin-top: 10px; font-size: 12px; color: var(--text-light);">建议尺寸: 200x60 像素</p>
+              </div>
+            </div>
+            <input type="file" id="logo-input" accept="image/*">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title">基本信息</h3>
+
+          <div class="form-group">
+            <label for="companyName">企业名称</label>
+            <input type="text" id="companyName" name="companyName" placeholder="请输入企业名称">
+          </div>
+
+          <div class="form-group">
+            <label for="description">网站描述</label>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+              <textarea id="description" name="description" rows="3" placeholder="简短描述您的网站" style="flex: 1;"></textarea>
+              <button type="button" class="btn" onclick="regenerateDescription()" style="background: #10b981; color: white; white-space: nowrap; padding: 12px 16px;">AI优化</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="adminEmail">管理员邮箱</label>
+            <input type="email" id="adminEmail" name="adminEmail" placeholder="用于接收订单通知邮件">
+            <small style="color: var(--text-light); font-size: 12px; margin-top: 4px; display: block;">管理员将收到新订单和支付完成的通知邮件</small>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title">端口设置</h3>
+          <div style="display: flex; gap: 20px;">
+            <div class="form-group" style="flex: 1;">
+              <label for="httpPort">HTTP 端口</label>
+              <input type="number" id="httpPort" name="httpPort" placeholder="10000" min="1" max="65535">
+              <small style="color: var(--text-light); font-size: 12px; margin-top: 4px; display: block;">服务器 HTTP 监听端口</small>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="httpsPort">HTTPS 端口</label>
+              <input type="number" id="httpsPort" name="httpsPort" placeholder="10001" min="1" max="65535">
+              <small style="color: var(--text-light); font-size: 12px; margin-top: 4px; display: block;">服务器 HTTPS 监听端口</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title">主题设置</h3>
+          <div class="form-group">
+            <label for="siteTheme">选择主题</label>
+            <select id="siteTheme" name="siteTheme" style="width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px;">
+              <option value="default">系统默认 (Default)</option>
+              <option value="minimal">硬核极简 (Minimal)</option>
+              <option value="soft">柔和科技 (Soft)</option>
+              <option value="glass">玻璃质感 (Glass)</option>
+              <option value="bento">便当盒布局 (Bento)</option>
+              <option value="dark">深夜模式 (Dark)</option>
+              <option value="warm">暖纸风格 (Warm)</option>
+              <option value="cyber">赛博朋克 (Cyber)</option>
+              <option value="editorial">杂志风 (Editorial)</option>
+              <option value="liquid">液体视网膜 (Liquid)</option>
+            </select>
+            <small style="color: var(--text-light); font-size: 12px; margin-top: 4px; display: block;">选择网站使用的主题风格</small>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="/admin-product" class="btn-back">&larr; 返回列表</a>
+          <button type="submit" class="btn btn-primary">保存设置</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        // 更新表单
+        document.getElementById('companyName').value = settings.companyName || '';
+        document.getElementById('description').value = settings.description || '';
+        document.getElementById('adminEmail').value = settings.adminEmail || '';
+        document.getElementById('httpPort').value = settings.httpPort || 10000;
+        document.getElementById('httpsPort').value = settings.httpsPort || 10001;
+        document.getElementById('siteTheme').value = settings.siteTheme || 'minimal';
+
+        // 更新Logo预览
+        if (settings.logo) {
+          document.getElementById('logo-preview').innerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo">';
+        }
+
+        // 更新头部公司名称
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 网站设置';
+        }
+
+        // 更新头部Logo
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        showMessage('加载设置失败', 'error');
+      }
+    }
+
+    // Logo预览
+    document.getElementById('logo-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      try {
+        const response = await fetch('/api/upload-logo', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          document.getElementById('logo-preview').innerHTML =
+            '<img src="' + data.logo + '?t=' + Date.now() + '" alt="Logo">';
+          showMessage('Logo上传成功', 'success');
+        } else {
+          showMessage(data.error || '上传失败', 'error');
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        showMessage('上传失败', 'error');
+      }
+    });
+
+    // 保存设置
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const companyName = document.getElementById('companyName').value;
+      const description = document.getElementById('description').value;
+      const adminEmail = document.getElementById('adminEmail').value;
+      const httpPort = parseInt(document.getElementById('httpPort').value) || 10000;
+      const httpsPort = parseInt(document.getElementById('httpsPort').value) || 10001;
+      const siteTheme = document.getElementById('siteTheme').value;
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ companyName, description, adminEmail, httpPort, httpsPort, siteTheme }),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage('设置保存成功', 'success');
+        } else {
+          showMessage(data.error || '保存失败', 'error');
+        }
+      } catch (error) {
+        console.error('Save error:', error);
+        showMessage('保存失败', 'error');
+      }
+    });
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 3000);
+    }
+
+    // AI优化描述
+    async function regenerateDescription() {
+      const descriptionEl = document.getElementById('description');
+      const currentText = descriptionEl.value;
+
+      try {
+        const response = await fetch('/api/ai/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ text: currentText, type: 'website_description' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          descriptionEl.value = data.text;
+          showMessage('AI优化成功', 'success');
+        } else {
+          showMessage(data.error || 'AI生成失败', 'error');
+        }
+      } catch (error) {
+        console.error('AI error:', error);
+        showMessage('AI生成失败', 'error');
+      }
+    }
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      // Close all submenus first
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      // Open the target submenu
+      if (submenuId) {
+        const submenu = document.getElementById(submenuId);
+        const navItem = e.target.closest('.nav-item');
+        if (submenu) submenu.classList.add('open');
+        if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', loadSettings);
+  </script>
+</body>
+</html>

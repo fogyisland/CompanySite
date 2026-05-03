@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 管理后台</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 1000px; }
+    .page-title { font-size: 24px; margin-bottom: 30px; }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 40px;
+    }
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+    }
+    .form-section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 15px;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-back {
+      background: var(--secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-back:hover {
+      background: var(--border);
+    }
+    .breadcrumb {
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: var(--text-light);
+    }
+    .breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .features-input {
+      min-height: 100px;
+    }
+    .pricing-tiers-section {
+      margin-top: 20px;
+      padding: 20px;
+      background: var(--secondary);
+      border-radius: 8px;
+    }
+    .pricing-tier-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 100px 40px;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    .pricing-tier-row input {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .btn-remove-tier {
+      background: #d32f2f;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      font-size: 18px;
+    }
+    .btn-add-tier {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .single-price-group {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .single-price-group .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+    .use-tiers-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .use-tiers-checkbox input {
+      width: auto;
+    }
+    /* 富文本编辑器样式 */
+    .rich-editor {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .rich-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 10px;
+      background: var(--secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .rich-toolbar button {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      background: var(--white);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .rich-toolbar button:hover {
+      background: var(--border);
+    }
+    .rich-toolbar button.active {
+      background: var(--primary);
+      color: var(--white);
+      border-color: var(--primary);
+    }
+    .rich-content {
+      min-height: 200px;
+      padding: 15px;
+      outline: none;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--white);
+    }
+    .rich-content:empty:before {
+      content: attr(data-placeholder);
+      color: var(--text-light);
+    }
+    .rich-content p { margin: 0 0 10px 0; }
+    .rich-content ul, .rich-content ol { margin: 0 0 10px 0; padding-left: 25px; }
+    .rich-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .image-upload-btn {
+      position: relative;
+      display: inline-block;
+    }
+    .image-upload-btn input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    .software-upload-section {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      background: var(--secondary);
+    }
+    .software-upload-section:hover {
+      border-color: var(--primary);
+    }
+    .software-upload-section.has-file {
+      border-color: #10b981;
+      background: #ecfdf5;
+    }
+    .software-info {
+      margin-top: 15px;
+      padding: 10px 15px;
+      background: var(--white);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .software-info .file-name {
+      font-weight: 500;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 300px;
+    }
+    .software-info .file-size {
+      color: var(--text-light);
+      font-size: 13px;
+      margin-left: 10px;
+    }
+    .btn-remove-file {
+      background: #d32f2f;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .btn-remove-file:hover {
+      background: #b71c1c;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-product" class="logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+            <li><a href="/admin-list">产品管理</a></li>
+            <li><a href="/admin-orders">订单管理</a></li>
+            <li><a href="/admin-installations">安装管理</a></li>
+            <li><a href="/admin-activations">激活管理</a></li>
+            <li><a href="/admin-newsletter">邮件订阅</a></li>
+            <li><a href="/admin-support">技术支持</a></li>
+            <li><a href="/admin-faq">FAQ</a></li>
+            <li><a href="/admin-carddav">CardDAV</a></li>
+            <li class="nav-item">
+              <a href="#" onclick="toggleSubmenu(event)">系统设置 <span class="toggle-icon">+</span></a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+    </div>
+  </header>
+  <div class="ribbon-bar"></div>
+  <div class="nav-submenu-block" id="nav-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <!-- Admin Content -->
+  <main class="admin-container">
+    <div class="breadcrumb">
+      <a href="/admin-product">产品管理</a> / <span id="breadcrumb-title">添加产品</span>
+    </div>
+
+    <h1 class="page-title" id="page-title">添加产品</h1>
+
+    <div class="form-card">
+      <form id="product-form">
+        <input type="hidden" id="product-id">
+
+        <div class="form-section">
+          <h3 class="section-title">基本信息</h3>
+
+          <div class="form-group">
+            <label for="name">产品名称 *</label>
+            <input type="text" id="name" name="name" required placeholder="例如：CodeFlow Pro">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="category">分类 *</label>
+              <select id="category" name="category" required>
+                <option value="开发工具">开发工具</option>
+                <option value="设计软件">设计软件</option>
+                <option value="安全软件">安全软件</option>
+                <option value="效率工具">效率工具</option>
+                <option value="实用工具">实用工具</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="price">基础价格 (¥) *</label>
+              <input type="number" id="price" name="price" min="0" step="0.01" required placeholder="79">
+              <small style="color: var(--text-light); font-size: 12px; margin-top: 4px; display: block;">如启用多价格方案，此价格为默认显示价格</small>
+            </div>
+          </div>
+
+          <div class="use-tiers-checkbox">
+            <input type="checkbox" id="usePricingTiers" name="usePricingTiers" style="width: auto;">
+            <label for="usePricingTiers" style="margin-bottom: 0;">启用多价格方案（支持不同授权时长）</label>
+          </div>
+
+          <div class="pricing-tiers-section" id="pricingTiersSection" style="display: none;">
+            <h4 style="margin-bottom: 15px; color: var(--primary);">价格方案</h4>
+            <div id="pricingTiersContainer">
+              <!-- Pricing tiers will be added here -->
+            </div>
+            <button type="button" class="btn-add-tier" onclick="addPricingTier()">+ 添加价格方案</button>
+          </div>
+
+          <div class="form-group">
+            <label for="description">产品描述（支持富文本）</label>
+            <div class="rich-editor">
+              <div class="rich-toolbar">
+                <button type="button" onclick="execCmd('bold')"><b>B</b></button>
+                <button type="button" onclick="execCmd('italic')"><i>I</i></button>
+                <button type="button" onclick="execCmd('underline')"><u>U</u></button>
+                <button type="button" onclick="execCmd('strikeThrough')"><s>S</s></button>
+                <button type="button" onclick="execCmd('insertUnorderedList')">• 列表</button>
+                <button type="button" onclick="execCmd('insertOrderedList')">1. 列表</button>
+                <button type="button" onclick="execCmd('formatBlock', 'h3')">标题</button>
+                <button type="button" onclick="execCmd('formatBlock', 'p')">段落</button>
+                <div class="image-upload-btn">
+                  <button type="button">插入图片</button>
+                  <input type="file" accept="image/*" onchange="uploadRichImage(event)">
+                </div>
+              </div>
+              <div id="description" class="rich-content" contenteditable="true" data-placeholder="详细描述产品的功能和特点..."></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+              <input type="hidden" id="description-hidden" name="description">
+              <button type="button" class="btn" onclick="regenerateDescription()" style="background: #10b981; color: white;">AI优化描述</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title">产品信息</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="version">版本号</label>
+              <input type="text" id="version" name="version" placeholder="1.0.0">
+            </div>
+            <div class="form-group">
+              <label for="platform">支持平台</label>
+              <input type="text" id="platform" name="platform" placeholder="Windows / Mac / Linux">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="icon">图标类型</label>
+            <select id="icon" name="icon">
+              <option value="code">代码 (Code)</option>
+              <option value="palette">设计 (Palette)</option>
+              <option value="shield">安全 (Shield)</option>
+              <option value="check">任务 (Check)</option>
+              <option value="cloud">云端 (Cloud)</option>
+              <option value="image">图像 (Image)</option>
+              <option value="software">软件 (Software)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>功能特点（每行一个）</label>
+            <textarea id="features-input" rows="4" placeholder="输入功能特点，每行一个，例如：&#10;无广告打扰&#10;全屏导航&#10;广告拦截"></textarea>
+            <button type="button" class="btn" onclick="parseFeatures()" style="margin-top: 8px; background: var(--primary); color: white;">解析功能列表</button>
+          </div>
+
+          <div class="form-group">
+            <label>下载方式</label>
+            <div class="use-tiers-checkbox">
+              <input type="checkbox" id="useExternalLink" name="useExternalLink" style="width: auto;" onchange="toggleExternalLink()">
+              <label for="useExternalLink" style="margin-bottom: 0;">使用外部下载链接</label>
+            </div>
+          </div>
+
+          <div class="form-group" id="externalLinkSection" style="display: none;">
+            <label for="externalLink">外部下载链接</label>
+            <input type="url" id="externalLink" name="externalLink" placeholder="https://example.com/download/software.exe">
+          </div>
+
+          <div class="form-group" id="softwareUploadSection">
+            <label>软件文件上传</label>
+            <div class="software-upload-section" id="software-upload-section">
+              <input type="file" id="software-file" style="display: none;" accept=".exe,.zip,.rar,.7z,.msi,.dmg,.pkg,.deb,.rpm,.appimage,.jar,.war,.pdf">
+              <div id="software-upload-placeholder">
+                <p style="margin-bottom: 10px; color: var(--text-light);">点击按钮选择软件安装包文件</p>
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('software-file').click()">选择文件</button>
+                <p style="margin-top: 10px; font-size: 12px; color: var(--text-light);">支持格式: exe, zip, rar, 7z, msi, dmg, deb, rpm, jar, pdf 等</p>
+              </div>
+              <div id="software-info" style="display: none;">
+                <div class="software-info">
+                  <div>
+                    <div class="file-name" id="software-file-name"></div>
+                    <div class="file-size" id="software-file-size"></div>
+                  </div>
+                  <button type="button" class="btn-remove-file" onclick="removeSoftwareFile()">删除</button>
+                </div>
+              </div>
+            </div>
+            <input type="hidden" id="downloadUrl" name="downloadUrl" value="">
+          </div>
+
+          <div class="form-group">
+            <label>产品图片上传</label>
+            <div class="software-upload-section" id="product-image-upload-section">
+              <input type="file" id="product-image-file" style="display: none;" accept="image/*" onchange="uploadProductImage(event)">
+              <div id="product-image-upload-placeholder">
+                <p style="margin-bottom: 10px; color: var(--text-light);">点击按钮选择产品图片（显示在产品详情页）</p>
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('product-image-file').click()">选择图片</button>
+                <p style="margin-top: 10px; font-size: 12px; color: var(--text-light);">支持格式: jpg, png, gif, webp 等</p>
+              </div>
+              <div id="product-image-preview" style="display: none;">
+                <div class="software-info">
+                  <div>
+                    <img id="product-image-display" src="" style="max-width: 200px; max-height: 150px;">
+                  </div>
+                  <button type="button" class="btn-remove-file" onclick="removeProductImage()">删除</button>
+                </div>
+              </div>
+            </div>
+            <input type="hidden" id="productImage" name="productImage" value="">
+            <div style="margin-top: 8px;">
+              <label style="font-weight: normal; cursor: pointer;">
+                <input type="checkbox" id="imageDarkBg" name="imageDarkBg" style="width: auto; margin-right: 6px;">
+                图片背景为深色（使用白色文字）
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="featured" name="featured" style="width: auto; margin-right: 8px;"> 设为精选产品
+            </label>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="/admin-product" class="btn-back">&larr; 返回列表</a>
+          <button type="submit" class="btn btn-primary" id="submit-btn">保存产品</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    let currentProduct = null;
+    let pricingTiers = [];
+    let productFeatures = [];
+
+    const defaultTiers = [
+      { duration: 1, label: '1个月', price: 0 },
+      { duration: 3, label: '3个月', price: 0 },
+      { duration: 6, label: '6个月', price: 0 },
+      { duration: 12, label: '1年', price: 0 }
+    ];
+
+    // 解析功能列表
+    function parseFeatures() {
+      const input = document.getElementById('features-input').value;
+      productFeatures = input.split('\n').map(f => f.trim()).filter(f => f.length > 0);
+      alert('已解析 ' + productFeatures.length + ' 个功能特点');
+    }
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        console.log('Settings loaded:', settings);
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+        }
+
+        if (settings.logo) {
+          console.log('Setting logo:', settings.logo);
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    // 加载产品数据（如果是编辑模式）
+    async function loadProduct() {
+      const params = new URLSearchParams(window.location.search);
+      const productId = params.get('id');
+
+      if (!productId) {
+        document.getElementById('page-title').textContent = '添加产品';
+        document.getElementById('breadcrumb-title').textContent = '添加产品';
+        // 初始化默认价格方案
+        pricingTiers = [...defaultTiers];
+        renderPricingTiers();
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/products/' + productId, { credentials: 'include' });
+        const product = await response.json();
+
+        currentProduct = product;
+        document.getElementById('product-id').value = product.id;
+        document.getElementById('name').value = product.name;
+        document.getElementById('category').value = product.category;
+        document.getElementById('price').value = product.price;
+        document.getElementById('description').innerHTML = product.description || '';
+        document.getElementById('version').value = product.version || '';
+        document.getElementById('platform').value = product.platform || '';
+        document.getElementById('icon').value = product.icon || 'software';
+        document.getElementById('featured').checked = product.featured;
+
+        // 加载功能特点
+        productFeatures = product.features || [];
+        document.getElementById('features-input').value = productFeatures.join('\n');
+
+        // 加载下载方式（外部链接或本地上传）
+        const isExternalLink = product.externalLink === true || product.externalLink === 1;
+        document.getElementById('useExternalLink').checked = isExternalLink;
+        toggleExternalLink();
+        if (isExternalLink) {
+          document.getElementById('externalLink').value = product.download_url || '';
+        } else {
+          document.getElementById('downloadUrl').value = product.download_url || '';
+        }
+
+        // 加载产品图片
+        const productImage = product.image || '';
+        if (productImage) {
+          currentProductImage = { filename: productImage.split('/').pop(), path: productImage };
+          document.getElementById('productImage').value = productImage;
+          document.getElementById('product-image-display').src = productImage;
+          document.getElementById('product-image-upload-placeholder').style.display = 'none';
+          document.getElementById('product-image-preview').style.display = 'block';
+          document.getElementById('imageDarkBg').checked = product.imageDarkBg === true;
+        }
+
+        document.getElementById('page-title').textContent = '编辑产品';
+        document.getElementById('breadcrumb-title').textContent = '编辑产品';
+
+        // 加载价格方案
+        const savedTiers = product.pricingTiers || product.pricing_tiers;
+        if (savedTiers && savedTiers.length > 0) {
+          pricingTiers = savedTiers;
+          document.getElementById('usePricingTiers').checked = true;
+          document.getElementById('pricingTiersSection').style.display = 'block';
+        } else {
+          pricingTiers = [...defaultTiers];
+        }
+        renderPricingTiers();
+      } catch (error) {
+        console.error('Error loading product:', error);
+        alert('加载产品失败');
+      }
+    }
+
+    function renderPricingTiers() {
+      const container = document.getElementById('pricingTiersContainer');
+      container.innerHTML = pricingTiers.map((tier, index) => `
+        <div class="pricing-tier-row" data-index="${escapeHtml(index)}">
+          <input type="text" value="${escapeHtml(tier.label)}" placeholder="方案名称，如：1个月"
+                 onchange="updateTier(${escapeHtml(index)}, 'label', this.value)">
+          <input type="number" value="${escapeHtml(tier.duration)}" placeholder="时长（月）" min="1"
+                 onchange="updateTier(${escapeHtml(index)}, 'duration', parseInt(this.value) || 1)">
+          <input type="number" value="${escapeHtml(tier.price)}" placeholder="价格" min="0" step="0.01"
+                 onchange="updateTier(${escapeHtml(index)}, 'price', parseFloat(this.value) || 0)">
+          <button type="button" class="btn-remove-tier" onclick="removeTier(${escapeHtml(index)})">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    function updateTier(index, field, value) {
+      pricingTiers[index][field] = value;
+    }
+
+    function addPricingTier() {
+      pricingTiers.push({ duration: 1, label: '1个月', price: 0 });
+      renderPricingTiers();
+    }
+
+    function removeTier(index) {
+      pricingTiers.splice(index, 1);
+      renderPricingTiers();
+    }
+
+    // 富文本编辑器命令
+    function execCmd(command, value = null) {
+      document.execCommand(command, false, value);
+      document.getElementById('description').focus();
+    }
+
+    // 上传富文本图片
+    async function uploadRichImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      try {
+        const response = await fetch('/api/upload-product-image', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // 插入图片到编辑器
+          const img = document.createElement('img');
+          img.src = data.path;
+          img.style.maxWidth = '100%';
+          document.getElementById('description').appendChild(img);
+          document.getElementById('description').focus();
+        } else {
+          alert('图片上传失败');
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert('图片上传失败');
+      }
+
+      event.target.value = '';
+    }
+
+    // 软件文件上传
+    let currentSoftwareFile = null;
+
+    document.getElementById('software-file').addEventListener('change', async function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('software', file);
+
+      try {
+        const response = await fetch('/api/upload-software', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          currentSoftwareFile = data;
+          document.getElementById('downloadUrl').value = data.path;
+          document.getElementById('software-file-name').textContent = data.originalName;
+          document.getElementById('software-file-size').textContent = formatFileSize(data.size);
+          document.getElementById('software-upload-placeholder').style.display = 'none';
+          document.getElementById('software-info').style.display = 'block';
+          document.getElementById('software-upload-section').classList.add('has-file');
+        } else {
+          alert('文件上传失败');
+        }
+      } catch (error) {
+        console.error('Error uploading software:', error);
+        alert('文件上传失败');
+      }
+
+      event.target.value = '';
+    });
+
+    // 切换外部链接模式
+    function toggleExternalLink() {
+      const useExternal = document.getElementById('useExternalLink').checked;
+      document.getElementById('externalLinkSection').style.display = useExternal ? 'block' : 'none';
+      document.getElementById('softwareUploadSection').style.display = useExternal ? 'none' : 'block';
+      // 如果切换到外部链接，清空本地下载URL
+      if (useExternal) {
+        removeSoftwareFile();
+      } else {
+        document.getElementById('externalLink').value = '';
+      }
+    }
+
+    function removeSoftwareFile() {
+      if (currentSoftwareFile) {
+        fetch('/api/upload-software', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: currentSoftwareFile.filename }),
+          credentials: 'include'
+        });
+      }
+      currentSoftwareFile = null;
+      document.getElementById('downloadUrl').value = '';
+      document.getElementById('software-upload-placeholder').style.display = 'block';
+      document.getElementById('software-info').style.display = 'none';
+      document.getElementById('software-upload-section').classList.remove('has-file');
+    }
+
+    // 产品图片上传
+    let currentProductImage = null;
+
+    async function uploadProductImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      try {
+        const response = await fetch('/api/upload-product-image', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          currentProductImage = { filename: data.filename, path: data.path };
+          document.getElementById('productImage').value = data.path;
+          document.getElementById('product-image-display').src = data.path;
+          document.getElementById('product-image-upload-placeholder').style.display = 'none';
+          document.getElementById('product-image-preview').style.display = 'block';
+        } else {
+          alert('图片上传失败');
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert('图片上传失败');
+      }
+    }
+
+    function removeProductImage() {
+      if (currentProductImage) {
+        fetch('/api/upload-product-image', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: currentProductImage.filename }),
+          credentials: 'include'
+        });
+      }
+      currentProductImage = null;
+      document.getElementById('productImage').value = '';
+      document.getElementById('product-image-upload-placeholder').style.display = 'block';
+      document.getElementById('product-image-preview').style.display = 'none';
+      document.getElementById('product-image-file').value = '';
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+    }
+
+    // 切换价格方案显示
+    document.getElementById('usePricingTiers').addEventListener('change', function() {
+      document.getElementById('pricingTiersSection').style.display = this.checked ? 'block' : 'none';
+      if (this.checked && pricingTiers.length === 0) {
+        pricingTiers = [...defaultTiers];
+        renderPricingTiers();
+      }
+    });
+
+    // 表单提交
+    document.getElementById('product-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const useTiers = document.getElementById('usePricingTiers').checked;
+      const productData = {
+        name: document.getElementById('name').value,
+        category: document.getElementById('category').value,
+        price: parseFloat(document.getElementById('price').value),
+        description: document.getElementById('description').innerHTML,
+        version: document.getElementById('version').value,
+        platform: document.getElementById('platform').value,
+        icon: document.getElementById('icon').value,
+        features: productFeatures,
+        featured: document.getElementById('featured').checked,
+        image: document.getElementById('productImage').value,
+        imageDarkBg: document.getElementById('imageDarkBg').checked
+      };
+
+      // 下载方式：外部链接 or 本地上传
+      const useExternal = document.getElementById('useExternalLink').checked;
+      if (useExternal) {
+        productData.downloadUrl = document.getElementById('externalLink').value;
+        productData.externalLink = true;
+      } else {
+        productData.downloadUrl = document.getElementById('downloadUrl').value;
+        productData.externalLink = false;
+      }
+
+      if (useTiers) {
+        productData.pricingTiers = pricingTiers;
+      }
+
+      try {
+        const url = currentProduct
+          ? '/api/products/' + currentProduct.id
+          : '/api/products';
+        const method = currentProduct ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(productData),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          alert(currentProduct ? '产品更新成功' : '产品添加成功');
+          window.location.href = '/admin-product';
+        } else {
+          alert('保存失败');
+        }
+      } catch (error) {
+        console.error('Error saving product:', error);
+        alert('保存失败');
+      }
+    });
+
+    // AI优化产品描述
+    async function regenerateDescription() {
+      const descriptionEl = document.getElementById('description');
+      const currentText = descriptionEl.innerText || descriptionEl.innerHTML;
+
+      if (!currentText.trim()) {
+        alert('请先输入产品基本信息');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/ai/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ text: currentText, type: 'product_description' })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          descriptionEl.innerHTML = data.text.replace(/\n/g, '<br>');
+          alert('AI优化成功');
+        } else {
+          alert(data.error || 'AI生成失败');
+        }
+      } catch (error) {
+        console.error('AI error:', error);
+        alert('AI生成失败');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadProduct();
+    });
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e) {
+      e.preventDefault();
+      const submenu = document.getElementById('nav-submenu');
+      const navItem = e.target.closest('.nav-item');
+      submenu.classList.toggle('open');
+      navItem.classList.toggle('open');
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

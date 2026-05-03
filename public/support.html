@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>技术支持 - 博铭科技</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .support-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 60px 20px;
+    }
+    .support-header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    .support-header h1 {
+      font-size: 36px;
+      color: var(--text);
+      margin-bottom: 15px;
+    }
+    .support-header p {
+      font-size: 18px;
+      color: var(--text-light);
+    }
+    .ticket-form-section {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      margin-bottom: 40px;
+    }
+    .ticket-form-section h2 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 15px;
+      font-family: inherit;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .form-group textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 600px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+    .btn-submit {
+      padding: 15px 40px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-submit:hover {
+      background: var(--primary-dark);
+    }
+    .btn-submit:disabled {
+      background: var(--text-light);
+      cursor: not-allowed;
+    }
+    .message {
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: #10b981;
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+    .ticket-success {
+      text-align: center;
+      padding: 40px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 40px;
+    }
+    .ticket-success .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+    .ticket-success h2 {
+      color: #10b981;
+      margin-bottom: 15px;
+    }
+    .ticket-success p {
+      color: var(--text-light);
+      margin-bottom: 10px;
+    }
+    .ticket-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--primary);
+      margin: 20px 0;
+    }
+    .contact-info {
+      text-align: center;
+      padding: 30px;
+      background: var(--secondary);
+      border-radius: 12px;
+      margin-top: 40px;
+    }
+    .contact-info h3 {
+      margin-bottom: 15px;
+    }
+    .contact-info p {
+      color: var(--text-light);
+    }
+    .contact-info a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .contact-info a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="support-container">
+      <div class="support-header">
+        <h1>技术支持</h1>
+        <p>遇到问题？我们随时为您服务。提交工单后，我们会尽快与您联系。</p>
+      </div>
+
+      <div id="form-section" class="ticket-form-section">
+        <h2>提交技术支持工单</h2>
+        <div class="message" id="message"></div>
+        <form id="support-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="userName">姓名 *</label>
+              <input type="text" id="userName" name="userName" required placeholder="请输入您的姓名">
+            </div>
+            <div class="form-group">
+              <label for="userEmail">邮箱 *</label>
+              <input type="email" id="userEmail" name="userEmail" required placeholder="请输入您的邮箱">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="userPhone">电话</label>
+              <input type="tel" id="userPhone" name="userPhone" placeholder="请输入您的电话（可选）">
+            </div>
+            <div class="form-group">
+              <label for="priority">优先级</label>
+              <select id="priority" name="priority">
+                <option value="normal">普通</option>
+                <option value="high">紧急</option>
+                <option value="low">低</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="subject">问题主题 *</label>
+            <input type="text" id="subject" name="subject" required placeholder="请简要描述您的问题">
+          </div>
+
+          <div class="form-group">
+            <label for="description">详细描述 *</label>
+            <textarea id="description" name="description" required placeholder="请详细描述您遇到的问题，包括：&#10;1. 您正在做什么&#10;2. 出现的错误信息&#10;3. 已尝试的解决方法"></textarea>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submit-btn">提交工单</button>
+        </form>
+      </div>
+
+      <div id="success-section" class="ticket-success" style="display: none;">
+        <div class="icon">✓</div>
+        <h2>工单提交成功！</h2>
+        <p>感谢您提交技术支持请求</p>
+        <p>您的工单编号：</p>
+        <div class="ticket-number" id="ticket-number">#10001</div>
+        <p>我们已将确认邮件发送至 <strong id="confirm-email"></strong></p>
+        <p>我们的技术团队通常会在 <strong>24 小时内</strong> 回复您</p>
+        <p style="margin-top: 20px;">
+          <a href="/" class="btn-submit" style="display: inline-block; text-decoration: none;">返回首页</a>
+        </p>
+      </div>
+
+      <div class="contact-info">
+        <h3>其他联系方式</h3>
+        <p>发送邮件至 <a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a></p>
+        <p>工作时间：周一至周五 9:00 - 18:00</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3 id="footer-brand-name">博铭科技</h3>
+          <p id="footer-brand-desc">专业软件解决方案</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <ul>
+            <li><a href="/#products">全部产品</a></li>
+            <li><a href="/about">关于我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <ul>
+            <li><a href="/support">技术支持</a></li>
+            <li><a href="/faq">常见问题</a></li>
+            <li><a href="/contact">联系我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>联系方式</h4>
+          <ul>
+            <li><a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <span id="footer-year"></span> <span id="footer-company-bottom">博铭科技</span>. 保留所有权利.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Load settings
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = settings.companyName;
+          document.getElementById('footer-brand-name').textContent = settings.companyName;
+          document.getElementById('footer-brand-desc').textContent = '专业软件解决方案';
+          document.getElementById('footer-company-bottom').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 技术支持';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.getElementById('support-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('submit-btn');
+      const messageEl = document.getElementById('message');
+
+      const data = {
+        userName: document.getElementById('userName').value,
+        userEmail: document.getElementById('userEmail').value,
+        userPhone: document.getElementById('userPhone').value,
+        subject: document.getElementById('subject').value,
+        description: document.getElementById('description').value,
+        priority: document.getElementById('priority').value
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '提交中...';
+      messageEl.className = 'message';
+      messageEl.style.display = 'none';
+
+      try {
+        const response = await fetch('/api/support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          document.getElementById('form-section').style.display = 'none';
+          document.getElementById('ticket-number').textContent = '#' + result.ticket.id;
+          document.getElementById('confirm-email').textContent = data.userEmail;
+          document.getElementById('success-section').style.display = 'block';
+        } else {
+          messageEl.textContent = result.error || '提交失败，请稍后重试。';
+          messageEl.className = 'message error';
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        messageEl.textContent = '网络错误，请稍后重试。';
+        messageEl.className = 'message error';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '提交工单';
+      }
+    });
+
+    // Set current year
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+    });
+  </script>
+</body>
+</html>

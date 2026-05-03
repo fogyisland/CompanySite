@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 数据库设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 1000px; }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+    }
+    .form-section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .form-group small {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-light);
+      font-size: 12px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-back {
+      background: var(--secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-back:hover {
+      background: var(--border);
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: var(--success);
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+    .message.info {
+      background: #e3f2fd;
+      color: #1976d2;
+      display: block;
+    }
+    .db-type-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .db-type-tab {
+      padding: 12px 24px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      background: var(--white);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .db-type-tab.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--white);
+    }
+    .db-type-tab:hover:not(.active) {
+      border-color: var(--primary);
+    }
+    .config-panel {
+      display: none;
+    }
+    .config-panel.active {
+      display: block;
+    }
+    .schema-preview {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-top: 15px;
+    }
+    .schema-preview .keyword {
+      color: #569cd6;
+    }
+    .schema-preview .string {
+      color: #ce9178;
+    }
+    .schema-preview .comment {
+      color: #6a9955;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .status-badge.connected {
+      background: #ecfdf5;
+      color: var(--success);
+    }
+    .status-badge.disconnected {
+      background: #fef2f2;
+      color: #d32f2f;
+    }
+    .info-box {
+      background: #fff3e0;
+      border: 1px solid #ff9800;
+      border-radius: 6px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+    }
+    .info-box h4 {
+      color: #e65100;
+      margin-bottom: 8px;
+    }
+    .info-box p {
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(19, 60, 138, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(19, 60, 138, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(19, 60, 138, 0); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-dbsettings" class="logo" id="header-logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+  </header>
+  <div class="ribbon-bar"></div>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <!-- Admin Content -->
+  <main class="admin-container">
+    <h1 style="font-size: 24px; margin-bottom: 10px;">数据库设置</h1>
+    <p style="color: var(--text-light); margin-bottom: 30px;">配置数据库连接，支持 SQLite 和 MySQL 迁移</p>
+
+    <div class="message" id="message"></div>
+
+    <div class="info-box">
+      <h4>重要提示</h4>
+      <p>当前数据存储在 SQLite 数据库中。配置 MySQL 后可实现数据迁移。迁移过程中请保持网络连接稳定。</p>
+    </div>
+
+    <div class="form-card">
+      <div class="form-section">
+        <h3 class="section-title">数据库类型</h3>
+        <div class="db-type-tabs">
+          <button class="db-type-tab" data-type="sqlite" onclick="switchDbType('sqlite')">SQLite</button>
+          <button class="db-type-tab active" data-type="mysql" onclick="switchDbType('mysql')">MySQL</button>
+        </div>
+
+        <!-- SQLite 配置 -->
+        <div class="config-panel" id="sqlite-config">
+          <div class="form-group">
+            <label>数据库文件路径</label>
+            <input type="text" id="sqlite-path" placeholder="/path/to/database.sqlite" readonly>
+            <small>SQLite 数据库文件存放位置</small>
+          </div>
+          <div style="margin-top: 15px;">
+            <span class="status-badge disconnected" id="sqlite-status">SQLite</span>
+          </div>
+        </div>
+
+        <!-- MySQL 配置 -->
+        <div class="config-panel active" id="mysql-config">
+          <div class="form-group">
+            <label>主机地址</label>
+            <input type="text" id="mysql-host" placeholder="localhost">
+          </div>
+          <div class="form-group">
+            <label>端口</label>
+            <input type="text" id="mysql-port" placeholder="3306" value="3306">
+          </div>
+          <div class="form-group">
+            <label>用户名</label>
+            <input type="text" id="mysql-user" placeholder="root">
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <input type="password" id="mysql-password" placeholder="输入密码">
+          </div>
+          <div class="form-group">
+            <label>数据库名</label>
+            <input type="text" id="mysql-database" placeholder="booming">
+          </div>
+          <div style="margin-top: 15px;">
+            <span class="status-badge connected" id="mysql-status">当前使用</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3 class="section-title">数据库操作</h3>
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="testConnection()">测试连接</button>
+          <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+          <button class="btn btn-outline" onclick="generateSchema()">生成建表语句</button>
+          <button class="btn btn-outline" onclick="switchDbConnection()">切换连接</button>
+        </div>
+      </div>
+
+      <div class="form-section" id="schema-section" style="display: none;">
+        <h3 class="section-title">数据库 Schema</h3>
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="copySchema()">复制 SQL</button>
+          <button class="btn btn-primary" onclick="initDatabase()">初始化数据库</button>
+        </div>
+        <pre class="schema-preview" id="schema-preview"></pre>
+      </div>
+
+      <div class="form-section">
+        <h3 class="section-title">数据库表</h3>
+        <div class="btn-group" style="margin-bottom: 15px;">
+          <button class="btn btn-outline" onclick="loadDbTables()">当前数据库表 (SQLite)</button>
+          <button class="btn btn-outline" onclick="loadTargetDbTables()">目标数据库表 (MySQL)</button>
+          <button class="btn btn-outline" onclick="verifyDataIntegrity()">验证当前数据库</button>
+          <button class="btn btn-outline" onclick="verifyTargetDbIntegrity()">验证目标数据库</button>
+        </div>
+        <div id="db-tables-info" style="margin-bottom: 15px;">
+          <p style="color: var(--text-light); font-size: 13px;">点击按钮查看数据库表信息<br><strong>注意：</strong>"当前数据库"是服务器正在使用的SQLite数据库，"目标数据库"是配置的MySQL（尚未切换）</p>
+        </div>
+        <div id="db-verify-result" style="display: none;"></div>
+      </div>
+
+      <div class="form-section">
+        <h3 class="section-title">数据同步</h3>
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="exportSQLite()">导出SQLite备份</button>
+          <button class="btn btn-outline" onclick="importSQLite()">导入SQLite备份</button>
+        </div>
+        <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 6px;">
+          <h4 style="margin-bottom: 10px; color: #e65100;">同步数据到目标数据库</h4>
+          <p style="color: #333; font-size: 14px; margin-bottom: 15px;">将当前SQLite数据库中的数据同步到已配置的目标MySQL数据库。</p>
+          <button class="btn btn-primary" id="sync-btn" onclick="copyDataToTarget()">同步数据到目标数据库</button>
+          <div id="sync-progress" style="display: none; margin-top: 15px;">
+            <div style="background: #e0e0e0; border-radius: 10px; height: 20px; overflow: hidden;">
+              <div id="sync-progress-bar" style="background: linear-gradient(90deg, #10b981, #34d399); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+            <p id="sync-progress-text" style="margin-top: 8px; font-size: 13px; color: #333;">准备同步...</p>
+          </div>
+        </div>
+        <p style="margin-top: 15px; color: var(--text-light); font-size: 13px;">
+          提示：切换前请先同步数据到目标数据库，确保数据完整。
+        </p>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="/admin-product" class="btn-back">&larr; 返回</a>
+    </div>
+  </main>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    let currentDbType = 'mysql';
+    let currentSchema = '';
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 数据库设置';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    // 加载数据库配置
+    async function loadDbConfig() {
+      try {
+        const response = await fetch('/api/db-config', { credentials: 'include' });
+        const config = await response.json();
+
+        currentDbType = config.type || 'sqlite';
+        switchDbType(currentDbType);
+
+        if (config.sqlite) {
+          document.getElementById('sqlite-path').value = config.sqlite.path || '';
+        }
+
+        if (config.mysql) {
+          document.getElementById('mysql-host').value = config.mysql.host || '';
+          document.getElementById('mysql-port').value = config.mysql.port || '3306';
+          document.getElementById('mysql-user').value = config.mysql.user || '';
+          document.getElementById('mysql-password').value = config.mysql.password || '';
+          document.getElementById('mysql-database').value = config.mysql.database || '';
+        }
+      } catch (error) {
+        console.error('Error loading db config:', error);
+        showMessage('加载配置失败', 'error');
+      }
+    }
+
+    // 切换数据库类型
+    function switchDbType(type) {
+      currentDbType = type;
+      document.querySelectorAll('.db-type-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.type === type);
+      });
+      document.querySelectorAll('.config-panel').forEach(panel => {
+        panel.classList.toggle('active', false);
+      });
+      document.getElementById(type + '-config').classList.add('active');
+
+      // 更新状态标签
+      const sqliteStatus = document.getElementById('sqlite-status');
+      const mysqlStatus = document.getElementById('mysql-status');
+      if (type === 'sqlite') {
+        sqliteStatus.textContent = '当前使用';
+        sqliteStatus.className = 'status-badge connected';
+        mysqlStatus.textContent = 'MySQL';
+        mysqlStatus.className = 'status-badge disconnected';
+      } else {
+        sqliteStatus.textContent = 'SQLite';
+        sqliteStatus.className = 'status-badge disconnected';
+        mysqlStatus.textContent = '当前使用';
+        mysqlStatus.className = 'status-badge connected';
+      }
+    }
+
+    // 测试连接
+    async function testConnection() {
+      try {
+        const config = buildConfig();
+        const response = await fetch('/api/db-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessage('连接成功！', 'success');
+        } else {
+          showMessage('连接失败: ' + (data.error || '未知错误'), 'error');
+        }
+      } catch (error) {
+        showMessage('连接测试失败', 'error');
+      }
+    }
+
+    // 保存配置（仅保存配置信息，不切换数据库）
+    async function saveConfig() {
+      try {
+        const config = buildConfig();
+        const response = await fetch('/api/db-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('配置保存成功（仅保存配置，如需切换数据库请点击"切换连接"）', 'success');
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    // 构建配置对象
+    function buildConfig() {
+      const config = {
+        type: currentDbType
+      };
+
+      if (currentDbType === 'sqlite') {
+        config.sqlite = {
+          path: document.getElementById('sqlite-path').value
+        };
+      } else {
+        config.mysql = {
+          host: document.getElementById('mysql-host').value,
+          port: parseInt(document.getElementById('mysql-port').value) || 3306,
+          user: document.getElementById('mysql-user').value,
+          password: document.getElementById('mysql-password').value,
+          database: document.getElementById('mysql-database').value
+        };
+      }
+
+      return config;
+    }
+
+    // 生成建表语句
+    async function generateSchema() {
+      try {
+        const response = await fetch('/api/db-schema?type=' + currentDbType, { credentials: 'include' });
+        const schema = await response.json();
+        currentSchema = schema.schema;
+        document.getElementById('schema-preview').textContent = schema.schema;
+        document.getElementById('schema-section').style.display = 'block';
+        showMessage('Schema 已生成', 'info');
+      } catch (error) {
+        showMessage('生成失败', 'error');
+      }
+    }
+
+    // 复制 Schema
+    function copySchema() {
+      navigator.clipboard.writeText(currentSchema).then(() => {
+        showMessage('已复制到剪贴板', 'success');
+      }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = currentSchema;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showMessage('已复制到剪贴板', 'success');
+      });
+    }
+
+    // 初始化数据库
+    async function initDatabase() {
+      if (!confirm('确定要初始化目标数据库吗？这将在目标数据库中创建必要的表结构。')) return;
+
+      try {
+        const body = { type: currentDbType };
+        if (currentDbType === 'mysql') {
+          body.mysql = {
+            host: document.getElementById('mysql-host').value,
+            port: parseInt(document.getElementById('mysql-port').value) || 3306,
+            user: document.getElementById('mysql-user').value,
+            password: document.getElementById('mysql-password').value,
+            database: document.getElementById('mysql-database').value
+          };
+        }
+
+        const response = await fetch('/api/db-init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessage('目标数据库初始化成功！接下来可以点击"同步数据到目标数据库"将数据复制过去。', 'success');
+          // 高亮显示同步按钮
+          const syncBtn = document.querySelector('button[onclick="copyDataToTarget()"]');
+          if (syncBtn) {
+            syncBtn.style.background = 'var(--primary)';
+            syncBtn.style.color = 'white';
+            syncBtn.style.animation = 'pulse 1s infinite';
+          }
+        } else {
+          showMessage('初始化失败: ' + (data.error || '未知错误'), 'error');
+        }
+      } catch (error) {
+        showMessage('初始化失败', 'error');
+      }
+    }
+
+    // 导出SQLite数据库
+    function exportSQLite() {
+      window.open('/api/db-export-sqlite', '_blank');
+      showMessage('正在导出SQLite数据库文件...', 'success');
+    }
+
+    // 导入SQLite数据库（需要重启服务）
+    function importSQLite() {
+      alert('导入SQLite数据库需要：\n1. 先停止服务器\n2. 将备份文件重命名为 database.sqlite\n3. 替换 data/database.sqlite 文件\n4. 重启服务器\n\n注意：这将完全覆盖现有数据！');
+    }
+
+    // 迁移到 MySQL
+    async function migrateToMySQL() {
+      if (currentDbType !== 'mysql') {
+        showMessage('请先切换到 MySQL 类型并保存配置', 'error');
+        return;
+      }
+
+      if (!confirm('确定要迁移到 MySQL 吗？这将把当前数据导入到 MySQL 数据库。')) return;
+
+      try {
+        showMessage('正在迁移数据...', 'info');
+        const response = await fetch('/api/db-migrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildConfig()),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessage('迁移成功！数据已导入到 MySQL', 'success');
+        } else {
+          showMessage('迁移失败: ' + (data.error || '未知错误'), 'error');
+        }
+      } catch (error) {
+        showMessage('迁移失败', 'error');
+      }
+    }
+
+    // 加载数据库表信息
+    async function loadDbTables() {
+      try {
+        showMessage('正在加载当前数据库表信息...', 'info');
+        const response = await fetch('/api/db-info', { credentials: 'include' });
+        const data = await response.json();
+
+        let html = '<table style="width: 100%; border-collapse: collapse; font-size: 14px;">';
+        html += '<tr style="background: #f5f5f5;"><th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">表名</th><th style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">记录数</th><th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">状态</th></tr>';
+
+        data.tables.forEach(table => {
+          const statusClass = table.count > 0 ? 'status-badge connected' : 'status-badge disconnected';
+          html += `<tr>
+            <td style="padding: 10px; border-bottom: 1px solid #ddd;">${escapeHtml(table.name)}</td>
+            <td style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">${escapeHtml(table.count)}</td>
+            <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;"><span class="${escapeHtml(statusClass)}">${table.count > 0 ? '正常' : '空'}</span></td>
+          </tr>`;
+        });
+        html += '</table>';
+        html += `<p style="margin-top: 15px; color: var(--text-light); font-size: 12px;">当前数据库类型: <strong>${data.type.toUpperCase()}</strong></p>`;
+
+        document.getElementById('db-tables-info').innerHTML = html;
+        showMessage('表信息已加载', 'success');
+      } catch (error) {
+        showMessage('加载失败: ' + error.message, 'error');
+      }
+    }
+
+    // 加载目标数据库表信息
+    async function loadTargetDbTables() {
+      if (currentDbType === 'sqlite') {
+        showMessage('当前选择的是SQLite，请先切换到MySQL页签查看目标数据库', 'info');
+        return;
+      }
+
+      const host = document.getElementById('mysql-host').value;
+      const user = document.getElementById('mysql-user').value;
+      const password = document.getElementById('mysql-password').value;
+      const database = document.getElementById('mysql-database').value;
+
+      if (!host || !user || !database) {
+        showMessage('请先填写完整的MySQL配置', 'error');
+        return;
+      }
+
+      try {
+        showMessage('正在加载目标数据库表信息...', 'info');
+        const response = await fetch('/api/db-target-info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'mysql',
+            mysql: { host, port: 3306, user, password, database }
+          }),
+          credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+          showMessage('连接失败: ' + data.error, 'error');
+          return;
+        }
+
+        let html = '<table style="width: 100%; border-collapse: collapse; font-size: 14px;">';
+        html += '<tr style="background: #e8f5e9;"><th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">表名</th><th style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">记录数</th><th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">状态</th></tr>';
+
+        data.tables.forEach(table => {
+          const statusClass = table.count > 0 ? 'status-badge connected' : 'status-badge disconnected';
+          html += `<tr>
+            <td style="padding: 10px; border-bottom: 1px solid #ddd;">${escapeHtml(table.name)}</td>
+            <td style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">${escapeHtml(table.count)}</td>
+            <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;"><span class="${escapeHtml(statusClass)}">${table.count > 0 ? '正常' : '空'}</span></td>
+          </tr>`;
+        });
+        html += '</table>';
+        html += `<p style="margin-top: 15px; color: var(--text-light); font-size: 12px;">目标数据库类型: <strong>MYSQL</strong></p>`;
+
+        document.getElementById('db-tables-info').innerHTML = html;
+        showMessage('目标数据库表信息已加载', 'success');
+      } catch (error) {
+        showMessage('加载失败: ' + error.message, 'error');
+      }
+    }
+
+    // 验证目标数据库数据完整性
+    async function verifyTargetDbIntegrity() {
+      if (currentDbType === 'sqlite') {
+        showMessage('当前选择的是SQLite，请先切换到MySQL页签', 'info');
+        return;
+      }
+
+      const host = document.getElementById('mysql-host').value;
+      const user = document.getElementById('mysql-user').value;
+      const password = document.getElementById('mysql-password').value;
+      const database = document.getElementById('mysql-database').value;
+
+      if (!host || !user || !database) {
+        showMessage('请先填写完整的MySQL配置', 'error');
+        return;
+      }
+
+      try {
+        showMessage('正在验证目标数据库完整性...', 'info');
+        const response = await fetch('/api/db-target-verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'mysql',
+            mysql: { host, port: 3306, user, password, database }
+          }),
+          credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+          showMessage('连接失败: ' + data.error, 'error');
+          return;
+        }
+
+        let html = '<div style="padding: 15px; background: #e8f5e9; border-radius: 6px; margin-top: 10px;">';
+        html += '<h4 style="margin-bottom: 10px;">目标数据库验证结果</h4>';
+
+        let allOk = true;
+        data.results.forEach(item => {
+          const icon = item.status === 'ok' ? '✓' : '✗';
+          const color = item.status === 'ok' ? '#10b981' : '#ef4444';
+          if (item.status !== 'ok') allOk = false;
+          html += `<p style="margin: 5px 0; color: ${escapeHtml(color)};">${escapeHtml(icon)} ${escapeHtml(item.table)}: ${escapeHtml(item.count)} 条记录</p>`;
+        });
+
+        html += '</div>';
+        document.getElementById('db-verify-result').innerHTML = html;
+        document.getElementById('db-verify-result').style.display = 'block';
+
+        if (allOk) {
+          showMessage('目标数据库验证通过', 'success');
+        } else {
+          showMessage('目标数据库部分表为空，建议同步数据', 'info');
+        }
+      } catch (error) {
+        showMessage('验证失败: ' + error.message, 'error');
+      }
+    }
+
+    // 同步数据到目标数据库
+    async function copyDataToTarget() {
+      if (currentDbType === 'sqlite') {
+        showMessage('当前选择的是SQLite，请先切换到MySQL页签', 'info');
+        return;
+      }
+
+      const host = document.getElementById('mysql-host').value;
+      const user = document.getElementById('mysql-user').value;
+      const password = document.getElementById('mysql-password').value;
+      const database = document.getElementById('mysql-database').value;
+
+      if (!host || !user || !database) {
+        showMessage('请先填写完整的MySQL配置', 'error');
+        return;
+      }
+
+      if (!confirm('确定要同步当前数据库数据到MySQL吗？这将覆盖目标数据库的现有数据。')) return;
+
+      // 显示进度条
+      const progressContainer = document.getElementById('sync-progress');
+      const progressBar = document.getElementById('sync-progress-bar');
+      const progressText = document.getElementById('sync-progress-text');
+      if (progressContainer) {
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressText.textContent = '准备同步...';
+      }
+
+      try {
+        showMessage('正在同步数据...', 'info');
+
+        // 先测试连接
+        if (progressText) progressText.textContent = '测试MySQL连接...';
+        const testResponse = await fetch('/api/db-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'mysql',
+            mysql: { host, port: 3306, user, password, database }
+          }),
+          credentials: 'include'
+        });
+        const testData = await testResponse.json();
+        if (!testData.success) {
+          showMessage('MySQL连接失败: ' + testData.error, 'error');
+          if (progressContainer) progressContainer.style.display = 'none';
+          return;
+        }
+
+        // 获取当前数据库表信息以计算进度
+        if (progressText) progressText.textContent = '获取数据库表信息...';
+        const dbInfoResponse = await fetch('/api/db-info', { credentials: 'include' });
+        const dbInfo = await dbInfoResponse.json();
+        const totalTables = dbInfo.tables.length;
+        let processedTables = 0;
+
+        // 复制数据
+        if (progressText) progressText.textContent = '开始同步数据...';
+        const copyResponse = await fetch('/api/db-copy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'mysql',
+            mysql: { host, port: 3306, user, password, database }
+          }),
+          credentials: 'include'
+        });
+        const copyData = await copyResponse.json();
+
+        if (copyData.success) {
+          // 更新进度为完成
+          if (progressBar) progressBar.style.width = '100%';
+          if (progressText) progressText.textContent = '同步完成！';
+
+          // 隐藏进度条，2秒后
+          setTimeout(() => {
+            if (progressContainer) progressContainer.style.display = 'none';
+          }, 2000);
+
+          showMessage(copyData.message, 'success');
+
+          // 显示详细的同步结果
+          if (copyData.details && copyData.details.length > 0) {
+            let detailsHtml = '<div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-radius: 6px;">';
+            detailsHtml += '<h4 style="margin-bottom: 10px;">同步结果</h4>';
+            copyData.details.forEach(detail => {
+              const icon = detail.status === 'ok' ? '✓' : '✗';
+              const color = detail.status === 'ok' ? '#10b981' : '#ef4444';
+              detailsHtml += `<p style="margin: 5px 0; color: ${escapeHtml(color)};">${escapeHtml(icon)} ${escapeHtml(detail.table)}: ${escapeHtml(detail.count)} 条记录</p>`;
+            });
+            detailsHtml += '</div>';
+            document.getElementById('db-tables-info').innerHTML = detailsHtml;
+          }
+        } else {
+          if (progressBar) progressBar.style.width = '0%';
+          if (progressText) progressText.textContent = '同步失败';
+          setTimeout(() => {
+            if (progressContainer) progressContainer.style.display = 'none';
+          }, 3000);
+          showMessage('同步失败: ' + copyData.error, 'error');
+        }
+      } catch (error) {
+        if (progressContainer) progressContainer.style.display = 'none';
+        showMessage('同步失败: ' + error.message, 'error');
+      }
+    }
+
+    // 验证数据完整性
+    async function verifyDataIntegrity() {
+      try {
+        showMessage('正在验证数据完整性...', 'info');
+        const response = await fetch('/api/db-verify', { credentials: 'include' });
+        const data = await response.json();
+
+        let html = '<div style="padding: 15px; background: #f8f9fa; border-radius: 6px; margin-top: 10px;">';
+        html += '<h4 style="margin-bottom: 10px;">验证结果</h4>';
+
+        let allOk = true;
+        data.results.forEach(item => {
+          const icon = item.status === 'ok' ? '✓' : (item.status === 'warning' ? '⚠' : '✗');
+          const color = item.status === 'ok' ? '#10b981' : (item.status === 'warning' ? '#f59e0b' : '#ef4444');
+          if (item.status !== 'ok') allOk = false;
+          html += `<p style="margin: 5px 0; color: ${color};">${icon} ${item.table}: ${item.count} 条记录</p>`;
+        });
+
+        html += '</div>';
+        document.getElementById('db-verify-result').innerHTML = html;
+        document.getElementById('db-verify-result').style.display = 'block';
+
+        if (allOk) {
+          showMessage('数据完整性验证通过', 'success');
+        } else {
+          showMessage('数据验证完成，部分项目需关注', 'info');
+        }
+      } catch (error) {
+        showMessage('验证失败: ' + error.message, 'error');
+      }
+    }
+
+    // 切换数据库连接
+    async function switchDbConnection() {
+      // 切换到当前选中的tab对应的数据库类型
+      const targetType = currentDbType;
+
+      if (targetType === 'mysql') {
+        // 检查MySQL配置是否完整
+        const host = document.getElementById('mysql-host').value;
+        const user = document.getElementById('mysql-user').value;
+        const password = document.getElementById('mysql-password').value;
+        const database = document.getElementById('mysql-database').value;
+
+        if (!host || !user || !database) {
+          showMessage('请填写完整的MySQL参数：主机、用户名、数据库名', 'error');
+          return;
+        }
+
+        // 先测试MySQL连接
+        showMessage('正在测试MySQL连接...', 'info');
+        try {
+          const testResponse = await fetch('/api/db-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'mysql',
+              mysql: { host, port: 3306, user, password, database }
+            }),
+            credentials: 'include'
+          });
+          const testData = await testResponse.json();
+          if (!testData.success) {
+            showMessage('MySQL连接失败: ' + testData.error, 'error');
+            return;
+          }
+          showMessage('MySQL连接成功', 'success');
+        } catch (error) {
+          showMessage('MySQL连接测试失败: ' + error.message, 'error');
+          return;
+        }
+
+        // 保存配置
+        await saveConfig();
+      }
+
+      if (!confirm(`确定要切换到 ${targetType.toUpperCase()} 数据库吗？`)) return;
+
+      try {
+        showMessage('正在切换数据库连接...', 'info');
+        const response = await fetch('/api/db-switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: targetType }),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showMessage(data.message + '，请刷新页面', 'success');
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          showMessage(data.error || '切换失败', 'error');
+        }
+      } catch (error) {
+        showMessage('切换失败: ' + error.message, 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadDbConfig();
+    });
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

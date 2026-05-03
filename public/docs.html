@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 文档资料</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .docs-container {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .docs-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .docs-header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    .docs-header p {
+      color: var(--text-light);
+      font-size: 16px;
+    }
+    .docs-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .docs-nav {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .docs-nav h4 {
+      font-size: 14px;
+      color: var(--text-light);
+      text-transform: uppercase;
+      margin-bottom: 15px;
+    }
+    .docs-nav ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .docs-nav li {
+      margin-bottom: 0;
+    }
+    .docs-nav a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 14px;
+      display: block;
+      padding: 8px 16px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      background: var(--secondary);
+    }
+    .docs-nav a:hover,
+    .docs-nav a.active {
+      background: var(--primary);
+      color: var(--white);
+    }
+    .docs-content {
+      flex: 1;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 40px;
+    }
+    .docs-section {
+      margin-bottom: 40px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .docs-section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .docs-section h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .docs-section h3 {
+      font-size: 18px;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+    .docs-section p {
+      line-height: 1.8;
+      margin-bottom: 15px;
+      color: var(--text);
+    }
+    .docs-section ul {
+      margin-bottom: 15px;
+      padding-left: 25px;
+    }
+    .docs-section li {
+      line-height: 1.8;
+      margin-bottom: 8px;
+    }
+    .code-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+    .code-block code {
+      color: #ce9178;
+    }
+    .code-block .keyword {
+      color: #569cd6;
+    }
+    .code-block .comment {
+      color: #6a9955;
+    }
+    .step-list {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+    }
+    .step-list li {
+      counter-increment: step;
+      margin-bottom: 15px;
+      padding-left: 40px;
+      position: relative;
+    }
+    .step-list li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: var(--white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #1976d2;
+      padding: 15px 20px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .info-box p {
+      margin: 0;
+      color: #1976d2;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="docs-container">
+    <div class="docs-header">
+      <h1>文档资料</h1>
+      <p>软件使用指南、技术文档和常见问题解答</p>
+    </div>
+
+    <div class="docs-sidebar">
+      <nav class="docs-nav">
+        <h4>目录</h4>
+        <ul>
+          <li><a href="#download" class="active">下载安装</a></li>
+          <li><a href="#activation">激活授权</a></li>
+          <li><a href="#account">账户管理</a></li>
+          <li><a href="#payment">支付发票</a></li>
+          <li><a href="#update">更新升级</a></li>
+          <li><a href="#uninstall">卸载重装</a></li>
+        </ul>
+      </nav>
+
+      <div class="docs-content">
+        <section id="download" class="docs-section">
+          <h2>下载安装</h2>
+
+          <h3>系统要求</h3>
+          <p>在安装我们的软件之前，请确保您的系统满足以下要求：</p>
+          <ul>
+            <li><strong>Windows:</strong> Windows 10/11 (64位)</li>
+            <li><strong>Mac:</strong> macOS 10.14 或更高版本</li>
+            <li><strong>Linux:</strong> Ubuntu 18.04、Debian 10 或类似发行版</li>
+          </ul>
+
+          <h3>下载软件</h3>
+          <ol class="step-list">
+            <li>登录您的账户</li>
+            <li>进入"用户中心"</li>
+            <li>找到您购买的产品</li>
+            <li>点击"下载"按钮获取安装包</li>
+          </ol>
+
+          <div class="info-box">
+            <p>提示：下载链接也会发送到您的注册邮箱，方便您随时重新下载。</p>
+          </div>
+
+          <h3>安装步骤</h3>
+          <ol class="step-list">
+            <li>双击下载的安装包（.exe/.dmg/.deb）</li>
+            <li>按照安装向导提示完成安装</li>
+            <li>选择安装目录（建议使用默认目录）</li>
+            <li>点击"完成"启动软件</li>
+          </ol>
+        </section>
+
+        <section id="activation" class="docs-section">
+          <h2>激活授权</h2>
+
+          <h3>获取授权密钥</h3>
+          <p>购买成功后，您可以通过以下方式获取授权密钥：</p>
+          <ul>
+            <li>购买确认邮件中的密钥</li>
+            <li>用户中心的订单详情页</li>
+          </ul>
+
+          <h3>激活软件</h3>
+          <ol class="step-list">
+            <li>启动已安装的软件</li>
+            <li>点击"激活"或"输入密钥"</li>
+            <li>粘贴您的授权密钥</li>
+            <li>点击"激活"完成授权</li>
+          </ol>
+
+          <div class="code-block">
+            <code class="comment"># 授权密钥格式示例</code><br>
+            <code>XXXX-XXXX-XXXX-XXXX</code>
+          </div>
+
+          <h3>常见激活问题</h3>
+          <p><strong>密钥无效？</strong> 请检查密钥是否完整复制，或联系客服获取帮助。</p>
+          <p><strong>已达到激活次数？</strong> 我们的软件允许在多台设备上激活（根据许可证类型），如需转移激活，请先在原设备上注销。</p>
+        </section>
+
+        <section id="account" class="docs-section">
+          <h2>账户管理</h2>
+
+          <h3>注册账户</h3>
+          <p>访问用户注册页面，填写用户名、密码即可完成注册。</p>
+
+          <h3>找回密码</h3>
+          <ol class="step-list">
+            <li>访问登录页面</li>
+            <li>点击"忘记密码"</li>
+            <li>输入您的注册邮箱</li>
+            <li>查收重置邮件并设置新密码</li>
+          </ol>
+
+          <h3>修改个人信息</h3>
+          <p>登录后进入用户中心，您可以修改：</p>
+          <ul>
+            <li>个人资料信息</li>
+            <li>登录密码</li>
+            <li>邮箱地址</li>
+          </ul>
+        </section>
+
+        <section id="payment" class="docs-section">
+          <h2>支付发票</h2>
+
+          <h3>支付方式</h3>
+          <p>我们支持以下支付方式：</p>
+          <ul>
+            <li>微信支付</li>
+            <li>支付宝</li>
+            <li>银行卡支付</li>
+          </ul>
+
+          <h3>开具发票</h3>
+          <p>如需开具发票，请在购买后联系客服，提供以下信息：</p>
+          <ul>
+            <li>订单编号</li>
+            <li>发票抬头（个人/公司）</li>
+            <li>税号（如需增值税发票）</li>
+            <li>接收邮箱</li>
+          </ul>
+
+          <h3>退款流程</h3>
+          <p>在30天退款保障期内，您可以申请全额退款：</p>
+          <ol class="step-list">
+            <li>联系客服提交退款申请</li>
+            <li>提供订单信息和退款原因</li>
+            <li>审核通过后，退款原路返回</li>
+            <li>等待1-3个工作日到账</li>
+          </ol>
+        </section>
+
+        <section id="update" class="docs-section">
+          <h2>更新升级</h2>
+
+          <h3>自动更新</h3>
+          <p>软件会在有新版本时自动提示更新。您也可以手动检查更新：</p>
+          <ol class="step-list">
+            <li>打开软件设置</li>
+            <li>点击"检查更新"</li>
+            <li>如有新版本，点击"下载更新"</li>
+            <li>重启软件完成升级</li>
+          </ol>
+
+          <h3>版本升级</h3>
+          <p>购买我们的软件后，在同一主版本周期内，您可以免费获得所有更新。例如，购买 v2.0 版本后，可以免费升级到 v2.1、v2.2 等。</p>
+
+          <div class="info-box">
+            <p>提示：重大版本升级（如 v2.0 到 v3.0）可能需要另行付费。</p>
+          </div>
+        </section>
+
+        <section id="uninstall" class="docs-section">
+          <h2>卸载重装</h2>
+
+          <h3>Windows 卸载</h3>
+          <ol class="step-list">
+            <li>打开"设置" > "应用"</li>
+            <li>找到要卸载的软件</li>
+            <li>点击"卸载"</li>
+            <li>按照提示完成卸载</li>
+          </ol>
+
+          <h3>Mac 卸载</h3>
+          <ol class="step-list">
+            <li>打开"访达" > "应用程序"</li>
+            <li>找到要卸载的软件</li>
+            <li>将软件拖到"废纸篓"</li>
+            <li>清空废纸篓</li>
+          </ol>
+
+          <h3>重新安装</h3>
+          <p>卸载后您可以随时重新安装。使用原来的授权密钥激活即可继续使用。</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-bottom">
+        <p>&copy; 2026 <span id="footer-copyright">博铭科技</span>. 保留所有权利。</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = settings.companyName;
+          document.getElementById('footer-copyright').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 文档资料';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadSettings);
+  </script>
+</body>
+</html>

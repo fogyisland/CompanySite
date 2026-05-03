@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - AI设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 800px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .page-header h1 { font-size: 24px; }
+    .form-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 30px; margin-bottom: 20px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--text); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .form-group textarea { min-height: 100px; resize: vertical; }
+    .form-group small { color: var(--text-light); font-size: 12px; }
+    .toggle-group { display: flex; align-items: center; gap: 10px; }
+    .toggle { position: relative; width: 50px; height: 26px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background: #ccc; border-radius: 26px; transition: 0.3s;
+    }
+    .toggle-slider:before {
+      position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: 0.3s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--primary); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(24px); }
+    .btn { padding: 12px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-success { background: #10b981; color: white; }
+    .btn-success:hover { opacity: 0.9; }
+    .message { padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; }
+    .message.success { background: #ecfdf5; color: #10b981; display: block; }
+    .message.error { background: #fef2f2; color: #d32f2f; display: block; }
+    .api-status { display: flex; align-items: center; gap: 10px; margin-top: 15px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .status-dot.success { background: #10b981; }
+    .status-dot.error { background: #ef4444; }
+    .status-dot.pending { background: #f59e0b; }
+    .nav-link { display: inline-block; padding: 8px 16px; background: var(--primary); color: white; text-decoration: none; border-radius: 6px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-product" class="logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+  </header>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <main class="admin-container">
+    <div class="page-header">
+      <h1>AI设置</h1>
+      <a href="/" class="nav-link">返回网站</a>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <div class="form-card">
+      <h3 style="margin-bottom: 20px;">AI连接配置</h3>
+
+      <div class="form-group">
+        <div class="toggle-group">
+          <label class="toggle">
+            <input type="checkbox" id="ai-enabled">
+            <span class="toggle-slider"></span>
+          </label>
+          <span>启用AI功能</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>AI服务商</label>
+        <select id="ai-provider" onchange="toggleCustomEndpoint()">
+          <option value="openai">OpenAI (GPT)</option>
+          <option value="claude">Anthropic (Claude)</option>
+          <option value="custom">自定义 (OpenAI兼容)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>API Key</label>
+        <input type="password" id="ai-api-key" placeholder="sk-..." autocomplete="off">
+        <small>您的API密钥将安全存储，不会被泄露</small>
+      </div>
+
+      <div class="form-group" id="endpoint-group">
+        <label>API Endpoint</label>
+        <input type="text" id="ai-endpoint" placeholder="https://api.openai.com/v1">
+        <small>使用自定义AI服务时需填写完整URL（如硅基流动等代理）</small>
+      </div>
+
+      <div class="form-group">
+        <label>模型名称</label>
+        <input type="text" id="ai-model" placeholder="如: gpt-3.5-turbo, claude-3-sonnet-20240229" list="model-suggestions">
+        <datalist id="model-suggestions">
+          <option value="gpt-3.5-turbo">
+          <option value="gpt-4">
+          <option value="gpt-4-turbo">
+          <option value="gpt-4o">
+          <option value="claude-3-sonnet-20240229">
+          <option value="claude-3-opus-20240229">
+          <option value="claude-3-5-sonnet-20240620">
+        </datalist>
+        <small>填写AI模型名称，支持OpenAI兼容格式的任何模型</small>
+      </div>
+
+      <button class="btn btn-success" onclick="testConnection()">测试连接</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+
+      <div class="api-status" id="api-status" style="display: none;">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text"></span>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h3 style="margin-bottom: 20px;">使用说明</h3>
+      <div style="color: var(--text-light); font-size: 14px; line-height: 1.8;">
+        <p><strong>1. 获取API Key:</strong></p>
+        <p style="margin-left: 20px; margin-bottom: 15px;">
+          OpenAI: 访问 <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a> 获取密钥<br>
+          Claude: 访问 <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> 获取密钥
+        </p>
+        <p><strong>2. 启用AI功能后:</strong></p>
+        <p style="margin-left: 20px;">
+          - 在网站设置中，可对网站描述使用AI重新生成<br>
+          - 在产品管理中，可对产品描述使用AI优化
+        </p>
+        <p><strong>3. 费用说明:</strong></p>
+        <p style="margin-left: 20px;">
+          AI调用费用由您选择的AI服务商收取，博铭科技不收取任何额外费用。
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let settings = {};
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - AI设置';
+        }
+
+        // 更新头部Logo
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        // Load AI settings
+        const ai = settings.ai || {};
+        document.getElementById('ai-enabled').checked = ai.enabled || false;
+        document.getElementById('ai-provider').value = ai.provider || 'openai';
+        document.getElementById('ai-api-key').value = ai.apiKey || '';
+        document.getElementById('ai-endpoint').value = ai.endpoint || '';
+        document.getElementById('ai-model').value = ai.model || 'gpt-3.5-turbo';
+
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        showMessage('加载设置失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      msg.style.display = 'block';
+      setTimeout(() => { msg.style.display = 'none'; }, 3000);
+    }
+
+    function toggleCustomEndpoint() {
+      const provider = document.getElementById('ai-provider').value;
+      const endpointInput = document.getElementById('ai-endpoint');
+
+      if (provider === 'claude') {
+        endpointInput.placeholder = 'https://api.anthropic.com/v1';
+      } else {
+        endpointInput.placeholder = 'https://api.openai.com/v1';
+      }
+    }
+
+    async function saveSettings() {
+      const ai = {
+        enabled: document.getElementById('ai-enabled').checked,
+        provider: document.getElementById('ai-provider').value,
+        apiKey: document.getElementById('ai-api-key').value,
+        endpoint: document.getElementById('ai-endpoint').value,
+        model: document.getElementById('ai-model').value
+      };
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ai })
+        });
+
+        if (response.ok) {
+          showMessage('设置已保存', 'success');
+          settings.ai = ai;
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    async function testConnection() {
+      const apiKey = document.getElementById('ai-api-key').value;
+      const provider = document.getElementById('ai-provider').value;
+      const endpoint = document.getElementById('ai-endpoint').value;
+      const model = document.getElementById('ai-model').value;
+
+      if (!apiKey) {
+        showMessage('请先输入API Key', 'error');
+        return;
+      }
+
+      const statusEl = document.getElementById('api-status');
+      const dotEl = document.getElementById('status-dot');
+      const textEl = document.getElementById('status-text');
+
+      statusEl.style.display = 'flex';
+      dotEl.className = 'status-dot pending';
+      textEl.textContent = '正在测试连接...';
+
+      try {
+        const response = await fetch('/api/ai/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ provider, apiKey, endpoint, model })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          dotEl.className = 'status-dot success';
+          textEl.textContent = '连接成功！模型响应正常';
+          showMessage('连接测试成功', 'success');
+        } else {
+          dotEl.className = 'status-dot error';
+          textEl.textContent = '连接失败: ' + result.error;
+          showMessage('连接失败: ' + result.error, 'error');
+        }
+      } catch (error) {
+        console.error('Test error:', error);
+        dotEl.className = 'status-dot error';
+        textEl.textContent = '连接失败: ' + error.message;
+        showMessage('连接失败', 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadSettings);
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

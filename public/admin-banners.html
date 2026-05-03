@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 横条管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 1000px; }
+    .banner-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .banner-item {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      gap: 20px;
+    }
+    .banner-preview {
+      width: 300px;
+      height: 150px;
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--secondary);
+      flex-shrink: 0;
+    }
+    .banner-preview img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: cover;
+    }
+    .banner-preview .placeholder {
+      color: var(--text-light);
+      font-size: 14px;
+    }
+    .banner-form {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .banner-form .form-group {
+      margin-bottom: 15px;
+    }
+    .banner-form textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      resize: vertical;
+    }
+    .banner-form input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .banner-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+    }
+    .banner-actions .btn {
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+    .btn-remove {
+      background: #d32f2f;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-remove:hover {
+      background: #b71c1c;
+    }
+    .add-banner-btn {
+      margin-top: 20px;
+      padding: 15px;
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-light);
+      cursor: pointer;
+      width: 100%;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .add-banner-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: var(--success);
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+    .btn-upload {
+      padding: 8px 16px;
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-upload:hover {
+      background: var(--border);
+    }
+    #banner-upload-input {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="/admin-banners" class="logo" id="header-logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text"> 管理后台</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-settings">网站设置</a></li>
+          <li><a href="/admin-banners">横幅</a></li>
+          <li><a href="/admin-dbsettings">数据库</a></li>
+          <li><a href="/admin-security">安全</a></li>
+          <li><a href="/admin-email">邮件</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-orders">订单</a></li>
+          <li><a href="/admin-activations">激活</a></li>
+          <li><a href="/admin-support">支持</a></li>
+          <li><a href="/admin-api">API</a></li>
+          <li><a href="/admin-installations">安装</a></li>
+          <li><a href="/admin-ai">AI设置</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Admin Content -->
+  <main class="admin-container">
+    <h1 style="font-size: 24px; margin-bottom: 10px;">横条管理</h1>
+    <p style="color: var(--text-light); margin-bottom: 30px;">管理首页展示的横条广告，可上传图片和设置标题描述</p>
+
+    <div class="message" id="message"></div>
+
+    <div class="banner-list" id="banner-list">
+      <!-- Banners will be loaded here -->
+    </div>
+
+    <button class="add-banner-btn" onclick="addBanner()">+ 添加横条</button>
+  </main>
+
+  <input type="file" id="banner-upload-input" accept="image/*">
+
+  <script>
+    let banners = [];
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 横条管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadBanners() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+        banners = settings.banners || [];
+        renderBanners();
+      } catch (error) {
+        console.error('Error loading banners:', error);
+        showMessage('加载横条失败', 'error');
+      }
+    }
+
+    function renderBanners() {
+      const list = document.getElementById('banner-list');
+
+      if (banners.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 40px;">暂无横条，点击下方按钮添加</p>';
+        return;
+      }
+
+      list.innerHTML = banners.map((banner, index) => `
+        <div class="banner-item" data-index="${index}">
+          <div class="banner-preview" id="preview-${index}">
+            ${banner.image ? '<img src="' + banner.image + '?t=' + Date.now() + '" alt="Banner">' : '<span class="placeholder">暂无图片</span>'}
+          </div>
+          <div class="banner-form">
+            <div class="form-group">
+              <label>标题</label>
+              <input type="text" id="title-${index}" value="${banner.title || ''}" placeholder="输入横条标题">
+            </div>
+            <div class="form-group">
+              <label>描述</label>
+              <textarea id="desc-${index}" placeholder="输入横条描述">${banner.description || ''}</textarea>
+            </div>
+            <div class="banner-actions">
+              <button class="btn-upload" onclick="document.getElementById('banner-upload-input').click(); currentEditIndex=${index};">上传图片</button>
+              <button class="btn btn-primary" onclick="saveBanner(${index})">保存</button>
+              <button class="btn-remove" onclick="removeBanner(${index})">删除</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    let currentEditIndex = -1;
+
+    async function uploadBannerImage(file) {
+      const formData = new FormData();
+      formData.append('banner', file);
+
+      try {
+        const response = await fetch('/api/upload-banner', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return data.path;
+        }
+        return null;
+      } catch (error) {
+        console.error('Error uploading banner:', error);
+        return null;
+      }
+    }
+
+    document.getElementById('banner-upload-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file || currentEditIndex < 0) return;
+
+      const imagePath = await uploadBannerImage(file);
+      if (imagePath) {
+        banners[currentEditIndex].image = imagePath;
+        document.getElementById('preview-' + currentEditIndex).innerHTML =
+          '<img src="' + imagePath + '?t=' + Date.now() + '" alt="Banner">';
+      }
+      e.target.value = '';
+    });
+
+    function addBanner() {
+      banners.push({ title: '', description: '', image: '' });
+      renderBanners();
+    }
+
+    function saveBanner(index) {
+      const title = document.getElementById('title-' + index).value;
+      const description = document.getElementById('desc-' + index).value;
+
+      banners[index].title = title;
+      banners[index].description = description;
+
+      saveBanners();
+    }
+
+    function removeBanner(index) {
+      if (!confirm('确定要删除此横条吗？')) return;
+
+      const imagePath = banners[index].image;
+      if (imagePath && imagePath.startsWith('/uploads/')) {
+        // 图片会在下次上传时被覆盖，这里不删除物理文件
+      }
+
+      banners.splice(index, 1);
+      saveBanners();
+    }
+
+    async function saveBanners() {
+      try {
+        const response = await fetch('/api/banners', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ banners }),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('保存成功', 'success');
+          renderBanners();
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving banners:', error);
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadBanners();
+    });
+  </script>
+</body>
+</html>

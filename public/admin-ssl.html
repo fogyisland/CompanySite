@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - SSL证书设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 900px; }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 30px;
+    }
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+    }
+    .form-section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Courier New', monospace;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+    }
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .form-group small {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-light);
+      font-size: 12px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-back {
+      background: var(--secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-back:hover {
+      background: var(--border);
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: var(--success);
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+    .info-box {
+      background: #e3f2fd;
+      border: 1px solid #1976d2;
+      border-radius: 6px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+    }
+    .info-box h4 {
+      color: #1976d2;
+      margin-bottom: 8px;
+    }
+    .info-box p {
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .info-box code {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+    .copy-btn {
+      padding: 8px 16px;
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .copy-btn:hover {
+      background: var(--border);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="/admin-ssl" class="logo" id="header-logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text"> 管理后台</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-settings">网站设置</a></li>
+          
+          
+          <li><a href="/admin-dbsettings">数据库</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-security">安全</a></li>
+          <li><a href="/admin-email">邮件</a></li>
+          <li><a href="/admin-orders">订单</a></li>
+          <li><a href="/admin-activations">激活</a></li>
+          <li><a href="/admin-support">支持</a></li>
+          <li><a href="/admin-api">API</a></li>
+          <li><a href="/admin-ai">AI设置</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Admin Content -->
+  <main class="admin-container">
+    <h1 style="font-size: 24px; margin-bottom: 10px;">SSL证书设置</h1>
+    <p style="color: var(--text-light); margin-bottom: 30px;">配置域名和证书信息，用于 Nginx HTTPS 反向代理</p>
+
+    <div class="message" id="message"></div>
+
+    <div class="info-box">
+      <h4>部署说明</h4>
+      <p>此系统部署在 Nginx 后面，通过域名 + SSL证书绑定实现 HTTPS 访问。请在此处填写您的域名信息，并参考以下 Nginx 配置进行证书绑定。</p>
+    </div>
+
+    <div class="form-card">
+      <form id="ssl-form">
+        <div class="form-section">
+          <h3 class="section-title">域名配置</h3>
+
+          <div class="form-group">
+            <label for="domain">域名</label>
+            <input type="text" id="domain" name="domain" placeholder="例如: example.com">
+            <small>填写您的域名，例如：www.example.com 或 app.example.com</small>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title">证书文件路径（服务器上的路径）</h3>
+
+          <div class="form-group">
+            <label for="certPath">证书文件路径</label>
+            <input type="text" id="certPath" name="certPath" placeholder="/etc/nginx/ssl/certificate.crt">
+          </div>
+
+          <div class="form-group">
+            <label for="keyPath">私钥文件路径</label>
+            <input type="text" id="keyPath" name="keyPath" placeholder="/etc/nginx/ssl/private.key">
+          </div>
+
+          <div class="form-group">
+            <label for="caPath">证书链文件路径（可选）</label>
+            <input type="text" id="caPath" name="caPath" placeholder="/etc/nginx/ssl/ca_bundle.crt">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3 class="section-title">Nginx 配置参考</h3>
+          <div class="form-group">
+            <textarea id="nginx-config" readonly style="background: #f5f5f5; min-height: 250px;">server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+
+    ssl_certificate /path/to/your/certificate.crt;
+    ssl_certificate_key /path/to/your/private.key;
+    ssl_trusted_certificate /path/to/your/ca_bundle.crt;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}</textarea>
+            <button type="button" class="copy-btn" onclick="copyNginxConfig()">复制配置</button>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="/admin-product" class="btn-back">&larr; 返回</a>
+          <button type="submit" class="btn btn-primary">保存配置</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        // 更新头部
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - SSL证书设置';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        // 填充表单
+        if (settings.ssl) {
+          document.getElementById('domain').value = settings.ssl.domain || '';
+          document.getElementById('certPath').value = settings.ssl.certPath || '';
+          document.getElementById('keyPath').value = settings.ssl.keyPath || '';
+          document.getElementById('caPath').value = settings.ssl.caPath || '';
+        }
+
+        // 更新 Nginx 配置中的域名占位符
+        const domain = settings.ssl?.domain || 'your-domain.com';
+        updateNginxConfig(domain);
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        showMessage('加载设置失败', 'error');
+      }
+    }
+
+    function updateNginxConfig(domain) {
+      const textarea = document.getElementById('nginx-config');
+      const config = `server {
+    listen 80;
+    server_name ${domain || 'your-domain.com'};
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${domain || 'your-domain.com'};
+
+    ssl_certificate /path/to/your/certificate.crt;
+    ssl_certificate_key /path/to/your/private.key;
+    ssl_trusted_certificate /path/to/your/ca_bundle.crt;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}`;
+      textarea.value = config;
+    }
+
+    function copyNginxConfig() {
+      const textarea = document.getElementById('nginx-config');
+      navigator.clipboard.writeText(textarea.value).then(() => {
+        alert('配置已复制到剪贴板');
+      }).catch(() => {
+        textarea.select();
+        document.execCommand('copy');
+        alert('配置已复制到剪贴板');
+      });
+    }
+
+    // 保存配置
+    document.getElementById('ssl-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const ssl = {
+        domain: document.getElementById('domain').value,
+        certPath: document.getElementById('certPath').value,
+        keyPath: document.getElementById('keyPath').value,
+        caPath: document.getElementById('caPath').value
+      };
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ssl }),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('配置保存成功', 'success');
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        console.error('Save error:', error);
+        showMessage('保存失败', 'error');
+      }
+    });
+
+    // 域名输入时实时更新配置预览
+    document.getElementById('domain').addEventListener('input', (e) => {
+      updateNginxConfig(e.target.value);
+    });
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', loadSettings);
+  </script>
+</body>
+</html>

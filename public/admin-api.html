@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - API接口文档</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 1400px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .page-header h1 { font-size: 24px; }
+    .api-section { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 30px; margin-bottom: 20px; }
+    .api-section h2 { font-size: 18px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--primary); }
+    .api-item { margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px dashed var(--border); }
+    .api-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .api-method { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 10px; }
+    .api-method.GET { background: #ecfdf5; color: #10b981; }
+    .api-method.POST { background: #eff6ff; color: #3b82f6; }
+    .api-method.PUT { background: #fff3e0; color: #f59e0b; }
+    .api-method.DELETE { background: #fef2f2; color: #ef4444; }
+    .api-path { font-family: monospace; font-size: 14px; color: #1f2937; }
+    .api-desc { color: var(--text-light); margin: 10px 0; }
+    .api-auth { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #f3f4f6; color: #6b7280; }
+    .api-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+    .api-table th, .api-table td { padding: 8px 12px; text-align: left; border: 1px solid var(--border); }
+    .api-table th { background: #f8f9fa; font-weight: 600; }
+    .api-table code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+    .code-block { background: #1f2937; color: #e5e7eb; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; overflow-x: auto; margin: 10px 0; }
+    .code-block .key { color: #10b981; }
+    .code-block .string { color: #fbbf24; }
+    .code-block .number { color: #60a5fa; }
+    .code-block .comment { color: #6b7280; }
+    .nav-link { display: inline-block; padding: 8px 16px; background: var(--primary); color: white; text-decoration: none; border-radius: 6px; font-size: 14px; }
+    .nav-link:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-list" class="logo" id="header-logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+            <li><a href="/admin-list">产品管理</a></li>
+            <li><a href="/admin-orders">订单管理</a></li>
+            <li><a href="/admin-installations">安装管理</a></li>
+            <li><a href="/admin-activations">激活管理</a></li>
+            <li><a href="/admin-newsletter">邮件订阅</a></li>
+            <li><a href="/admin-support">技术支持</a></li>
+            <li><a href="/admin-faq">FAQ</a></li>
+            <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+            <li class="nav-item">
+              <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+    </div>
+  </header>
+  <div class="ribbon-bar"></div>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <main class="admin-container">
+    <div class="page-header">
+      <h1>API接口文档</h1>
+      <a href="/" class="nav-link">返回网站</a>
+    </div>
+
+    <!-- 公开接口 -->
+    <div class="api-section">
+      <h2>公开接口（无需认证）</h2>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/products</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">获取所有产品列表</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/products/:id</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">获取单个产品详情</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/settings</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">获取网站设置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/carddav</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">获取CardDAV配置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/QueryCardDavServerList</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">查询CardDAV服务器列表（供本地应用使用，不包含密码）</p>
+        <div class="code-block">
+<span class="comment">// 响应示例</span>
+{
+  <span class="key">"success"</span>: <span class="number">true</span>,
+  <span class="key">"servers"</span>: [
+    {
+      <span class="key">"name"</span>: <span class="string">"Google Contacts"</span>,
+      <span class="key">"url"</span>: <span class="string">"https://www.googleapis.com/carddav/..."</span>
+    }
+  ]
+}
+        </div>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/faqs</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">获取所有FAQ</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/subscribe</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">订阅邮箱</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>email</td><td>string</td><td>邮箱地址（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/register</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">用户注册</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>username</td><td>string</td><td>用户名（必填）</td></tr>
+          <tr><td>password</td><td>string</td><td>密码（必填）</td></tr>
+          <tr><td>email</td><td>string</td><td>邮箱（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/login</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">管理员登录</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>username</td><td>string</td><td>用户名（必填）</td></tr>
+          <tr><td>password</td><td>string</td><td>密码（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/user/login</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">用户登录</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>username</td><td>string</td><td>用户名（必填）</td></tr>
+          <tr><td>password</td><td>string</td><td>密码（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/user/forgot-password</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">忘记密码</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>email</td><td>string</td><td>注册邮箱（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/install</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">提交安装注册</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>softwareName</td><td>string</td><td>软件名称（必填）</td></tr>
+          <tr><td>userName</td><td>string</td><td>用户名（必填）</td></tr>
+          <tr><td>userEmail</td><td>string</td><td>用户邮箱（必填）</td></tr>
+          <tr><td>softwareVersion</td><td>string</td><td>软件版本</td></tr>
+          <tr><td>organization</td><td>string</td><td>组织/公司</td></tr>
+          <tr><td>macAddress</td><td>string</td><td>MAC地址</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/install/check</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">验证安装状态</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>macAddress</td><td>string</td><td>MAC地址</td></tr>
+          <tr><td>softwareName</td><td>string</td><td>软件名称</td></tr>
+          <tr><td>userEmail</td><td>string</td><td>用户邮箱</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/activate</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">提交软件激活申请</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>userName</td><td>string</td><td>申请人姓名（必填）</td></tr>
+          <tr><td>email</td><td>string</td><td>邮箱（必填）</td></tr>
+          <tr><td>softwareName</td><td>string</td><td>软件名称（必填）</td></tr>
+          <tr><td>organization</td><td>string</td><td>组织/公司</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/activate-by-code</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">使用授权码激活软件</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>activationCode</td><td>string</td><td>授权码（必填）</td></tr>
+          <tr><td>macAddress</td><td>string</td><td>MAC地址</td></tr>
+          <tr><td>userName</td><td>string</td><td>用户名</td></tr>
+          <tr><td>userEmail</td><td>string</td><td>用户邮箱</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/support</span>
+        <span class="api-auth">公开</span>
+        <p class="api-desc">提交技术支持工单</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>subject</td><td>string</td><td>问题主题（必填）</td></tr>
+          <tr><td>description</td><td>string</td><td>问题描述（必填）</td></tr>
+          <tr><td>email</td><td>string</td><td>邮箱（必填）</td></tr>
+          <tr><td>name</td><td>string</td><td>姓名</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- 用户接口 -->
+    <div class="api-section">
+      <h2>用户接口（需要用户认证）</h2>
+      <p class="api-desc">认证方式：请求时携带 Cookie（booming.sid）</p>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/user/profile</span>
+        <span class="api-auth">用户</span>
+        <p class="api-desc">获取当前用户信息</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/user/profile</span>
+        <span class="api-auth">用户</span>
+        <p class="api-desc">更新用户信息</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>email</td><td>string</td><td>邮箱</td></tr>
+          <tr><td>realName</td><td>string</td><td>真实姓名</td></tr>
+          <tr><td>company</td><td>string</td><td>公司</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/orders</span>
+        <span class="api-auth">用户</span>
+        <p class="api-desc">获取当前用户的订单列表</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/orders/:id</span>
+        <span class="api-auth">用户</span>
+        <p class="api-desc">获取订单详情</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/orders/:id/verify</span>
+        <span class="api-auth">用户</span>
+        <p class="api-desc">验证验证码完成支付</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>verificationCode</td><td>string</td><td>验证码（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/orders/:id/details</span>
+        <span class="api-auth">用户</span>
+        <p class="api-desc">获取订单详细信息</p>
+      </div>
+    </div>
+
+    <!-- 管理员接口 -->
+    <div class="api-section">
+      <h2>管理员接口（需要管理员认证）</h2>
+      <p class="api-desc">认证方式：请求时携带 Cookie（booming.sid）</p>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/check-auth</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">检查认证状态</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/logout</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">管理员登出</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/products</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取所有产品</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/products</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">添加产品</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/products/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新产品</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/products/:id/detail</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新产品详情页</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method DELETE">DELETE</span>
+        <span class="api-path">/api/products/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">删除产品</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/upload-product-image</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">上传产品图片</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/upload-software</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">上传软件文件</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/orders/all</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取所有订单</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>filter</td><td>string</td><td>筛选：valid（有效）/ archived（归档）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/orders/:id/generate-code</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">为订单生成验证码</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/orders/:id/generate-activation-codes</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">为订单生成授权码</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/activations</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取所有激活记录</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/activations/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新激活状态</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>status</td><td>string</td><td>状态：active / inactive / blocked</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/installs</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取所有安装记录</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method DELETE">DELETE</span>
+        <span class="api-path">/api/installs/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">删除安装记录</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/support</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取所有工单</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/support/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取工单详情</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/support/:id/reply</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">回复工单</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>message</td><td>string</td><td>回复内容（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/support/:id/status</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新工单状态</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>status</td><td>string</td><td>状态：open / pending / resolved / closed</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/faqs</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">添加FAQ</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>question</td><td>string</td><td>问题（必填）</td></tr>
+          <tr><td>answer</td><td>string</td><td>答案（必填）</td></tr>
+          <tr><td>sortOrder</td><td>number</td><td>排序</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/faqs/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新FAQ</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method DELETE">DELETE</span>
+        <span class="api-path">/api/faqs/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">删除FAQ</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/settings</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取网站设置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/settings</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新网站设置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/upload-logo</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">上传Logo</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/upload-banner</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">上传Banner图片</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/banners</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">添加横幅</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/banners/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新横幅</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method DELETE">DELETE</span>
+        <span class="api-path">/api/banners/:id</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">删除横幅</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method PUT">PUT</span>
+        <span class="api-path">/api/carddav</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新CardDAV配置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/subscribers</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取订阅者列表</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/send-email</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">发送邮件给订阅者</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>subject</td><td>string</td><td>邮件主题（必填）</td></tr>
+          <tr><td>content</td><td>string</td><td>邮件内容（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/email/config</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取邮件配置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/email/config</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">保存邮件配置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/email/test</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">发送测试邮件</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>to</td><td>string</td><td>收件人邮箱（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/ai/test</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">测试AI连接</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/ai/generate</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">AI内容生成</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>text</td><td>string</td><td>原始文本</td></tr>
+          <tr><td>type</td><td>string</td><td>生成类型</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/security/config</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取安全配置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/security/config</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新安全配置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/security/logs</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取安全日志</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/security/blocked</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取被封禁IP列表</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/security/unblock</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">解封IP</p>
+        <table class="api-table">
+          <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+          <tr><td>ip</td><td>string</td><td>IP地址（必填）</td></tr>
+        </table>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/db-config</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取数据库配置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/db-config</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">更新数据库配置</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/db-test</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">测试数据库连接</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/db-info</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">获取数据库信息</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/db-switch</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">切换数据库</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/db-init</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">初始化数据库</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method GET">GET</span>
+        <span class="api-path">/api/db-export</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">导出数据库</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/db-import</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">导入数据库</p>
+      </div>
+
+      <div class="api-item">
+        <span class="api-method POST">POST</span>
+        <span class="api-path">/api/db-migrate</span>
+        <span class="api-auth">管理员</span>
+        <p class="api-desc">迁移数据库</p>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - API接口文档';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadSettings);
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>

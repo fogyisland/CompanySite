@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 安装记录管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container { max-width: 1400px; }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .page-header h1 { font-size: 24px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    .stat-card .label {
+      color: var(--text-light);
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    .stat-card.warning .number { color: #d97706; }
+    .stat-card.danger .number { color: #d32f2f; }
+    .stat-card.success .number { color: #10b981; }
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    .table-container {
+      overflow-x: auto;
+    }
+    .installs-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .installs-table th,
+    .installs-table td {
+      padding: 15px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .installs-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .installs-table tr:hover {
+      background: #f8f9fa;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .status-badge.active { background: #ecfdf5; color: #10b981; }
+    .status-badge.expired { background: #fef2f2; color: #d32f2f; }
+    .remaining-days {
+      font-weight: bold;
+      color: var(--primary);
+    }
+    .remaining-days.warning { color: #d97706; }
+    .remaining-days.danger { color: #d32f2f; }
+    .btn-view {
+      padding: 6px 12px;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-view:hover { background: var(--primary-dark); }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-light);
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success { background: #ecfdf5; color: #10b981; display: block; }
+    .message.error { background: #fef2f2; color: #d32f2f; display: block; }
+    .search-box {
+      margin-bottom: 20px;
+    }
+    .search-box input {
+      padding: 10px 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 300px;
+      font-size: 14px;
+    }
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: var(--white);
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+    }
+    .modal h3 { margin-bottom: 20px; }
+    .modal-close {
+      float: right;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .detail-item:last-child { border-bottom: none; }
+    .detail-item .label {
+      color: var(--text-light);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="/admin-product" class="logo">
+          <div class="logo-icon" id="header-logo-icon">SV</div>
+          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+        </a>
+      </div>
+      <div class="nav-center">
+        <nav>
+          <ul>
+          <li><a href="/admin-list">产品管理</a></li>
+          <li><a href="/admin-orders">订单管理</a></li>
+          <li><a href="/admin-installations">安装管理</a></li>
+          <li><a href="/admin-activations">激活管理</a></li>
+          <li><a href="/admin-newsletter">邮件订阅</a></li>
+          <li><a href="/admin-support">技术支持</a></li>
+          <li><a href="/admin-faq">FAQ</a></li>
+          <li><a href="/admin-carddav">CardDAV</a></li>
+          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
+          <li class="nav-item">
+            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+          </li>
+        </ul>
+      </nav>
+      </div>
+      <div class="nav-right">
+        <a href="/logout" class="logout-btn">注销</a>
+      </div>
+  </header>
+  <div class="nav-submenu-block" id="logs-submenu">
+    <ul>
+<li><a href="/admin-log-login">登录日志</a></li>
+      <li><a href="/admin-log-operation">操作日志</a></li>
+      <li><a href="/admin-log-registration">注册日志</a></li>
+      <li><a href="/admin-log-activation">激活日志</a></li>
+    </ul>
+  </div>
+  <div class="nav-submenu-block" id="settings-submenu">
+    <ul>
+      <li><a href="/admin-settings">网站设置</a></li>
+      <li><a href="/admin-dbsettings">数据库</a></li>
+      <li><a href="/admin-security">安全</a></li>
+      <li><a href="/admin-email">邮件</a></li>
+      <li><a href="/admin-ai">AI设置</a></li>
+      <li><a href="/admin-api">API</a></li>
+    </ul>
+  </div>
+
+  <main class="admin-container">
+    <div class="page-header">
+      <h1>安装记录管理</h1>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="number" id="total-installs">0</div>
+        <div class="label">总安装数</div>
+      </div>
+      <div class="stat-card success">
+        <div class="number" id="active-installs">0</div>
+        <div class="label">有效</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="number" id="expiring-installs">0</div>
+        <div class="label">7天内到期</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="number" id="expired-installs">0</div>
+        <div class="label">已过期</div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="form-card">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="搜索软件名称、用户或邮箱..." oninput="filterInstalls()">
+      </div>
+
+      <div class="table-container">
+        <table class="installs-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>软件名称</th>
+              <th>用户</th>
+              <th>邮箱</th>
+              <th>组织/公司</th>
+              <th>MAC地址</th>
+              <th>安装日期</th>
+              <th>到期日期</th>
+              <th>剩余天数</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="installs-tbody">
+            <tr><td colspan="10" class="empty-state">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal for Detail -->
+  <div class="modal" id="detail-modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <h3>安装详情 - #<span id="modal-id"></span></h3>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script>
+    let installations = [];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 安装记录管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadInstallations() {
+      try {
+        const response = await fetch('/api/installs', { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        installations = await response.json();
+        renderStats();
+        renderTable();
+      } catch (error) {
+        console.error('Error loading installations:', error);
+        showMessage('加载安装记录失败', 'error');
+      }
+    }
+
+    function renderStats() {
+      const total = installations.length;
+      let active = 0;
+      let expiring = 0;
+      let expired = 0;
+
+      installations.forEach(inst => {
+        if (inst.remainingDays > 7) {
+          active++;
+        } else if (inst.remainingDays > 0) {
+          expiring++;
+        } else {
+          expired++;
+        }
+      });
+
+      document.getElementById('total-installs').textContent = total;
+      document.getElementById('active-installs').textContent = active;
+      document.getElementById('expiring-installs').textContent = expiring;
+      document.getElementById('expired-installs').textContent = expired;
+    }
+
+    function filterInstalls() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const filtered = installations.filter(inst =>
+        !search ||
+        (inst.softwareName && inst.softwareName.toLowerCase().includes(search)) ||
+        (inst.userName && inst.userName.toLowerCase().includes(search)) ||
+        (inst.userEmail && inst.userEmail.toLowerCase().includes(search)) ||
+        (inst.organization && inst.organization.toLowerCase().includes(search))
+      );
+      renderTableData(filtered);
+    }
+
+    function renderTable() {
+      renderTableData(installations);
+    }
+
+    function renderTableData(data) {
+      const tbody = document.getElementById('installs-tbody');
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-state">暂无安装记录</td></tr>';
+        return;
+      }
+
+      data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      tbody.innerHTML = data.map(inst => {
+        const remaining = inst.remainingDays || 0;
+        let daysClass = '';
+        let daysText = remaining > 0 ? remaining + ' 天' : '已过期';
+
+        if (remaining <= 0) {
+          daysClass = 'danger';
+        } else if (remaining <= 7) {
+          daysClass = 'warning';
+        }
+
+        return `
+          <tr>
+            <td>#${escapeHtml(inst.id)}</td>
+            <td>${escapeHtml(inst.softwareName)}</td>
+            <td>${escapeHtml(inst.userName)}</td>
+            <td>${escapeHtml(inst.userEmail)}</td>
+            <td>${escapeHtml(inst.organization || '-')}</td>
+            <td>${escapeHtml(inst.macAddress || '-')}</td>
+            <td>${formatDate(inst.installDate)}</td>
+            <td>${formatDate(inst.expireDate)}</td>
+            <td><span class="remaining-days ${escapeHtml(daysClass)}">${escapeHtml(daysText)}</span></td>
+            <td>
+              <button class="btn-view" onclick="showDetail(${escapeHtml(inst.id)})">详情</button>
+              <button class="btn-delete" onclick="deleteInstall(${escapeHtml(inst.id)})" style="padding: 6px 12px; background: #d32f2f; color: white; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; margin-left: 5px;">删除</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleDateString('zh-CN');
+    }
+
+    function showDetail(id) {
+      const inst = installations.find(i => i.id === id);
+      if (!inst) return;
+
+      const remaining = inst.remainingDays || 0;
+      let statusText = '有效';
+      let statusClass = 'active';
+      if (remaining <= 0) {
+        statusText = '已过期';
+        statusClass = 'expired';
+      } else if (remaining <= 7) {
+        statusText = '即将到期';
+        statusClass = 'warning';
+      }
+
+      document.getElementById('modal-id').textContent = inst.id;
+      document.getElementById('modal-content').innerHTML = `
+        <div class="detail-item">
+          <span class="label">软件名称：</span>
+          <span>${escapeHtml(inst.softwareName)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">软件版本：</span>
+          <span>${escapeHtml(inst.softwareVersion || '-')}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">用户名称：</span>
+          <span>${escapeHtml(inst.userName)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">邮箱地址：</span>
+          <span>${escapeHtml(inst.userEmail)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">组织/公司：</span>
+          <span>${escapeHtml(inst.organization || '-')}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">MAC地址：</span>
+          <span>${escapeHtml(inst.macAddress || '-')}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">安装日期：</span>
+          <span>${formatDate(inst.installDate)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">到期日期：</span>
+          <span>${formatDate(inst.expireDate)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">剩余天数：</span>
+          <span class="remaining-days ${remaining <= 0 ? 'danger' : remaining <= 7 ? 'warning' : ''}">${remaining > 0 ? remaining + ' 天' : '已过期'}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">状态：</span>
+          <span class="status-badge ${statusClass}">${statusText}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">注册时间：</span>
+          <span>${formatDate(inst.createdAt)}</span>
+        </div>
+      `;
+      document.getElementById('detail-modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('active');
+    }
+
+    async function deleteInstall(id) {
+      if (!confirm('确定要删除此安装记录吗？')) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/installs/' + id, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('删除成功', 'success');
+          loadInstallations();
+        } else {
+          const data = await response.json();
+          showMessage(data.error || '删除失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting installation:', error);
+        showMessage('删除失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadInstallations();
+    });
+
+    // 子菜单折叠功能
+    function toggleSubmenu(e, submenuId) {
+      e.preventDefault();
+      if (submenuId) {
+      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
+      const submenu = document.getElementById(submenuId);
+      const navItem = e.target.closest('.nav-item');
+      if (submenu) submenu.classList.add('open');
+      if (navItem) navItem.classList.add('open');
+      }
+    }
+
+    // 高亮当前页面链接
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
+      if (link.getAttribute('href') === currentPath) {
+        link.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>
