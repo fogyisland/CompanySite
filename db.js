@@ -74,6 +74,7 @@ async function createTablesIfNotExist() {
     `CREATE TABLE IF NOT EXISTS products (
       id INT PRIMARY KEY AUTO_INCREMENT,
       name VARCHAR(255) NOT NULL,
+      short_name VARCHAR(100) NOT NULL,
       category VARCHAR(255),
       price REAL NOT NULL,
       pricing_tiers TEXT,
@@ -230,6 +231,7 @@ async function createTablesIfNotExist() {
     `CREATE TABLE IF NOT EXISTS installations (
       id INT PRIMARY KEY AUTO_INCREMENT,
       software_name VARCHAR(255) NOT NULL,
+      software_short_name VARCHAR(100),
       software_version VARCHAR(100),
       user_name VARCHAR(255) NOT NULL,
       user_email VARCHAR(255) NOT NULL,
@@ -374,6 +376,7 @@ async function getAllProducts() {
   return rows.map(row => ({
     id: row.id,
     name: row.name,
+    shortName: row.short_name,
     category: row.category,
     price: row.price,
     pricingTiers: row.pricing_tiers ? JSON.parse(row.pricing_tiers) : null,
@@ -400,6 +403,34 @@ async function getProduct(id) {
   return {
     id: row.id,
     name: row.name,
+    shortName: row.short_name,
+    category: row.category,
+    price: row.price,
+    pricingTiers: row.pricing_tiers ? JSON.parse(row.pricing_tiers) : null,
+    description: row.description,
+    version: row.version,
+    platform: row.platform,
+    features: row.features ? JSON.parse(row.features) : [],
+    icon: row.icon,
+    featured: row.featured === 1,
+    downloadUrl: row.download_url,
+    externalLink: row.external_link === 1,
+    detailPage: row.detail_page,
+    image: row.image,
+    imageDarkBg: row.image_dark_bg === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+async function getProductByShortName(shortName) {
+  const [rows] = await mysqlPool.query("SELECT * FROM products WHERE short_name = ?", [shortName]);
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  return {
+    id: row.id,
+    name: row.name,
+    shortName: row.short_name,
     category: row.category,
     price: row.price,
     pricingTiers: row.pricing_tiers ? JSON.parse(row.pricing_tiers) : null,
@@ -421,9 +452,9 @@ async function getProduct(id) {
 
 async function createProduct(product) {
   const [result] = await mysqlPool.query(
-    `INSERT INTO products (name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [product.name, product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
+    `INSERT INTO products (name, short_name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
      product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0]
   );
@@ -432,8 +463,8 @@ async function createProduct(product) {
 
 async function updateProduct(id, product) {
   await mysqlPool.query(
-    `UPDATE products SET name=?, category=?, price=?, pricing_tiers=?, description=?, version=?, platform=?, features=?, icon=?, featured=?, download_url=?, external_link=?, detail_page=?, image=?, image_dark_bg=? WHERE id=?`,
-    [product.name, product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
+    `UPDATE products SET name=?, short_name=?, category=?, price=?, pricing_tiers=?, description=?, version=?, platform=?, features=?, icon=?, featured=?, download_url=?, external_link=?, detail_page=?, image=?, image_dark_bg=? WHERE id=?`,
+    [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
      product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, id]
   );
@@ -868,8 +899,8 @@ async function createInstallation(installation) {
   }
 
   const [result] = await mysqlPool.query(
-    "INSERT INTO installations (software_name, software_version, user_name, user_email, organization, mac_address, install_date, expire_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    [installation.softwareName, installation.softwareVersion, installation.userName, installation.userEmail,
+    "INSERT INTO installations (software_name, software_short_name, software_version, user_name, user_email, organization, mac_address, install_date, expire_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    [installation.softwareName, installation.softwareShortName || '', installation.softwareVersion, installation.userName, installation.userEmail,
      installation.organization, installation.macAddress, installDate, expireDate, installation.status || 'active']
   );
 
@@ -877,6 +908,7 @@ async function createInstallation(installation) {
   return {
     id: result.insertId,
     softwareName: installation.softwareName,
+    softwareShortName: installation.softwareShortName || '',
     softwareVersion: installation.softwareVersion,
     userName: installation.userName,
     userEmail: installation.userEmail,
@@ -1475,6 +1507,7 @@ module.exports = {
   verifyUser,
   getAllProducts,
   getProduct,
+  getProductByShortName,
   createProduct,
   updateProduct,
   deleteProduct,

@@ -130,42 +130,125 @@ Content-Type: application/json
 
 ### 成功响应 (200 OK)
 
-**试用期状态**
+**情况1：已激活（授权激活）**
 ```json
 {
   "registered": true,
+  "activated": true,
   "expired": false,
+  "activationExpired": false,
+  "message": "已激活（永久授权）",
   "installation": {
-    "softwareName": "小铭邮件百宝箱",
+    "softwareName": "xiaozhi-crm",
+    "userEmail": "raymond.xu@booming.one",
+    "macAddress": "BB:40:58:16:46:22",
+    "installDate": "2026-05-03",
+    "expireDate": "2027-05-03",
+    "remainingDays": 365
+  },
+  "activation": {
+    "activationKey": "XCZ2N-DVGJX-48XSZ-4PVAY-F5WGL",
+    "activateDate": "2026-05-03",
+    "expireDate": "2027-05-03",
+    "status": "active"
+  }
+}
+```
+
+**情况2：已注册但未激活（试用期）**
+```json
+{
+  "registered": true,
+  "activated": false,
+  "expired": false,
+  "activationExpired": null,
+  "message": "试用期（剩余28天）",
+  "installation": {
+    "softwareName": "xiaozhi-crm",
+    "userEmail": "raymond.xu@booming.one",
+    "macAddress": "BB:40:58:16:46:22",
     "installDate": "2026-04-01",
     "expireDate": "2026-05-01",
     "remainingDays": 28
-  }
+  },
+  "activation": null
 }
 ```
 
-**已激活状态（有授权码）**
+**情况3：试用期已过期**
 ```json
 {
   "registered": true,
-  "expired": false,
+  "activated": false,
+  "expired": true,
+  "activationExpired": null,
+  "message": "试用期已过期，请激活",
+  "installation": {
+    "softwareName": "xiaozhi-crm",
+    "userEmail": "raymond.xu@booming.one",
+    "macAddress": "BB:40:58:16:46:22",
+    "installDate": "2026-03-01",
+    "expireDate": "2026-03-31",
+    "remainingDays": 0
+  },
+  "activation": null
+}
+```
+
+**情况4：已激活但已过期**
+```json
+{
+  "registered": true,
   "activated": true,
+  "expired": true,
+  "activationExpired": true,
+  "message": "已激活但已过期",
+  "installation": {
+    "softwareName": "xiaozhi-crm",
+    "userEmail": "raymond.xu@booming.one",
+    "macAddress": "BB:40:58:16:46:22",
+    "installDate": "2025-05-03",
+    "expireDate": "2026-05-03",
+    "remainingDays": 0
+  },
   "activation": {
     "activationKey": "XCZ2N-DVGJX-48XSZ-4PVAY-F5WGL",
-    "softwareName": "小铭邮件百宝箱",
-    "activateDate": "2026-05-03",
-    "expireDate": "2027-05-03"
+    "activateDate": "2025-05-03",
+    "expireDate": "2026-05-03",
+    "status": "active"
   }
 }
 ```
 
-**授权码有效可激活**
+**情况5：未注册**
 ```json
 {
   "registered": false,
-  "expired": false,
   "activated": false,
-  "message": "授权码有效，可激活"
+  "expired": false,
+  "activationExpired": null,
+  "message": "MAC地址未注册",
+  "installation": null,
+  "activation": null
+}
+```
+
+**带激活码查询（授权码有效可激活）**
+```json
+{
+  "registered": false,
+  "activated": false,
+  "expired": false,
+  "activationExpired": null,
+  "message": "授权码有效，可激活",
+  "order": {
+    "softwareName": "xiaozhi-crm",
+    "duration": "一年授权",
+    "totalDays": 365,
+    "paidDate": "2026-05-03T10:00:00.000Z",
+    "expireDate": "2027-05-03T10:00:00.000Z",
+    "remainingDays": 365
+  }
 }
 ```
 

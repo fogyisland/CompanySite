@@ -6,6 +6,7 @@
   <title>博铭科技 - 管理后台</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <style>
     .admin-container { max-width: 1200px; }
     .stats-row {
@@ -33,61 +34,56 @@
   </style>
 </head>
 <body>
-  <!-- Header -->
-  <header>
-    <div class="nav-container">
-      <div class="nav-left">
-        <a href="/admin-list" class="logo" id="header-logo">
+  <div class="admin-layout">
+    <!-- 侧边栏 -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-header">
+        <a href="/admin-product" class="logo">
           <div class="logo-icon" id="header-logo-icon">SV</div>
-          <span class="logo-text" id="header-logo-text"> 管理后台</span>
+          <span class="logo-text" id="header-logo-text">管理后台</span>
         </a>
       </div>
-      <div class="nav-center">
-        <nav>
-          <ul>
-          <li><a href="/admin-list">产品管理</a></li>
-          <li><a href="/admin-orders">订单管理</a></li>
-          <li><a href="/admin-installations">安装管理</a></li>
-          <li><a href="/admin-activations">激活管理</a></li>
-          <li><a href="/admin-newsletter">邮件订阅</a></li>
-          <li><a href="/admin-support">技术支持</a></li>
-          <li><a href="/admin-faq">FAQ</a></li>
-          <li><a href="/admin-carddav">CardDAV</a></li>
-          <li class="nav-item"><a href="#" onclick="toggleSubmenu(event, 'logs-submenu')">系统日志 <span class="toggle-icon">+</span></a></li>
-          <li class="nav-item">
-            <a href="#" onclick="toggleSubmenu(event, 'settings-submenu')">系统设置 <span class="toggle-icon">+</span></a>
+      <nav class="sidebar-nav">
+        <ul>
+          <li><a href="/admin-product"><span>📦 产品管理</span></a></li>
+          <li><a href="/admin-orders"><span>📋 订单管理</span></a></li>
+          <li><a href="/admin-installations"><span>📥 安装管理</span></a></li>
+          <li><a href="/admin-activations"><span>🔓 激活管理</span></a></li>
+          <li><a href="/admin-newsletter"><span>📧 邮件订阅</span></a></li>
+          <li><a href="/admin-support"><span>🎧 技术支持</span></a></li>
+          <li><a href="/admin-faq"><span>❓ FAQ</span></a></li>
+          <li><a href="/admin-carddav"><span>📇 CardDAV</span></a></li>
+          <li class="has-submenu">
+            <a href="#" onclick="toggleSidebarSubmenu(this); return false;"><span>📊 系统日志</span></a>
+            <ul class="sidebar-submenu">
+              <li><a href="/admin-log-login">🔐 登录日志</a></li>
+              <li><a href="/admin-log-operation">📝 操作日志</a></li>
+              <li><a href="/admin-log-registration">📝 注册日志</a></li>
+              <li><a href="/admin-log-activation">🔓 激活日志</a></li>
+              <li><a href="/admin-telemetry">📈 数据遥测</a></li>
+            </ul>
+          </li>
+          <li class="has-submenu">
+            <a href="#" onclick="toggleSidebarSubmenu(this); return false;"><span>⚙️ 系统设置</span></a>
+            <ul class="sidebar-submenu">
+              <li><a href="/admin-settings">🌐 网站设置</a></li>
+              <li><a href="/admin-dbsettings">💾 数据库</a></li>
+              <li><a href="/admin-security">🔒 安全</a></li>
+              <li><a href="/admin-email">📨 邮件</a></li>
+              <li><a href="/admin-ai">🤖 AI设置</a></li>
+              <li><a href="/admin-api">🔗 API</a></li>
+            </ul>
           </li>
         </ul>
+        <div class="sidebar-footer">
+          <a href="/logout" class="logout-btn">注销</a>
+        </div>
       </nav>
-      </div>
-      <div class="nav-right">
-        <a href="/logout" class="logout-btn">注销</a>
-      </div>
-    </div>
-  </header>
-  <div class="ribbon-bar"></div>
-  <div class="nav-submenu-block" id="logs-submenu">
-    <ul>
-<li><a href="/admin-log-login">登录日志</a></li>
-      <li><a href="/admin-log-operation">操作日志</a></li>
-      <li><a href="/admin-log-registration">注册日志</a></li>
-      <li><a href="/admin-log-activation">激活日志</a></li>
-    </ul>
-  </div>
-  <div class="nav-submenu-block" id="settings-submenu">
-    <ul>
-      <li><a href="/admin-settings">网站设置</a></li>
-      <li><a href="/admin-dbsettings">数据库</a></li>
-      <li><a href="/admin-security">安全</a></li>
-      <li><a href="/admin-email">邮件</a></li>
-      <li><a href="/admin-ai">AI设置</a></li>
-      <li><a href="/admin-api">API</a></li>
-    </ul>
-  </div>
+    </aside>
 
-  <!-- Admin Content -->
-  <main class="admin-container">
-    <div class="admin-header">
+    <!-- 主内容 -->
+    <main class="admin-main">
+      <div class="admin-header">
       <h1>产品管理</h1>
       <div class="admin-actions">
         <a href="/" class="btn btn-outline btn-small">查看网站</a>
@@ -119,6 +115,7 @@
         <tr>
           <th>ID</th>
           <th>名称</th>
+          <th>简写</th>
           <th>分类</th>
           <th>价格方案</th>
           <th>版本</th>
@@ -157,6 +154,11 @@
           document.getElementById('header-logo-icon').outerHTML =
             '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
+
+        // 应用主题
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
       } catch (error) {
         console.error('Error loading settings:', error);
       }
@@ -180,7 +182,7 @@
       if (!products || products.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align:center; padding: 40px;">
+            <td colspan="8" style="text-align:center; padding: 40px;">
               暂无产品。点击"添加产品"创建一个新产品。
             </td>
           </tr>
@@ -202,6 +204,7 @@
           <tr>
             <td>${escapeHtml(product.id)}</td>
             <td><strong>${escapeHtml(product.name)}</strong></td>
+            <td><code>${escapeHtml(product.shortName || '-')}</code></td>
             <td>${escapeHtml(product.category)}</td>
             <td>${priceDisplay}</td>
             <td>${escapeHtml(product.version)}</td>
@@ -250,6 +253,31 @@
       }
     }
 
+    // 侧边栏子菜单切换
+    function toggleSidebarSubmenu(link) {
+      const submenu = link.nextElementSibling;
+      if (submenu && submenu.classList.contains('sidebar-submenu')) {
+        submenu.classList.toggle('open');
+        link.classList.toggle('open');
+      }
+    }
+
+    // 高亮当前页面
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+      const href = link.getAttribute('href');
+      if (href === currentPath || href === currentPath + '/') {
+        link.classList.add('active');
+        // 如果在子菜单中，展开父级
+        const submenu = link.closest('.sidebar-submenu');
+        if (submenu) {
+          submenu.classList.add('open');
+          const parentLink = submenu.previousElementSibling;
+          if (parentLink) parentLink.classList.add('open');
+        }
+      }
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
       loadSettings();
       loadProducts();
@@ -267,14 +295,6 @@
       if (navItem) navItem.classList.add('open');
       }
     }
-
-    // 高亮当前页面链接
-    const currentPath = window.location.pathname;
-    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
-      if (link.getAttribute('href') === currentPath) {
-        link.classList.add('active');
-      }
-    });
   </script>
 </body>
 </html>

@@ -1548,19 +1548,55 @@ app.post('/api/install', async (req, res) => {
     return res.status(400).json({ error: '请填写必填字段' });
   }
 
-  // 检查MAC地址是否已被激活该软件（一个MAC可以激活多个不同软件）
+  // 支持简写名称，查询实际产品信息
+  let productInfo = null;
+  if (softwareName) {
+    productInfo = await db.getProductByShortName(softwareName);
+    if (!productInfo) {
+      // 如果找不到，尝试按名称查找
+      productInfo = await db.getProduct(softwareName);
+    }
+  }
+  const actualSoftwareName = productInfo ? productInfo.name : softwareName;
+  const softwareShortName = productInfo ? productInfo.shortName : softwareName;
+
+  // 检查MAC地址是否已被注册该软件（一个MAC可以激活多个不同软件）
   if (macAddress) {
-    const existingMac = await db.checkMacAddressRegistration(macAddress, softwareName);
-    if (existingMac) {
+    // 检查 activations 表
+    const existingMacAct = await db.checkMacAddressRegistration(macAddress, actualSoftwareName);
+    if (existingMacAct) {
       return res.status(400).json({
         error: '该MAC地址已激活此软件，如需续期请联系管理员',
-        installation: existingMac
+        installation: existingMacAct
+      });
+    }
+    // 检查 installations 表（试用注册）
+    const macRows = await db.query(
+      "SELECT * FROM installations WHERE mac_address = ? AND software_name = ?",
+      [macAddress, actualSoftwareName]
+    );
+    const rows = Array.isArray(macRows) ? macRows : [];
+    if (rows.length > 0) {
+      const existing = rows[0];
+      const expireDate = new Date(existing.expire_date);
+      const remainingDays = Math.ceil((expireDate - new Date()) / (24 * 60 * 60 * 1000));
+      return res.status(400).json({
+        error: '该MAC地址已注册此软件，如需续期请联系管理员',
+        installation: {
+          id: existing.id,
+          softwareName: existing.software_name,
+          softwareShortName: softwareShortName,
+          macAddress: existing.mac_address,
+          installDate: existing.install_date,
+          expireDate: existing.expire_date,
+          remainingDays: remainingDays
+        }
       });
     }
   }
 
   // 检查是否已存在有效注册（同一软件+邮箱）
-  const existing = await db.checkInstallation(softwareName, userEmail);
+  const existing = await db.checkInstallation(actualSoftwareName, userEmail);
   if (existing && existing.remainingDays > 0) {
     return res.status(400).json({
       error: '该软件已注册',
@@ -1570,7 +1606,8 @@ app.post('/api/install', async (req, res) => {
   }
 
   const installation = await db.createInstallation({
-    softwareName,
+    softwareName: actualSoftwareName,
+    softwareShortName: softwareShortName,
     softwareVersion,
     userName,
     userEmail,
@@ -1677,104 +1714,116 @@ app.post('/api/install/check', async (req, res) => {
     });
   }
 
-  // 2. 如果提供了MAC地址，检查MAC注册记录
+  // 2. 如果提供了MAC地址，检查注册和激活状态
   if (macAddress) {
-    const existingMac = await db.checkMacAddressRegistration(macAddress, softwareName);
-    if (existingMac) {
-      const isExpired = new Date(existingMac.expireDate) < new Date();
-      // 同时检查该MAC是否有激活记录
-      const activation = await db.checkActivation(softwareName, null, macAddress);
+    // 2.1 检查 activations 表（已授权激活）
+    const activationRows = await db.query(
+      "SELECT * FROM activations WHERE mac_address = ? AND software_name = ?",
+      [macAddress, softwareName]
+    );
+    const activationArr = Array.isArray(activationRows) ? activationRows : [];
+    const hasActivation = activationArr.length > 0;
+
+    // 2.2 检查 installations 表（试用注册）
+    const installRows = await db.query(
+      "SELECT * FROM installations WHERE mac_address = ? AND software_name = ?",
+      [macAddress, softwareName]
+    );
+    const installArr = Array.isArray(installRows) ? installRows : [];
+    const hasInstallation = installArr.length > 0;
+
+    // 情况1：已激活（activations表有记录）
+    if (hasActivation) {
+      const act = activationArr[0];
+      const actExpireDate = new Date(act.expire_date);
+      const actRemaining = Math.ceil((actExpireDate - new Date()) / (24 * 60 * 60 * 1000));
+      const actExpired = actRemaining <= 0;
+
       return res.json({
-        registered: true,
-        expired: isExpired,
-        macRegistered: true,
-        activated: !!activation,
-        activatedExpired: activation ? new Date(activation.expireDate) < new Date() : null,
-        message: isExpired ? 'MAC地址已注册但已过期' : 'MAC地址已注册',
+        registered: true,        // 已注册/安装
+        activated: true,        // 已激活（授权）
+        expired: actExpired,    // 激活是否过期
+        activationExpired: actExpired,
+        message: actExpired ? '已激活但已过期' : '已激活（永久授权）',
         installation: {
-          softwareName: existingMac.softwareName,
-          userEmail: existingMac.email,
-          installDate: existingMac.installDate,
-          expireDate: existingMac.expireDate
+          softwareName: act.software_name,
+          userEmail: act.email,
+          installDate: act.install_date,
+          expireDate: act.expire_date,
+          remainingDays: actRemaining
         },
-        activation: activation ? {
-          activationKey: activation.activationKey,
-          activateDate: activation.activateDate,
-          expireDate: activation.expireDate,
-          status: activation.status
-        } : null
+        activation: {
+          activationKey: act.activation_key,
+          activateDate: act.activate_date,
+          expireDate: act.expire_date,
+          status: act.status
+        }
       });
     }
+
+    // 情况2：已注册但未激活（installations表有记录，activations表无记录）
+    if (hasInstallation) {
+      const inst = installArr[0];
+      const instExpireDate = new Date(inst.expire_date);
+      const instRemaining = Math.ceil((instExpireDate - new Date()) / (24 * 60 * 60 * 1000));
+      const instExpired = instRemaining <= 0;
+
+      return res.json({
+        registered: true,        // 已注册/安装
+        activated: false,        // 未激活（只有试用期）
+        expired: instExpired,    // 试用期是否过期
+        activationExpired: null,
+        message: instExpired ? '试用期已过期，请激活' : '试用期（剩余' + instRemaining + '天）',
+        installation: {
+          softwareName: inst.software_name,
+          userEmail: inst.user_email,
+          macAddress: inst.mac_address,
+          installDate: inst.install_date,
+          expireDate: inst.expire_date,
+          remainingDays: instRemaining
+        },
+        activation: null
+      });
+    }
+
+    // 情况3：未注册
     return res.json({
       registered: false,
-      macRegistered: false,
       activated: false,
-      message: 'MAC地址未注册'
+      expired: false,
+      activationExpired: null,
+      message: 'MAC地址未注册',
+      installation: null,
+      activation: null
     });
   }
 
-  // 原有的邮箱验证逻辑
-  if (!softwareName || !userEmail) {
-    return res.status(400).json({ error: '请提供软件名称和邮箱或MAC地址或激活码' });
+  // 3. 如果提供了邮箱，检查邮箱注册记录（原逻辑）
+  if (userEmail) {
+    const existing = await db.checkInstallation(softwareName, userEmail);
+    if (existing) {
+      const isExpired = existing.remainingDays <= 0;
+      return res.json({
+        registered: true,
+        activated: false,
+        expired: isExpired,
+        activationExpired: null,
+        message: isExpired ? '试用期已过期' : '试用期（剩余' + existing.remainingDays + '天）',
+        installation: existing,
+        activation: null
+      });
+    }
   }
 
-  const installation = await db.checkInstallation(softwareName, userEmail);
-  const activation = await db.checkActivation(softwareName, userEmail, null);
-
-  if (!installation) {
-    return res.status(404).json({
-      error: '未找到注册记录',
-      registered: false,
-      activated: !!activation,
-      activatedExpired: activation ? new Date(activation.expireDate) < new Date() : null,
-      activation: activation ? {
-        activationKey: activation.activationKey,
-        activateDate: activation.activateDate,
-        expireDate: activation.expireDate,
-        status: activation.status
-      } : null
-    });
-  }
-
-  const isExpired = installation.remainingDays <= 0;
-
-  if (isExpired) {
-    return res.json({
-      registered: true,
-      expired: true,
-      activated: !!activation,
-      activatedExpired: activation ? new Date(activation.expireDate) < new Date() : null,
-      message: '注册已过期，请续期',
-      installation: {
-        softwareName: installation.softwareName,
-        expireDate: installation.expireDate
-      },
-      activation: activation ? {
-        activationKey: activation.activationKey,
-        activateDate: activation.activateDate,
-        expireDate: activation.expireDate,
-        status: activation.status
-      } : null
-    });
-  }
-
-  res.json({
-    registered: true,
+  // 4. 默认返回未注册
+  return res.json({
+    registered: false,
+    activated: false,
     expired: false,
-    activated: !!activation,
-    activatedExpired: activation ? new Date(activation.expireDate) < new Date() : null,
-    remainingDays: installation.remainingDays,
-    installation: {
-      softwareName: installation.softwareName,
-      installDate: installation.installDate,
-      expireDate: installation.expireDate
-    },
-    activation: activation ? {
-      activationKey: activation.activationKey,
-      activateDate: activation.activateDate,
-      expireDate: activation.expireDate,
-      status: activation.status
-    } : null
+    activationExpired: null,
+    message: '未找到注册记录',
+    installation: null,
+    activation: null
   });
 });
 
@@ -1837,7 +1886,7 @@ app.get('/api/products/:id', async (req, res) => {
 
 // 添加产品（需登录）
 app.post('/api/products', requireAuth, async (req, res) => {
-  const { name, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg } = req.body;
+  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg } = req.body;
 
   if (!name || !price) {
     return res.status(400).json({ error: 'Name and price are required' });
@@ -1845,6 +1894,7 @@ app.post('/api/products', requireAuth, async (req, res) => {
 
   const newProduct = await db.addProduct({
     name,
+    shortName: shortName || '',
     category: category || 'General',
     price: parseFloat(price),
     pricingTiers: pricingTiers || null,
@@ -1866,10 +1916,11 @@ app.post('/api/products', requireAuth, async (req, res) => {
 
 // 更新产品（需登录）
 app.put('/api/products/:id', requireAuth, async (req, res) => {
-  const { name, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg } = req.body;
+  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg } = req.body;
 
   const updates = {};
   if (name) updates.name = name;
+  if (shortName !== undefined) updates.shortName = shortName;
   if (category) updates.category = category;
   if (price) updates.price = parseFloat(price);
   if (pricingTiers) updates.pricingTiers = pricingTiers;
@@ -3421,7 +3472,7 @@ app.get('/login', (req, res) => {
 });
 
 app.get('/admin-product', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin-list.html'));
+  res.sendFile(path.join(__dirname, 'public', 'admin-product.html'));
 });
 
 app.get('/admin-list', (req, res) => {
@@ -3552,6 +3603,14 @@ app.get('/admin-support', (req, res) => {
 
 app.get('/admin-installations', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-installations.html'));
+});
+
+app.get('/admin-telemetry', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin-telemetry.html'));
+});
+
+app.get('/admin-banners', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin-banners.html'));
 });
 
 // ============ API路由 - 技术支持工单 ============
