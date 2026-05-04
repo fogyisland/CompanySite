@@ -419,7 +419,7 @@
             <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(items)}</td>
             <td>¥${escapeHtml(order.totalAmount)}</td>
             <td><span class="status-badge ${escapeHtml(statusClass)}">${escapeHtml(statusText)}</span></td>
-            <td>${escapeHtml(new Date(order.createdAt).toLocaleString())}</td>
+            <td>${escapeHtml(new Date(order.createdAt || order.created_at).toLocaleString('zh-CN'))}</td>
             <td>${actionBtn}</td>
           </tr>
         `;

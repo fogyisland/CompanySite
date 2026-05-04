@@ -965,13 +965,6 @@
       navItem.classList.toggle('open');
     }
 
-    // 高亮当前页面链接
-    const currentPath = window.location.pathname;
-    document.querySelectorAll('.nav-submenu-block a').forEach(link => {
-      if (link.getAttribute('href') === currentPath) {
-        link.classList.add('active');
-      }
-    });
   </script>
 </body>
 </html>

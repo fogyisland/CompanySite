@@ -168,7 +168,7 @@
               <td style="font-family: monospace;" title="${escapeHtml(keyDisplay)}">${escapeHtml(maskedKey)}</td>
               <td><span class="status ${statusClass}">${escapeHtml(log.status || '-')}</span></td>
               <td>${escapeHtml(log.ip || '-')}</td>
-              <td>${escapeHtml(new Date(log.createdAt).toLocaleString())}</td>
+              <td>${escapeHtml(new Date(log.createdAt || log.created_at).toLocaleString('zh-CN'))}</td>
             </tr>
           `;
         }).join('');

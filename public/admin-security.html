@@ -552,7 +552,7 @@
             <div class="blocked-info">
               <div class="blocked-ip">${escapeHtml(item.ip)}</div>
               <div class="blocked-reason">${escapeHtml(item.reason)}</div>
-              <div class="blocked-time">封禁于：${escapeHtml(new Date(item.blockedAt).toLocaleString())} | 解封：${escapeHtml(new Date(item.until).toLocaleString())}</div>
+              <div class="blocked-time">封禁于：${escapeHtml(new Date(item.blockedAt).toLocaleString('zh-CN'))} | 解封：${escapeHtml(new Date(item.until).toLocaleString('zh-CN'))}</div>
             </div>
             <button class="btn-unblock" onclick="unblockIP('${escapeHtml(item.ip)}')">解封</button>
           </div>
@@ -601,7 +601,7 @@
             <div class="blocked-info">
               <div class="blocked-ip">${escapeHtml(item.ip)}</div>
               <div class="blocked-reason">${escapeHtml(item.reason)}</div>
-              <div class="blocked-time">解封时间：${escapeHtml(new Date(item.until).toLocaleString())}</div>
+              <div class="blocked-time">解封时间：${escapeHtml(new Date(item.until).toLocaleString('zh-CN'))}</div>
             </div>
             <button class="btn-unblock" onclick="unblockApiIP('${escapeHtml(item.ip)}')">解封</button>
           </div>
