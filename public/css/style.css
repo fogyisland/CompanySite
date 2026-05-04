@@ -1115,7 +1115,7 @@ footer .container {
 }
 
 .admin-header h1 {
-  font-size: 28px;
+  font-size: 32px;
 }
 
 .admin-actions {
@@ -1140,6 +1140,7 @@ footer .container {
 .admin-table th {
   background: var(--secondary);
   font-weight: 600;
+  font-size: 15px;
 }
 
 .admin-table tr:hover {
@@ -1787,7 +1788,7 @@ footer .container {
   color: var(--text);
   text-decoration: none;
   transition: all 0.2s;
-  font-size: 15px;
+  font-size: 16px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1835,7 +1836,7 @@ footer .container {
 
 .sidebar-submenu a {
   padding-left: 50px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-light);
 }
 
@@ -1876,6 +1877,7 @@ footer .container {
   padding: 30px;
   min-width: 0;
   background: var(--bg);
+  font-size: 15px;
 }
 
 /* 响应式 */

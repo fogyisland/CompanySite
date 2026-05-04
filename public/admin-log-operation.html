@@ -159,7 +159,7 @@
             <td>${escapeHtml(log.target || '-')}</td>
             <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(log.details || '')}">${escapeHtml(log.details || '-')}</td>
             <td>${escapeHtml(log.ip || '-')}</td>
-            <td>${escapeHtml(new Date(log.created_at).toLocaleString())}</td>
+            <td>${escapeHtml(new Date(log.created_at).toLocaleString('zh-CN'))}</td>
           </tr>
         `).join('');
       } catch (error) {

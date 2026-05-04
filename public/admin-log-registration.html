@@ -158,7 +158,7 @@
               <td>${escapeHtml(displayName)}</td>
               <td>${escapeHtml(log.ip)}</td>
               <td><span class="status ${statusClass}">${escapeHtml(log.status || '-')}</span></td>
-              <td>${escapeHtml(new Date(log.created_at).toLocaleString())}</td>
+              <td>${escapeHtml(new Date(log.created_at).toLocaleString('zh-CN'))}</td>
             </tr>
           `;
         }).join('');

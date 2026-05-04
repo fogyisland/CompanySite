@@ -827,8 +827,11 @@
     // 切换价格方案显示
     document.getElementById('usePricingTiers').addEventListener('change', function() {
       document.getElementById('pricingTiersSection').style.display = this.checked ? 'block' : 'none';
-      if (this.checked && pricingTiers.length === 0) {
-        pricingTiers = [...defaultTiers];
+      if (this.checked) {
+        // 如果tiers为空或未初始化，使用默认值
+        if (!pricingTiers || pricingTiers.length === 0) {
+          pricingTiers = [...defaultTiers];
+        }
         renderPricingTiers();
       }
     });

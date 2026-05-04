@@ -1103,6 +1103,10 @@ app.post('/api/orders/:id/generate-code', requireAuth, async (req, res) => {
   // 保存验证码到订单
   await db.updateOrderVerificationCode(order.id, code);
 
+  // 记录操作日志
+  const adminUsername = req.session.userName || req.session.username || 'admin';
+  db.addOperationLog(adminUsername, 'ORDER_GENERATE_CODE', String(order.id), `Generated verification code for order #${order.id}`);
+
   res.json({ success: true, code: code });
 });
 
@@ -1130,6 +1134,10 @@ app.post('/api/orders/:id/generate-activation-codes', requireAuth, async (req, r
     // 保存激活码到订单
     const result = await db.updateOrderActivationCodes(order.id, activationCodes);
     console.log('Update result:', result);
+
+    // 记录操作日志
+    const adminUsername = req.session.userName || req.session.username || 'admin';
+    db.addOperationLog(adminUsername, 'ORDER_GENERATE_CODES', String(order.id), `Generated activation codes for order #${order.id}`);
 
     res.json({ success: true, activationCodes: activationCodes });
   } catch (error) {
@@ -1912,6 +1920,9 @@ app.post('/api/products', requireAuth, async (req, res) => {
   });
 
   res.status(201).json(newProduct);
+  // 记录操作日志
+  const username = req.session.userName || req.session.username || 'admin';
+  db.addOperationLog(username, 'PRODUCT_CREATE', newProduct.id, `Created product: ${name}, Price: ${price}`);
 });
 
 // 更新产品（需登录）
@@ -1940,6 +1951,9 @@ app.put('/api/products/:id', requireAuth, async (req, res) => {
   if (!updated) {
     return res.status(404).json({ error: 'Product not found' });
   }
+  // 记录操作日志
+  const username = req.session.userName || req.session.username || 'admin';
+  db.addOperationLog(username, 'PRODUCT_UPDATE', req.params.id, `Updated product: ${name || updated.name}, Price: ${price || updated.price}`);
   res.json(updated);
 });
 
@@ -2004,6 +2018,9 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
     }
 
     res.json({ success: true });
+    // 记录操作日志
+    const username = req.session.userName || req.session.username || 'admin';
+    db.addOperationLog(username, 'PRODUCT_DELETE', req.params.id, `Deleted product: ${product.name}`);
   } catch (error) {
     console.error('Delete product error:', error);
     res.status(500).json({ error: '删除产品失败' });
@@ -2155,6 +2172,10 @@ app.put('/api/settings', requireAuth, async (req, res) => {
   if (siteTheme !== undefined) updates.siteTheme = siteTheme;
 
   const settings = await db.updateSettings(updates);
+  // 记录操作日志
+  const username = req.session.userName || req.session.username || 'admin';
+  const changedFields = Object.keys(updates).join(', ');
+  db.addOperationLog(username, 'SETTINGS_UPDATE', 'website', `Updated settings: ${changedFields}`);
   res.json(settings);
 });
 
@@ -2176,6 +2197,10 @@ app.post('/api/settings', requireAuth, async (req, res) => {
   if (siteTheme !== undefined) updates.siteTheme = siteTheme;
 
   const settings = await db.updateSettings(updates);
+  // 记录操作日志
+  const username = req.session.userName || req.session.username || 'admin';
+  const changedFields = Object.keys(updates).join(', ');
+  db.addOperationLog(username, 'SETTINGS_UPDATE', 'website', `Updated settings: ${changedFields}`);
   res.json(settings);
 });
 
@@ -3479,8 +3504,8 @@ app.get('/admin-list', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-list.html'));
 });
 
-app.get('/admin.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+app.get('/ProductManagement', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'ProductManagement.html'));
 });
 
 app.get('/admin-settings', (req, res) => {

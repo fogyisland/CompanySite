@@ -87,7 +87,7 @@
       <h1>产品管理</h1>
       <div class="admin-actions">
         <a href="/" class="btn btn-outline btn-small">查看网站</a>
-        <a href="/admin.html" class="btn btn-primary btn-small">+ 添加产品</a>
+        <a href="/ProductManagement" class="btn btn-primary btn-small">+ 添加产品</a>
       </div>
     </div>
 
@@ -210,7 +210,7 @@
             <td>${escapeHtml(product.version)}</td>
             <td>${escapeHtml(product.platform)}</td>
             <td class="table-actions">
-              <a href="/admin.html?id=${escapeHtml(product.id)}" class="btn-edit" style="text-decoration:none;">编辑</a>
+              <a href="/ProductManagement?id=${escapeHtml(product.id)}" class="btn-edit" style="text-decoration:none;">编辑</a>
               <button class="btn-delete" onclick="deleteProduct(${escapeHtml(product.id)})">删除</button>
             </td>
           </tr>
