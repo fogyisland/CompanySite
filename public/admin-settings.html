@@ -129,6 +129,42 @@
       color: #d32f2f;
       display: block;
     }
+    /* Theme Preview Grid */
+    .theme-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .theme-preview-card {
+      background: var(--white);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      text-align: center;
+    }
+    .theme-preview-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      border-color: var(--text-light);
+    }
+    .theme-preview-card.selected {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    .theme-preview-swatch {
+      width: 100%;
+      height: 60px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .theme-preview-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
   </style>
 </head>
 <body>
@@ -243,22 +279,50 @@
 
         <div class="form-section">
           <h3 class="section-title">主题设置</h3>
-          <div class="form-group">
-            <label for="siteTheme">选择主题</label>
-            <select id="siteTheme" name="siteTheme" style="width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px;">
-              <option value="default">系统默认 (Default)</option>
-              <option value="minimal">硬核极简 (Minimal)</option>
-              <option value="soft">柔和科技 (Soft)</option>
-              <option value="glass">玻璃质感 (Glass)</option>
-              <option value="bento">便当盒布局 (Bento)</option>
-              <option value="dark">深夜模式 (Dark)</option>
-              <option value="warm">暖纸风格 (Warm)</option>
-              <option value="cyber">赛博朋克 (Cyber)</option>
-              <option value="editorial">杂志风 (Editorial)</option>
-              <option value="liquid">液体视网膜 (Liquid)</option>
-            </select>
-            <small style="color: var(--text-light); font-size: 12px; margin-top: 4px; display: block;">选择网站使用的主题风格</small>
+          <div class="theme-preview-grid" id="themePreview">
+            <div class="theme-preview-card" data-theme="default" onclick="selectTheme('default')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, #133c8a 0%, #0a2644 100%);"></div>
+              <span class="theme-preview-name">系统默认</span>
+            </div>
+            <div class="theme-preview-card" data-theme="minimal" onclick="selectTheme('minimal')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, #000000 0%, #333333 100%);"></div>
+              <span class="theme-preview-name">硬核极简</span>
+            </div>
+            <div class="theme-preview-card" data-theme="soft" onclick="selectTheme('soft')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);"></div>
+              <span class="theme-preview-name">柔和科技</span>
+            </div>
+            <div class="theme-preview-card" data-theme="glass" onclick="selectTheme('glass')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, rgba(139,92,246,0.6) 0%, rgba(255,255,255,0.3) 100%); backdrop-filter: blur(10px);"></div>
+              <span class="theme-preview-name">玻璃质感</span>
+            </div>
+            <div class="theme-preview-card" data-theme="bento" onclick="selectTheme('bento')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, #0071e3 0%, #00c7ff 100%);"></div>
+              <span class="theme-preview-name">便当盒布局</span>
+            </div>
+            <div class="theme-preview-card" data-theme="dark" onclick="selectTheme('dark')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%); border: 1px solid #00d4ff;"></div>
+              <span class="theme-preview-name">深夜模式</span>
+            </div>
+            <div class="theme-preview-card" data-theme="warm" onclick="selectTheme('warm')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, #c97c4a 0%, #e8a87c 100%);"></div>
+              <span class="theme-preview-name">暖纸风格</span>
+            </div>
+            <div class="theme-preview-card" data-theme="cyber" onclick="selectTheme('cyber')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, #0a0a0f 0%, #1e1e3a 100%); border: 2px solid #00ffff;"></div>
+              <span class="theme-preview-name">赛博朋克</span>
+            </div>
+            <div class="theme-preview-card" data-theme="editorial" onclick="selectTheme('editorial')">
+              <div class="theme-preview-swatch" style="background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%); border: 1px solid #d62828;"></div>
+              <span class="theme-preview-name">杂志风</span>
+            </div>
+            <div class="theme-preview-card" data-theme="liquid" onclick="selectTheme('liquid')">
+              <div class="theme-preview-swatch" style="background: radial-gradient(circle at 30% 30%, #64ffda 0%, #000000 70%);"></div>
+              <span class="theme-preview-name">液体视网膜</span>
+            </div>
           </div>
+          <input type="hidden" id="siteTheme" name="siteTheme" value="">
+          <small style="color: var(--text-light); font-size: 13px; margin-top: 8px; display: block;">点击选择主题</small>
         </div>
 
         <div class="form-actions">
@@ -270,6 +334,16 @@
   </main></div>
 
   <script>
+    // 主题选择
+    function selectTheme(theme) {
+      document.querySelectorAll('.theme-preview-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      document.querySelector(`.theme-preview-card[data-theme="${theme}"]`).classList.add('selected');
+      document.getElementById('siteTheme').value = theme;
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+
     // 加载设置
     async function loadSettings() {
       try {
@@ -305,6 +379,7 @@
         // 应用主题
         if (settings.siteTheme) {
           document.documentElement.setAttribute('data-theme', settings.siteTheme);
+          selectTheme(settings.siteTheme);
         }
       } catch (error) {
         console.error('Error loading settings:', error);
