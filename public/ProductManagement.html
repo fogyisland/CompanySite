@@ -9,17 +9,24 @@
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <style>
     .admin-container { max-width: 1000px; }
-    .page-title { font-size: 24px; margin-bottom: 30px; }
+    .page-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 28px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
     .form-card {
       background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
       padding: 40px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
     }
     .form-section {
-      margin-bottom: 30px;
-      padding-bottom: 30px;
-      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
     }
     .form-section:last-child {
       margin-bottom: 0;
@@ -27,179 +34,204 @@
       border-bottom: none;
     }
     .section-title {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 600;
       margin-bottom: 20px;
-      color: var(--primary);
+      color: var(--text);
+      letter-spacing: -0.01em;
     }
-    .form-group { margin-bottom: 20px; }
+    .form-group { margin-bottom: 24px; }
     .form-group label {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       font-weight: 500;
+      font-size: 14px;
+      color: var(--text);
     }
     .form-group input,
     .form-group select,
     .form-group textarea {
       width: 100%;
-      padding: 12px 15px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      padding: 14px 16px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
       font-size: 15px;
+      transition: all 0.2s ease;
     }
     .form-group input:focus,
     .form-group select:focus,
     .form-group textarea:focus {
       outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
     }
     .form-row {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
+      gap: 24px;
     }
     .form-actions {
       display: flex;
-      gap: 15px;
-      margin-top: 30px;
-      padding-top: 30px;
-      border-top: 1px solid var(--border);
+      gap: 16px;
+      margin-top: 32px;
+      padding-top: 28px;
+      border-top: 1px solid rgba(0,0,0,0.06);
     }
     .btn-back {
-      background: var(--secondary);
+      background: rgba(0,0,0,0.04);
       color: var(--text);
-      border: 1px solid var(--border);
-      padding: 12px 24px;
-      border-radius: 6px;
+      border: 1px solid rgba(0,0,0,0.08);
+      padding: 14px 24px;
+      border-radius: 10px;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      font-weight: 500;
+      transition: all 0.2s ease;
     }
     .btn-back:hover {
-      background: var(--border);
+      background: rgba(0,0,0,0.08);
+      transform: translateX(-2px);
     }
     .breadcrumb {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       font-size: 14px;
       color: var(--text-light);
     }
     .breadcrumb a {
-      color: var(--primary);
+      color: #3b82f6;
       text-decoration: none;
+      transition: color 0.2s ease;
     }
-    .breadcrumb a:hover {
-      text-decoration: underline;
-    }
-    .features-input {
-      min-height: 100px;
-    }
+    .breadcrumb a:hover { color: #2563eb; }
+    .features-input { min-height: 120px; }
     .pricing-tiers-section {
-      margin-top: 20px;
-      padding: 20px;
-      background: var(--secondary);
-      border-radius: 8px;
+      margin-top: 24px;
+      padding: 24px;
+      background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(139,92,246,0.04) 100%);
+      border: 1px solid rgba(59,130,246,0.1);
+      border-radius: 14px;
     }
     .pricing-tier-row {
       display: grid;
-      grid-template-columns: 1fr 1fr 100px 40px;
-      gap: 10px;
-      margin-bottom: 10px;
+      grid-template-columns: 1fr 1fr 120px 44px;
+      gap: 12px;
+      margin-bottom: 12px;
       align-items: center;
     }
     .pricing-tier-row input {
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      padding: 12px 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    .pricing-tier-row input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
     }
     .btn-remove-tier {
-      background: #d32f2f;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 10px;
       cursor: pointer;
-      width: 36px;
-      height: 36px;
-      font-size: 18px;
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-remove-tier:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
     }
     .btn-add-tier {
-      background: var(--primary);
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       color: white;
       border: none;
-      border-radius: 6px;
-      padding: 10px 20px;
+      border-radius: 10px;
+      padding: 12px 24px;
       cursor: pointer;
-      margin-top: 10px;
+      margin-top: 16px;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+      transition: all 0.2s ease;
+    }
+    .btn-add-tier:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.45);
     }
     .single-price-group {
       display: flex;
-      gap: 20px;
+      gap: 24px;
       align-items: center;
     }
-    .single-price-group .form-group {
-      flex: 1;
-      margin-bottom: 0;
-    }
+    .single-price-group .form-group { flex: 1; margin-bottom: 0; }
     .use-tiers-checkbox {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-weight: 500;
     }
     .use-tiers-checkbox input {
       width: auto;
     }
-    /* 富文本编辑器样式 */
+    /* Rich text editor styles */
     .rich-editor {
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
       overflow: hidden;
     }
     .rich-toolbar {
       display: flex;
       flex-wrap: wrap;
-      gap: 5px;
-      padding: 10px;
+      gap: 6px;
+      padding: 12px;
       background: var(--secondary);
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
     }
     .rich-toolbar button {
-      padding: 6px 12px;
-      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border: 1px solid rgba(0,0,0,0.08);
       background: var(--white);
-      border-radius: 4px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 13px;
-      transition: all 0.2s;
+      font-weight: 500;
+      transition: all 0.2s ease;
     }
     .rich-toolbar button:hover {
-      background: var(--border);
+      background: rgba(59,130,246,0.08);
+      border-color: rgba(59,130,246,0.3);
     }
     .rich-toolbar button.active {
-      background: var(--primary);
-      color: var(--white);
-      border-color: var(--primary);
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border-color: transparent;
     }
     .rich-content {
       min-height: 200px;
-      padding: 15px;
+      padding: 16px;
       outline: none;
       font-size: 15px;
-      line-height: 1.6;
+      line-height: 1.7;
       background: var(--white);
     }
     .rich-content:empty:before {
       content: attr(data-placeholder);
       color: var(--text-light);
     }
-    .rich-content p { margin: 0 0 10px 0; }
-    .rich-content ul, .rich-content ol { margin: 0 0 10px 0; padding-left: 25px; }
+    .rich-content p { margin: 0 0 12px 0; }
+    .rich-content ul, .rich-content ol { margin: 0 0 12px 0; padding-left: 28px; }
     .rich-content img {
       max-width: 100%;
       height: auto;
-      border-radius: 6px;
-      margin: 10px 0;
+      border-radius: 8px;
+      margin: 12px 0;
     }
     .image-upload-btn {
       position: relative;
@@ -215,27 +247,30 @@
       cursor: pointer;
     }
     .software-upload-section {
-      border: 2px dashed var(--border);
-      border-radius: 8px;
-      padding: 30px;
+      border: 2px dashed rgba(0,0,0,0.12);
+      border-radius: 12px;
+      padding: 36px;
       text-align: center;
-      background: var(--secondary);
+      background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(139,92,246,0.02) 100%);
+      transition: all 0.25s ease;
     }
     .software-upload-section:hover {
-      border-color: var(--primary);
+      border-color: rgba(59,130,246,0.4);
+      background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(139,92,246,0.04) 100%);
     }
     .software-upload-section.has-file {
       border-color: #10b981;
-      background: #ecfdf5;
+      background: linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.08) 100%);
     }
     .software-info {
-      margin-top: 15px;
-      padding: 10px 15px;
+      margin-top: 16px;
+      padding: 14px 18px;
       background: var(--white);
-      border-radius: 6px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .software-info .file-name {
       font-weight: 500;
@@ -243,25 +278,29 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 300px;
+      max-width: 350px;
     }
     .software-info .file-size {
       color: var(--text-light);
       font-size: 13px;
-      margin-left: 10px;
+      margin-left: 14px;
     }
     .btn-remove-file {
-      background: #d32f2f;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
       border: none;
-      border-radius: 4px;
-      padding: 5px 12px;
+      border-radius: 8px;
+      padding: 8px 16px;
       cursor: pointer;
-      font-size: 12px;
-      margin-left: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-left: 14px;
+      box-shadow: 0 2px 6px rgba(239,68,68,0.3);
+      transition: all 0.2s ease;
     }
     .btn-remove-file:hover {
-      background: #b71c1c;
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(239,68,68,0.4);
     }
   </style>
 </head>
@@ -288,22 +327,22 @@
           <li class="has-submenu">
             <a href="#" onclick="toggleSidebarSubmenu(this); return false;"><span>📊 系统日志</span></a>
             <ul class="sidebar-submenu">
-              <li><a href="/admin-log-login">登录日志</a></li>
-              <li><a href="/admin-log-operation">操作日志</a></li>
-              <li><a href="/admin-log-registration">注册日志</a></li>
-              <li><a href="/admin-log-activation">激活日志</a></li>
-              <li><a href="/admin-telemetry">数据遥测</a></li>
+              <li><a href="/admin-log-login">🔐 登录日志</a></li>
+              <li><a href="/admin-log-operation">📝 操作日志</a></li>
+              <li><a href="/admin-log-registration">📝 注册日志</a></li>
+              <li><a href="/admin-log-activation">🔓 激活日志</a></li>
+              <li><a href="/admin-telemetry">📈 数据遥测</a></li>
             </ul>
           </li>
           <li class="has-submenu">
             <a href="#" onclick="toggleSidebarSubmenu(this); return false;"><span>⚙️ 系统设置</span></a>
             <ul class="sidebar-submenu">
-              <li><a href="/admin-settings">网站设置</a></li>
-              <li><a href="/admin-dbsettings">数据库</a></li>
-              <li><a href="/admin-security">安全</a></li>
-              <li><a href="/admin-email">邮件</a></li>
-              <li><a href="/admin-ai">AI设置</a></li>
-              <li><a href="/admin-api">API</a></li>
+              <li><a href="/admin-settings">🌐 网站设置</a></li>
+              <li><a href="/admin-dbsettings">💾 数据库</a></li>
+              <li><a href="/admin-security">🔒 安全</a></li>
+              <li><a href="/admin-email">📨 邮件</a></li>
+              <li><a href="/admin-ai">🤖 AI设置</a></li>
+              <li><a href="/admin-api">🔗 API</a></li>
             </ul>
           </li>
         </ul>
@@ -508,9 +547,9 @@
 
   <script>
     function escapeHtml(text) {
-      if (!text) return '';
+      if (!text && text !== 0) return '';
       const div = document.createElement('div');
-      div.textContent = text;
+      div.textContent = String(text);
       return div.innerHTML;
     }
 
@@ -519,10 +558,9 @@
     let productFeatures = [];
 
     const defaultTiers = [
-      { duration: 1, label: '1个月', price: 0 },
-      { duration: 3, label: '3个月', price: 0 },
-      { duration: 6, label: '6个月', price: 0 },
-      { duration: 12, label: '1年', price: 0 }
+      { duration: 12, label: '1年', price: 1000 },
+      { duration: 24, label: '2年', price: 1900 },
+      { duration: 36, label: '3年', price: 2700 }
     ];
 
     // 解析功能列表
@@ -636,14 +674,14 @@
     function renderPricingTiers() {
       const container = document.getElementById('pricingTiersContainer');
       container.innerHTML = pricingTiers.map((tier, index) => `
-        <div class="pricing-tier-row" data-index="${escapeHtml(index)}">
+        <div class="pricing-tier-row" data-index="${index}">
           <input type="text" value="${escapeHtml(tier.label)}" placeholder="方案名称，如：1个月"
-                 onchange="updateTier(${escapeHtml(index)}, 'label', this.value)">
-          <input type="number" value="${escapeHtml(tier.duration)}" placeholder="时长（月）" min="1"
-                 onchange="updateTier(${escapeHtml(index)}, 'duration', parseInt(this.value) || 1)">
-          <input type="number" value="${escapeHtml(tier.price)}" placeholder="价格" min="0" step="0.01"
-                 onchange="updateTier(${escapeHtml(index)}, 'price', parseFloat(this.value) || 0)">
-          <button type="button" class="btn-remove-tier" onclick="removeTier(${escapeHtml(index)})">&times;</button>
+                 onchange="updateTier(${index}, 'label', this.value)">
+          <input type="number" value="${tier.duration}" placeholder="时长（月）" min="1"
+                 onchange="updateTier(${index}, 'duration', parseInt(this.value) || 1)">
+          <input type="number" value="${tier.price}" placeholder="价格" min="0" step="0.01"
+                 onchange="updateTier(${index}, 'price', parseFloat(this.value) || 0)">
+          <button type="button" class="btn-remove-tier" onclick="removeTier(${index})">&times;</button>
         </div>
       `).join('');
     }
@@ -826,13 +864,13 @@
 
     // 切换价格方案显示
     document.getElementById('usePricingTiers').addEventListener('change', function() {
-      document.getElementById('pricingTiersSection').style.display = this.checked ? 'block' : 'none';
+      const section = document.getElementById('pricingTiersSection');
       if (this.checked) {
-        // 如果tiers为空或未初始化，使用默认值
-        if (!pricingTiers || pricingTiers.length === 0) {
-          pricingTiers = [...defaultTiers];
-        }
+        section.style.display = 'block';
+        // 总是重新渲染以确保显示最新数据
         renderPricingTiers();
+      } else {
+        section.style.display = 'none';
       }
     });
 
