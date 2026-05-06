@@ -128,9 +128,28 @@ nav a {
   text-decoration: none;
   font-weight: 500;
   font-size: 14px;
-  transition: color 0.2s;
+  transition: all 0.2s;
   position: relative;
   padding: 5px 0;
+}
+
+nav a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary);
+  transition: width 0.25s ease;
+}
+
+nav a:hover {
+  color: var(--primary);
+}
+
+nav a:hover::after {
+  width: 100%;
 }
 
 nav a::after {
