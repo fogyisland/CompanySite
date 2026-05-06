@@ -14,26 +14,30 @@
     }
     .faq-header {
       text-align: center;
-      margin-bottom: 40px;
+      margin-bottom: 48px;
     }
     .faq-header h1 {
-      font-size: 32px;
-      margin-bottom: 10px;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
     }
     .faq-header p {
       color: var(--text-light);
-      font-size: 16px;
+      font-size: 17px;
     }
     .faq-list {
       background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 30px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
+      padding: 36px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
     }
     .faq-item {
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 20px;
-      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      padding-bottom: 24px;
+      margin-bottom: 24px;
     }
     .faq-item:last-child {
       border-bottom: none;
@@ -43,64 +47,87 @@
     .faq-question {
       font-weight: 600;
       font-size: 16px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       color: var(--text);
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      transition: color 0.2s;
+    }
+    .faq-question:hover {
+      color: var(--primary);
     }
     .faq-question::before {
       content: 'Q';
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: var(--white);
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: 13px;
       flex-shrink: 0;
+      box-shadow: 0 3px 8px rgba(19, 60, 138, 0.25);
     }
     .faq-answer {
       color: var(--text-light);
-      line-height: 1.7;
-      font-size: 14px;
-      padding-left: 34px;
+      line-height: 1.8;
+      font-size: 15px;
+      padding-left: 40px;
     }
     .loading {
       text-align: center;
-      padding: 40px;
+      padding: 48px;
       color: var(--text-light);
     }
     .contact-box {
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: var(--white);
-      border-radius: 8px;
-      padding: 40px;
+      border-radius: 16px;
+      padding: 48px;
       text-align: center;
-      margin-top: 40px;
+      margin-top: 48px;
+      position: relative;
+      overflow: hidden;
     }
+    .contact-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, transparent 70%);
+    }
+    .contact-box > * { position: relative; z-index: 1; }
     .contact-box h3 {
       font-size: 24px;
-      margin-bottom: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
     }
     .contact-box p {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       opacity: 0.9;
+      font-size: 15px;
     }
     .contact-box a {
       display: inline-block;
-      padding: 12px 30px;
+      padding: 14px 32px;
       background: var(--white);
       color: var(--primary);
       text-decoration: none;
-      border-radius: 6px;
+      border-radius: 10px;
       font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     }
     .contact-box a:hover {
-      background: #f0f0f0;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.2);
     }
   </style>
 </head>
