@@ -11,15 +11,16 @@
     .admin-container { max-width: 1000px; }
     .form-card {
       background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 30px;
-      margin-bottom: 20px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
     }
     .form-section {
-      margin-bottom: 30px;
-      padding-bottom: 30px;
-      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
     }
     .form-section:last-child {
       margin-bottom: 0;
@@ -27,37 +28,39 @@
       border-bottom: none;
     }
     .section-title {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 600;
       margin-bottom: 20px;
-      color: var(--primary);
+      color: var(--text);
     }
-    .form-group { margin-bottom: 20px; }
+    .form-group { margin-bottom: 24px; }
     .form-group label {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       font-weight: 500;
+      font-size: 14px;
     }
     .form-group input,
     .form-group select,
     .form-group textarea {
       width: 100%;
-      padding: 12px 15px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 14px;
+      padding: 14px 16px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
+      font-size: 15px;
+      transition: all 0.2s ease;
     }
     .form-group input:focus,
     .form-group textarea:focus {
       outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
     }
     .form-group small {
       display: block;
-      margin-top: 6px;
+      margin-top: 8px;
       color: var(--text-light);
-      font-size: 12px;
+      font-size: 13px;
     }
     .form-actions {
       display: flex;

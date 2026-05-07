@@ -16,23 +16,28 @@
     }
     .banner-item {
       background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
+      padding: 24px;
       display: flex;
-      gap: 20px;
+      gap: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .banner-preview {
       width: 300px;
       height: 150px;
-      border: 2px dashed var(--border);
-      border-radius: 6px;
+      border: 2px dashed rgba(0,0,0,0.1);
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
       background: var(--secondary);
       flex-shrink: 0;
+      transition: border-color 0.2s ease;
+    }
+    .banner-preview:hover {
+      border-color: var(--primary);
     }
     .banner-preview img {
       max-width: 100%;
@@ -49,15 +54,16 @@
       flex-direction: column;
     }
     .banner-form .form-group {
-      margin-bottom: 15px;
+      margin-bottom: 16px;
     }
     .banner-form textarea {
       width: 100%;
       min-height: 80px;
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      padding: 12px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
       resize: vertical;
+      font-size: 14px;
     }
     .banner-form input[type="text"] {
       width: 100%;
