@@ -8,7 +8,9 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <style>
-    .admin-container { max-width: 1200px; }
+    .admin-main {
+      max-width: 1400px;
+    }
     .page-header {
       display: flex;
       justify-content: space-between;
@@ -543,7 +545,7 @@
       if (activationCodes.length > 0) {
         codesHtml = activationCodes.map(code => `<div style="margin: 8px 0; padding: 8px; background: #f0f7ff; border-radius: 4px; font-family: monospace; font-size: 14px; letter-spacing: 1px;">${code}</div>`).join('');
       } else {
-        codesHtml = '<p style="color: #666;">暂无授权码</p><button class="btn btn-primary" onclick="regenerateActivationCodes(' + order.id + ')" style="margin-top: 10px; padding: 8px 16px; border: none; border-radius: 4px; background: var(--primary); color: white; cursor: pointer;">点击生成授权码</button>';
+        codesHtml = '<p style="color: #666;">暂无授权码</p><button class="btn btn-primary" onclick="regenerateActivationCodes(' + order.id + ')">点击生成授权码</button>';
       }
 
       document.getElementById('modal-content').innerHTML = `
@@ -576,7 +578,7 @@
           ${codesHtml}
           <div style="margin-top: 10px; display: flex; gap: 10px;">
             ${activationCodes.length > 0 ? '<button class="copy-btn" onclick="copyAllCodes()">复制全部授权码</button>' : ''}
-            ${order.status === 'paid' ? '<button class="btn btn-primary" onclick="regenerateActivationCodes(' + order.id + ')" style="padding: 8px 16px; border: none; border-radius: 4px; background: var(--primary); color: white; cursor: pointer;">重新生成授权码</button>' : ''}
+            ${order.status === 'paid' ? '<button class="btn btn-primary" onclick="regenerateActivationCodes(' + order.id + ')">重新生成授权码</button>' : ''}
           </div>
         </div>
       `;

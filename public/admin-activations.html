@@ -519,7 +519,7 @@
             <option value="inactive" ${activation.status === 'inactive' ? 'selected' : ''}>未激活</option>
             <option value="blocked" ${activation.status === 'blocked' ? 'selected' : ''}>已封禁</option>
           </select>
-          <button onclick="updateStatus(${activation.id})" style="margin-top: 10px; padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; width: 100%;">保存状态</button>
+          <button onclick="updateStatus(${activation.id})" class="btn btn-primary" style="width: 100%;">保存状态</button>
         </div>
       `;
       document.getElementById('detail-modal').classList.add('active');

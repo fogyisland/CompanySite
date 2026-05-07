@@ -266,8 +266,14 @@ async function createTablesIfNotExist() {
 async function initDefaultData() {
   const [adminRows] = await mysqlPool.query('SELECT COUNT(*) as c FROM admin');
   if (adminRows[0].c === 0) {
-    const hash = await bcrypt.hash('Fog909217', SALT_ROUNDS);
+    // Default admin password should be set via ADMIN_INITIAL_PASSWORD env var
+    // If not set, use a random password and log it
+    const defaultPassword = process.env.ADMIN_INITIAL_PASSWORD || require('crypto').randomBytes(8).toString('hex');
+    const hash = await bcrypt.hash(defaultPassword, SALT_ROUNDS);
     await mysqlPool.query("INSERT INTO admin (id, username, password) VALUES (1, 'admin', ?)", [hash]);
+    if (!process.env.ADMIN_INITIAL_PASSWORD) {
+      console.log('[WARNING] Admin account created with random password:', defaultPassword);
+    }
   }
 
   const [settingsRows] = await mysqlPool.query('SELECT COUNT(*) as c FROM settings');
@@ -477,7 +483,9 @@ async function deleteProduct(id) {
 }
 
 async function searchProducts(keyword) {
-  const [rows] = await mysqlPool.query("SELECT * FROM products WHERE name LIKE ? OR description LIKE ? ORDER BY id DESC", [`%${keyword}%`, `%${keyword}%`]);
+  // Escape LIKE special characters to prevent wildcard injection
+  const escapedKeyword = String(keyword).replace(/[%_\\]/g, '\\$&');
+  const [rows] = await mysqlPool.query("SELECT * FROM products WHERE name LIKE ? OR description LIKE ? ORDER BY id DESC", [`%${escapedKeyword}%`, `%${escapedKeyword}%`]);
   return rows.map(row => ({
     id: row.id, name: row.name, category: row.category, price: row.price,
     pricingTiers: row.pricing_tiers ? JSON.parse(row.pricing_tiers) : null,
@@ -570,6 +578,7 @@ async function updateSettings(settings) {
   if (settings.wechatId !== undefined) { updates.push("wechat_id = ?"); values.push(settings.wechatId); }
   if (settings.adminEmail !== undefined) { updates.push("admin_email = ?"); values.push(settings.adminEmail); }
   if (settings.aiConfig !== undefined) { updates.push("ai_config = ?"); values.push(JSON.stringify(settings.aiConfig)); }
+  if (settings.ai !== undefined) { updates.push("ai_config = ?"); values.push(JSON.stringify(settings.ai)); }
   if (settings.carddavConfig !== undefined) { updates.push("carddav_config = ?"); values.push(JSON.stringify(settings.carddavConfig)); }
   if (settings.siteTheme !== undefined) { updates.push("site_theme = ?"); values.push(settings.siteTheme); }
   updates.push("updated_at = ?");
@@ -1229,6 +1238,10 @@ function getAllTables() {
 
 async function getTableCount(tableName) {
   try {
+    const allowedTables = getAllTables();
+    if (!allowedTables.includes(tableName)) {
+      return 0;
+    }
     const [rows] = await mysqlPool.query("SELECT COUNT(*) as c FROM `" + tableName + "`");
     return rows[0].c || 0;
   } catch (e) {
@@ -1434,7 +1447,9 @@ async function updateActivationStatus(id, status) {
 
 // 通过激活码查找订单
 async function findOrderByActivationCode(activationKey) {
-  const [rows] = await mysqlPool.query("SELECT * FROM orders WHERE activation_codes LIKE ?", [`%${activationKey}%`]);
+  // Escape LIKE special characters to prevent wildcard injection
+  const escapedKey = String(activationKey).replace(/[%_\\]/g, '\\$&');
+  const [rows] = await mysqlPool.query("SELECT * FROM orders WHERE activation_codes LIKE ?", [`%${escapedKey}%`]);
   if (rows.length === 0) return null;
   const row = rows[0];
   return {

@@ -8,7 +8,9 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <style>
-    .admin-container { max-width: 1200px; }
+    .admin-main {
+      max-width: 1400px;
+    }
     .log-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 16px; overflow: hidden; }
     .log-table th,
     .log-table td {
@@ -162,7 +164,7 @@
               <td>${escapeHtml(displayName)}</td>
               <td>${escapeHtml(log.ip)}</td>
               <td><span class="status ${statusClass}">${escapeHtml(log.status || '-')}</span></td>
-              <td>${escapeHtml(new Date(log.created_at).toLocaleString('zh-CN'))}</td>
+              <td>${escapeHtml(new Date(log.createdAt).toLocaleString('zh-CN'))}</td>
             </tr>
           `;
         }).join('');

@@ -137,25 +137,6 @@ nav a::after {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--primary);
-  transition: width 0.25s ease;
-}
-
-nav a:hover {
-  color: var(--primary);
-}
-
-nav a:hover::after {
-  width: 100%;
-}
-
-nav a::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
   left: 50%;
   width: 0;
   height: 2px;
@@ -1727,12 +1708,11 @@ footer .container {
   background: var(--bg);
 }
 
-/* 侧边栏 - Slate & Steel Design */
+/* 侧边栏 - Light Clean Design */
 .admin-sidebar {
-  width: 20%;
-  min-width: 20%;
-  max-width: 300px;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  width: 260px;
+  min-width: 260px;
+  background: #ffffff;
   position: fixed;
   top: 0;
   left: 0;
@@ -1741,63 +1721,54 @@ footer .container {
   z-index: 100;
   display: flex;
   flex-direction: column;
-}
-
-/* 侧边栏装饰条纹 */
-.admin-sidebar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  background: linear-gradient(180deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
-  opacity: 0.8;
+  border-right: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 2px 0 8px rgba(0,0,0,0.02);
 }
 
 /* 侧边栏 Logo 区 */
 .sidebar-header {
-  padding: 28px 24px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  position: relative;
 }
 
 .sidebar-header .logo {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   text-decoration: none;
 }
 
 .sidebar-header .logo-icon {
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 16px;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+  transition: all 0.2s ease;
 }
 
 .sidebar-header .logo:hover .logo-icon {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59,130,246,0.4);
 }
 
 .sidebar-header .logo-text {
-  color: #f1f5f9;
-  font-size: 17px;
+  color: #1e293b;
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 /* 侧边栏导航 */
 .sidebar-nav {
-  padding: 20px 0;
+  padding: 12px 0;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -1806,15 +1777,15 @@ footer .container {
 
 .sidebar-nav > ul {
   list-style: none;
-  padding: 0;
+  padding: 0 8px;
   margin: 0;
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: calc(100% - 16px);
 }
 
 .sidebar-nav > ul > li {
-  margin: 0;
+  margin: 1px 0;
   display: block;
   width: 100%;
   position: relative;
@@ -1823,15 +1794,12 @@ footer .container {
 .sidebar-nav a {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 13px 24px;
-  color: rgba(255,255,255,0.65);
+  gap: 10px;
+  padding: 8px 16px;
+  color: #475569;
   text-decoration: none;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 15px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  transition: all 0.15s ease;
+  font-size: 14px;
   position: relative;
 }
 
@@ -1840,41 +1808,14 @@ footer .container {
   text-overflow: ellipsis;
 }
 
-/* 导航项悬停效果 */
-.sidebar-nav a::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%) scaleY(0);
-  width: 3px;
-  height: 60%;
-  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
-  border-radius: 0 2px 2px 0;
-  opacity: 0;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sidebar-nav a:hover {
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.95);
-}
-
-.sidebar-nav a:hover::before {
-  opacity: 1;
-  transform: translateY(-50%) scaleY(1);
-}
-
 /* 当前激活项 */
 .sidebar-nav a.active {
-  background: linear-gradient(90deg, rgba(59,130,246,0.2) 0%, rgba(139,92,246,0.1) 100%);
+  background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
   color: #fff;
   font-weight: 500;
-}
-
-.sidebar-nav a.active::before {
-  opacity: 1;
-  transform: translateY(-50%) scaleY(1);
+  margin: 0 6px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.25);
 }
 
 /* 子菜单 */
@@ -1884,10 +1825,10 @@ footer .container {
 
 .sidebar-nav .has-submenu > a::after {
   content: '';
-  width: 16px;
-  height: 16px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.4)' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") center/contain no-repeat;
-  transition: transform 0.25s ease;
+  width: 14px;
+  height: 14px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") center/contain no-repeat;
+  transition: transform 0.2s ease;
 }
 
 .sidebar-nav .has-submenu > a.open::after {
@@ -1896,19 +1837,18 @@ footer .container {
 
 .sidebar-submenu {
   display: none;
-  background: rgba(0,0,0,0.25);
-  backdrop-filter: blur(4px);
+  padding: 4px 0;
 }
 
 .sidebar-submenu.open {
   display: block;
-  animation: slideDown 0.25s ease-out;
+  animation: slideDown 0.15s ease-out;
 }
 
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-2px);
   }
   to {
     opacity: 1;
@@ -1917,30 +1857,26 @@ footer .container {
 }
 
 .sidebar-submenu a {
-  padding-left: 58px;
-  font-size: 14px;
-  color: rgba(255,255,255,0.5);
-  border-left: 2px solid transparent;
-  margin-left: 12px;
-  padding-right: 12px;
+  padding: 6px 16px 6px 36px;
+  font-size: 13px;
+  color: #64748b;
+  transition: all 0.15s ease;
 }
 
 .sidebar-submenu a:hover {
-  color: rgba(255,255,255,0.9);
-  border-left-color: rgba(139,92,246,0.6);
-  background: rgba(255,255,255,0.04);
+  color: #3b82f6;
+  background: #f8fafc;
 }
 
 .sidebar-submenu a.active {
-  color: #fff;
-  border-left-color: #8b5cf6;
-  background: linear-gradient(90deg, rgba(139,92,246,0.15) 0%, transparent 100%);
+  color: #3b82f6;
+  font-weight: 500;
 }
 
 /* 侧边栏底部 */
 .sidebar-footer {
-  padding: 20px 24px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 16px 20px;
+  border-top: 1px solid rgba(0,0,0,0.04);
   margin-top: auto;
 }
 
@@ -1948,25 +1884,27 @@ footer .container {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 12px 20px;
-  background: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.7);
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fef2f2;
+  color: #dc2626;
   text-align: center;
   text-decoration: none;
-  border-radius: 10px;
-  transition: all 0.25s ease;
-  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  transition: all 0.2s ease;
   font-size: 14px;
 }
 
 .sidebar-footer .logout-btn::before {
-  content: '→';
-  font-size: 16px;
+  content: '←';
+  font-size: 14px;
 }
 
 .sidebar-footer .logout-btn:hover {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: #dc2626;
+  color: #fff;
+  transform: translateX(2px);
+}
   color: white;
   border-color: transparent;
   transform: translateX(4px);
@@ -1974,7 +1912,7 @@ footer .container {
 
 /* 主内容区 */
 .admin-main {
-  margin-left: 20%;
+  margin-left: 260px;
   flex: 1;
   padding: 40px 48px;
   min-width: 0;
@@ -1985,7 +1923,7 @@ footer .container {
 
 /* 页面标题区域 */
 .admin-main > h1:first-child {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--text);
   margin-bottom: 8px;
@@ -1993,7 +1931,7 @@ footer .container {
 }
 
 .admin-main > p[style*="color: var(--text-light)"] {
-  font-size: 15px;
+  font-size: 14px;
   color: var(--text-light);
   margin-bottom: 32px;
 }
@@ -2001,12 +1939,12 @@ footer .container {
 /* 响应式 */
 @media (max-width: 1024px) {
   .admin-sidebar {
-    width: 260px;
-    min-width: 260px;
-    max-width: 260px;
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
   }
   .admin-main {
-    margin-left: 260px;
+    margin-left: 220px;
     padding: 32px 36px;
   }
 }

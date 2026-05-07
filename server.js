@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
@@ -370,7 +371,12 @@ function getLogFilesByType(type) {
 
 // Session配置
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'booming-secret-key-2024',
+  secret: process.env.SESSION_SECRET || (() => {
+  const crypto = require('crypto');
+  const secret = crypto.randomBytes(32).toString('hex');
+  console.warn('[WARNING] SESSION_SECRET not set, using auto-generated secret. Set SESSION_SECRET env var for production.');
+  return secret;
+})(),
   resave: true,
   saveUninitialized: true,
   rolling: true,  // 每次请求重置session过期时间
@@ -526,12 +532,12 @@ app.get('/api/captcha', (req, res) => {
   const captcha = svgCaptcha.create({
     size: 4,
     ignoreChars: '0o1iIl',
-    noise: 2,
+    noise: 1,
     color: false,
-    background: '#f5f5f5',
-    width: 140,
+    background: '#f0f0f0',
+    width: 160,
     height: 50,
-    fontSize: 48
+    fontSize: 42
   });
   // 存储验证码到session
   req.session.captcha = captcha.text.toLowerCase();
@@ -545,6 +551,18 @@ function verifyCaptcha(req, captcha) {
   if (!req.session.captcha) return false;
   if (Date.now() - req.session.captchaTime > 5 * 60 * 1000) return false; // 5分钟过期
   return req.session.captcha === captcha.toLowerCase();
+}
+
+// HTML转义函数，防止XSS
+function escapeHtml(text) {
+  if (text == null) return '';
+  const str = String(text);
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 // ============ API路由 - 认证 ============
@@ -753,10 +771,10 @@ app.post('/api/user/forgot-password', async (req, res) => {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #133c8a;">密码重置</h2>
-        <p>您好，${user.username}：</p>
+        <p>您好，${escapeHtml(user.username)}：</p>
         <p>您申请了密码重置，以下是您的新临时密码：</p>
         <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; font-size: 18px; font-weight: bold; text-align: center; margin: 20px 0;">
-          ${tempPassword}
+          ${escapeHtml(tempPassword)}
         </div>
         <p>请使用此临时密码登录后，尽快修改为您的个人密码。</p>
         <p style="color: #d32f2f;">提示：临时密码有效期为24小时。</p>
@@ -1248,33 +1266,33 @@ app.post('/api/activate', async (req, res) => {
       const mailOptions = {
         from: settings.smtp.from || settings.smtp.user,
         to: settings.adminEmail,
-        subject: `【软件激活通知】${softwareName} - ${userName}`,
+        subject: `【软件激活通知】${escapeHtml(softwareName)} - ${escapeHtml(userName)}`,
         html: `
           <h2>新软件激活申请</h2>
           <table style="border-collapse: collapse; width: 100%;">
             <tr style="border-bottom: 1px solid #ddd;">
               <td style="padding: 8px; font-weight: bold;">申请人</td>
-              <td style="padding: 8px;">${userName}</td>
+              <td style="padding: 8px;">${escapeHtml(userName)}</td>
             </tr>
             <tr style="border-bottom: 1px solid #ddd;">
               <td style="padding: 8px; font-weight: bold;">组织/公司</td>
-              <td style="padding: 8px;">${organization || '-'}</td>
+              <td style="padding: 8px;">${escapeHtml(organization) || '-'}</td>
             </tr>
             <tr style="border-bottom: 1px solid #ddd;">
               <td style="padding: 8px; font-weight: bold;">邮箱</td>
-              <td style="padding: 8px;">${email}</td>
+              <td style="padding: 8px;">${escapeHtml(email)}</td>
             </tr>
             <tr style="border-bottom: 1px solid #ddd;">
               <td style="padding: 8px; font-weight: bold;">软件名称</td>
-              <td style="padding: 8px;">${softwareName}</td>
+              <td style="padding: 8px;">${escapeHtml(softwareName)}</td>
             </tr>
             <tr style="border-bottom: 1px solid #ddd;">
               <td style="padding: 8px; font-weight: bold;">MAC地址</td>
-              <td style="padding: 8px;">${macAddress || '-'}</td>
+              <td style="padding: 8px;">${escapeHtml(macAddress) || '-'}</td>
             </tr>
             <tr style="border-bottom: 1px solid #ddd;">
               <td style="padding: 8px; font-weight: bold;">安装日期</td>
-              <td style="padding: 8px;">${installDate || '-'}</td>
+              <td style="padding: 8px;">${escapeHtml(installDate) || '-'}</td>
             </tr>
             <tr style="border-bottom: 1px solid #ddd;">
               <td style="padding: 8px; font-weight: bold;">激活日期</td>
@@ -1286,7 +1304,7 @@ app.post('/api/activate', async (req, res) => {
             </tr>
             <tr>
               <td style="padding: 8px; font-weight: bold;">激活码</td>
-              <td style="padding: 8px; font-family: monospace;">${activation.activationKey}</td>
+              <td style="padding: 8px; font-family: monospace;">${escapeHtml(activation.activationKey)}</td>
             </tr>
           </table>
         `
@@ -1629,29 +1647,29 @@ app.post('/api/install', async (req, res) => {
     sendEmail({
       from: settings.smtp.from || settings.smtp.user,
       to: settings.adminEmail,
-      subject: `【软件安装注册】${softwareName} - ${userName}`,
+      subject: `【软件安装注册】${escapeHtml(softwareName)} - ${escapeHtml(userName)}`,
       html: `
         <h2>新的软件安装注册</h2>
         <table style="border-collapse: collapse; width: 100%;">
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">软件名称</td>
-            <td style="padding: 8px;">${softwareName}</td>
+            <td style="padding: 8px;">${escapeHtml(softwareName)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">版本</td>
-            <td style="padding: 8px;">${softwareVersion || '-'}</td>
+            <td style="padding: 8px;">${escapeHtml(softwareVersion) || '-'}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">用户名称</td>
-            <td style="padding: 8px;">${userName}</td>
+            <td style="padding: 8px;">${escapeHtml(userName)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">邮箱</td>
-            <td style="padding: 8px;">${userEmail}</td>
+            <td style="padding: 8px;">${escapeHtml(userEmail)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">组织/公司</td>
-            <td style="padding: 8px;">${organization || '-'}</td>
+            <td style="padding: 8px;">${escapeHtml(organization) || '-'}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">安装日期</td>
@@ -2156,31 +2174,6 @@ app.get('/api/settings', async (req, res) => {
 
 // 更新网站设置
 app.put('/api/settings', requireAuth, async (req, res) => {
-  const { companyName, description, ssl, banners, httpPort, httpsPort, adminEmail, wechatId, email, ai, carddav, siteTheme } = req.body;
-  const updates = {};
-  if (companyName !== undefined) updates.companyName = companyName;
-  if (description !== undefined) updates.description = description;
-  if (ssl !== undefined) updates.ssl = ssl;
-  if (banners !== undefined) updates.banners = banners;
-  if (httpPort !== undefined) updates.httpPort = httpPort;
-  if (httpsPort !== undefined) updates.httpsPort = httpsPort;
-  if (adminEmail !== undefined) updates.adminEmail = adminEmail;
-  if (wechatId !== undefined) updates.wechatId = wechatId;
-  if (email !== undefined) updates.email = email;
-  if (ai !== undefined) updates.ai = ai;
-  if (carddav !== undefined) updates.carddav = carddav;
-  if (siteTheme !== undefined) updates.siteTheme = siteTheme;
-
-  const settings = await db.updateSettings(updates);
-  // 记录操作日志
-  const username = req.session.userName || req.session.username || 'admin';
-  const changedFields = Object.keys(updates).join(', ');
-  db.addOperationLog(username, 'SETTINGS_UPDATE', 'website', `Updated settings: ${changedFields}`);
-  res.json(settings);
-});
-
-// 更新网站设置（POST别名）
-app.post('/api/settings', requireAuth, async (req, res) => {
   const { companyName, description, ssl, banners, httpPort, httpsPort, adminEmail, wechatId, email, ai, carddav, siteTheme } = req.body;
   const updates = {};
   if (companyName !== undefined) updates.companyName = companyName;
@@ -2950,7 +2943,7 @@ app.post('/api/ai/generate', requireAuth, async (req, res) => {
   }
 
   const settings = await db.getSettings();
-  const ai = settings?.ai || {};
+  const ai = settings?.aiConfig || settings?.ai || {};
 
   if (!ai.enabled || !ai.apiKey) {
     return res.status(400).json({ success: false, error: 'AI功能未启用或未配置API Key' });
@@ -3206,14 +3199,14 @@ app.post('/api/db-copy', requireAuth, async (req, res) => {
     });
 
     // 获取当前数据库的所有数据
-    const tables = db.getAllTables();
+    const allowedTables = db.getAllTables();
     let totalCopied = 0;
     const details = [];
 
-    for (const table of tables) {
+    for (const table of allowedTables) {
       try {
         // 获取源表数据
-        const sourceData = await db.query(`SELECT * FROM ${table}`);
+        const sourceData = await db.query(`SELECT * FROM \`${table}\``);
         if (!sourceData || sourceData.length === 0) {
           details.push({ table: table, count: 0, status: 'ok' });
           continue;
@@ -3663,7 +3656,7 @@ app.post('/api/support', async (req, res) => {
     sendEmail({
       from: settings.smtp.from || settings.smtp.user,
       to: settings.adminEmail,
-      subject: `【技术支持工单】#${ticket.id} - ${subject}`,
+      subject: `【技术支持工单】#${ticket.id} - ${escapeHtml(subject)}`,
       html: `
         <h2>新的技术支持工单</h2>
         <table style="border-collapse: collapse; width: 100%;">
@@ -3673,19 +3666,19 @@ app.post('/api/support', async (req, res) => {
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">主题</td>
-            <td style="padding: 8px;">${subject}</td>
+            <td style="padding: 8px;">${escapeHtml(subject)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">提交人</td>
-            <td style="padding: 8px;">${userName}</td>
+            <td style="padding: 8px;">${escapeHtml(userName)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">邮箱</td>
-            <td style="padding: 8px;">${userEmail}</td>
+            <td style="padding: 8px;">${escapeHtml(userEmail)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">电话</td>
-            <td style="padding: 8px;">${userPhone || '-'}</td>
+            <td style="padding: 8px;">${escapeHtml(userPhone) || '-'}</td>
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">优先级</td>
@@ -3693,7 +3686,7 @@ app.post('/api/support', async (req, res) => {
           </tr>
           <tr>
             <td style="padding: 8px; font-weight: bold;">问题描述</td>
-            <td style="padding: 8px;">${description}</td>
+            <td style="padding: 8px;">${escapeHtml(description)}</td>
           </tr>
         </table>
         <p style="margin-top: 20px;"><a href="http://${settings.ssl?.domain || 'localhost:' + (settings.httpPort || 10000)}/admin-support" style="background: #133c8a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">查看工单</a></p>

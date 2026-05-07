@@ -430,7 +430,7 @@
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
               <input type="hidden" id="description-hidden" name="description">
-              <button type="button" class="btn" onclick="regenerateDescription()" style="background: #10b981; color: white;">AI优化描述</button>
+              <button type="button" class="btn btn-success" onclick="regenerateDescription()">AI优化描述</button>
             </div>
           </div>
         </div>
@@ -465,7 +465,7 @@
           <div class="form-group">
             <label>功能特点（每行一个）</label>
             <textarea id="features-input" rows="4" placeholder="输入功能特点，每行一个，例如：&#10;无广告打扰&#10;全屏导航&#10;广告拦截"></textarea>
-            <button type="button" class="btn" onclick="parseFeatures()" style="margin-top: 8px; background: var(--primary); color: white;">解析功能列表</button>
+            <button type="button" class="btn btn-primary" onclick="parseFeatures()" style="margin-top: 8px;">解析功能列表</button>
           </div>
 
           <div class="form-group">
