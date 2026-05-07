@@ -194,34 +194,35 @@
 
     <!-- 主内容 -->
     <main class="admin-main">
-      <div class="admin-header">
-      <h1>产品管理</h1>
-      <div class="admin-actions">
-        <a href="/" class="btn btn-outline btn-small">查看网站</a>
-        <a href="/ProductManagement" class="btn btn-primary btn-small">+ 添加产品</a>
+      <div class="page-header">
+        <h1>产品管理</h1>
+        <div class="actions">
+          <a href="/" class="btn btn-secondary">查看网站</a>
+          <a href="/ProductManagement" class="btn btn-primary">+ 添加产品</a>
+        </div>
       </div>
-    </div>
 
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="number" id="total-products">0</div>
-        <div class="label">全部产品</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="number" id="total-products">0</div>
+          <div class="label">全部产品</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="featured-products">0</div>
+          <div class="label">精选产品</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="total-value">¥0</div>
+          <div class="label">产品总值</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="categories">0</div>
+          <div class="label">产品分类</div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="number" id="featured-products">0</div>
-        <div class="label">精选产品</div>
-      </div>
-      <div class="stat-card">
-        <div class="number" id="total-value">¥0</div>
-        <div class="label">产品总值</div>
-      </div>
-      <div class="stat-card">
-        <div class="number" id="categories">0</div>
-        <div class="label">产品分类</div>
-      </div>
-    </div>
 
-    <table class="admin-table">
+      <div class="card">
+        <table class="data-table">
       <thead>
         <tr>
           <th>ID</th>
@@ -238,8 +239,9 @@
         <!-- Products loaded dynamically -->
       </tbody>
     </table>
-  </main>
-</div>
+      </div>
+    </main>
+  </div>
 
 <script>
     function escapeHtml(text) {
@@ -394,19 +396,6 @@
       loadSettings();
       loadProducts();
     });
-
-    // 子菜单折叠功能
-    function toggleSubmenu(e, submenuId) {
-      e.preventDefault();
-      if (submenuId) {
-      document.querySelectorAll('.nav-submenu-block').forEach(s => s.classList.remove('open'));
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('open'));
-      const submenu = document.getElementById(submenuId);
-      const navItem = e.target.closest('.nav-item');
-      if (submenu) submenu.classList.add('open');
-      if (navItem) navItem.classList.add('open');
-      }
-    }
   </script>
 </body>
 </html>
