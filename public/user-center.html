@@ -16,32 +16,38 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 30px;
+      margin-bottom: 32px;
     }
     .user-header h1 {
-      font-size: 28px;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
     }
     .user-welcome {
       color: var(--text-light);
       font-size: 14px;
-      margin-top: 5px;
+      margin-top: 6px;
     }
     .user-nav {
       display: flex;
-      gap: 10px;
+      gap: 12px;
     }
     .user-nav a {
-      padding: 10px 20px;
+      padding: 12px 24px;
       background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
       color: var(--text);
       text-decoration: none;
       font-size: 14px;
+      font-weight: 500;
+      transition: all 0.25s ease;
     }
     .user-nav a:hover {
       border-color: var(--primary);
       color: var(--primary);
+      box-shadow: 0 4px 12px rgba(19, 60, 138, 0.1);
     }
     .user-nav .btn-outline {
       background: transparent;
@@ -50,71 +56,79 @@
       display: flex;
       gap: 0;
       margin-bottom: 0;
-      border-bottom: 2px solid var(--border);
+      border-bottom: 2px solid rgba(0,0,0,0.06);
     }
     .tab-btn {
-      padding: 15px 30px;
+      padding: 16px 32px;
       background: var(--secondary);
       border: none;
-      border-radius: 8px 8px 0 0;
+      border-radius: 12px 12px 0 0;
       cursor: pointer;
       font-size: 15px;
       color: var(--text);
-      margin-right: 5px;
-      transition: all 0.2s;
+      margin-right: 8px;
+      transition: all 0.25s ease;
+      font-weight: 500;
     }
     .tab-btn:hover {
-      background: var(--border);
+      background: rgba(19, 60, 138, 0.08);
+      color: var(--primary);
     }
     .tab-btn.active {
       background: var(--white);
       color: var(--primary);
       font-weight: 600;
-      border: 2px solid var(--border);
+      border: 2px solid rgba(0,0,0,0.06);
       border-bottom: 2px solid var(--white);
       margin-bottom: -2px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
     }
     .tab-content {
       background: var(--white);
-      border: 1px solid var(--border);
+      border: 1px solid rgba(0,0,0,0.06);
       border-top: none;
-      border-radius: 0 0 8px 8px;
-      padding: 30px;
+      border-radius: 0 0 16px 16px;
+      padding: 32px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
     }
     .profile-form {
       max-width: 500px;
     }
     .profile-form .form-group {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
     .profile-form label {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       font-weight: 500;
       color: var(--text);
+      font-size: 14px;
     }
     .profile-form input {
       width: 100%;
-      padding: 12px 15px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 14px;
+      padding: 14px 16px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
+      font-size: 15px;
+      transition: all 0.2s ease;
     }
     .profile-form input:focus {
       outline: none;
       border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.12);
     }
     .profile-form small {
       display: block;
-      margin-top: 6px;
+      margin-top: 8px;
       color: var(--text-light);
-      font-size: 12px;
+      font-size: 13px;
     }
     .order-card {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 15px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 16px;
+      transition: all 0.25s ease;
     }
     .order-card:last-child {
       margin-bottom: 0;
