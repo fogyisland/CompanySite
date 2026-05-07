@@ -14,15 +14,18 @@
     }
     .docs-header {
       text-align: center;
-      margin-bottom: 40px;
+      margin-bottom: 48px;
     }
     .docs-header h1 {
-      font-size: 32px;
-      margin-bottom: 10px;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
     }
     .docs-header p {
       color: var(--text-light);
-      font-size: 16px;
+      font-size: 17px;
     }
     .docs-sidebar {
       display: flex;
@@ -31,16 +34,18 @@
     }
     .docs-nav {
       background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
     }
     .docs-nav h4 {
-      font-size: 14px;
+      font-size: 12px;
       color: var(--text-light);
       text-transform: uppercase;
-      margin-bottom: 15px;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
     }
     .docs-nav ul {
       list-style: none;
@@ -48,7 +53,7 @@
       margin: 0;
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
     .docs-nav li {
       margin-bottom: 0;
@@ -58,27 +63,30 @@
       text-decoration: none;
       font-size: 14px;
       display: block;
-      padding: 8px 16px;
-      border-radius: 6px;
-      transition: all 0.2s;
+      padding: 10px 18px;
+      border-radius: 10px;
+      transition: all 0.25s ease;
       background: var(--secondary);
+      font-weight: 500;
     }
     .docs-nav a:hover,
     .docs-nav a.active {
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: var(--white);
+      box-shadow: 0 4px 12px rgba(19, 60, 138, 0.3);
     }
     .docs-content {
       flex: 1;
       background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
       padding: 40px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
     }
     .docs-section {
-      margin-bottom: 40px;
-      padding-bottom: 40px;
-      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+      padding-bottom: 48px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
     }
     .docs-section:last-child {
       margin-bottom: 0;
@@ -87,17 +95,20 @@
     }
     .docs-section h2 {
       font-size: 24px;
+      font-weight: 600;
       margin-bottom: 20px;
       color: var(--primary);
     }
     .docs-section h3 {
       font-size: 18px;
-      margin-top: 25px;
-      margin-bottom: 15px;
+      font-weight: 600;
+      margin-top: 28px;
+      margin-bottom: 16px;
     }
     .docs-section p {
       line-height: 1.8;
-      margin-bottom: 15px;
+      margin-bottom: 16px;
+      font-size: 15px;
       color: var(--text);
     }
     .docs-section ul {
