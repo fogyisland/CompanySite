@@ -326,7 +326,7 @@
     });
 
     function refreshCaptcha() {
-      document.getElementById('captcha-img').src = '/api/captcha?' + Date.now();
+      document.getElementById('captcha-img').src = '/api/captcha/refresh?' + Date.now();
     }
 
     document.getElementById('captcha-img').addEventListener('click', refreshCaptcha);

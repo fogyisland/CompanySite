@@ -527,19 +527,36 @@ function requireUserAuth(req, res, next) {
 
 // ============ API路由 - 验证码 ============
 
-// 生成图形验证码
+// 刷新验证码（生成新的）
+app.get('/api/captcha/refresh', (req, res) => {
+  const captcha = svgCaptcha.create({
+    size: 4,
+    ignoreChars: '0o1iIl',
+    noise: 2,
+    color: true,
+    background: '#ffffff',
+    width: 120,
+    height: 40,
+    fontSize: 36
+  });
+  req.session.captcha = captcha.text.toLowerCase();
+  req.session.captchaTime = Date.now();
+  res.type('svg');
+  res.send(captcha.data);
+});
+
+// 生成图形验证码（初始加载）
 app.get('/api/captcha', (req, res) => {
   const captcha = svgCaptcha.create({
     size: 4,
     ignoreChars: '0o1iIl',
-    noise: 1,
-    color: false,
-    background: '#f0f0f0',
-    width: 160,
-    height: 50,
-    fontSize: 42
+    noise: 2,
+    color: true,
+    background: '#ffffff',
+    width: 120,
+    height: 40,
+    fontSize: 36
   });
-  // 存储验证码到session
   req.session.captcha = captcha.text.toLowerCase();
   req.session.captchaTime = Date.now();
   res.type('svg');
