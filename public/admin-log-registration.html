@@ -7,38 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
-  <style>
-    .admin-main {
-      max-width: 1400px;
-    }
-    .log-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 16px; overflow: hidden; }
-    .log-table th,
-    .log-table td {
-      padding: 16px 18px;
-      text-align: left;
-      border-bottom: 1px solid rgba(0,0,0,0.06);
-    }
-    .log-table th {
-      background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(139,92,246,0.06) 100%);
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-light);
-    }
-    .log-table td { font-size: 14px; color: var(--text); }
-    .log-table tr:last-child td { border-bottom: none; }
-    .log-table tr:hover { background: rgba(59, 130, 246, 0.02); }
-    .status {
-      display: inline-block;
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .status.success { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; }
-    .status.failed { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b; }
-  </style>
+  <link rel="stylesheet" href="/css/pages/admin.css">
 </head>
 <body>
   <div class="admin-layout">
