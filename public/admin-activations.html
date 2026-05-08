@@ -7,170 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
-  <style>
-    .admin-container { max-width: 1400px; }
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-    }
-    .page-header h1 { font-size: 24px; }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-    .stat-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px;
-      text-align: center;
-    }
-    .stat-card .number {
-      font-size: 32px;
-      font-weight: bold;
-      color: var(--primary);
-    }
-    .stat-card .label {
-      color: var(--text-light);
-      font-size: 14px;
-      margin-top: 5px;
-    }
-    .form-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 30px;
-      margin-bottom: 20px;
-    }
-    .orders-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .orders-table th,
-    .orders-table td {
-      padding: 15px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-    .orders-table th {
-      background: #f8f9fa;
-      font-weight: 600;
-      font-size: 14px;
-    }
-    .orders-table tr:hover {
-      background: #f8f9fa;
-    }
-    .status-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .status-badge.active { background: #ecfdf5; color: #10b981; }
-    .status-badge.inactive { background: #fef3c7; color: #d97706; }
-    .status-badge.blocked { background: #fef2f2; color: #d32f2f; }
-    .btn-view {
-      padding: 6px 12px;
-      background: var(--primary);
-      color: var(--white);
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .btn-view:hover { background: var(--primary-dark); }
-    .btn-delete {
-      padding: 6px 12px;
-      background: #dc3545;
-      color: var(--white);
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
-      margin-left: 5px;
-    }
-    .btn-delete:hover { background: #c82333; }
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-light);
-    }
-    .message {
-      padding: 12px;
-      border-radius: 6px;
-      margin-bottom: 20px;
-      display: none;
-    }
-    .message.success { background: #ecfdf5; color: #10b981; display: block; }
-    .message.error { background: #fef2f2; color: #d32f2f; display: block; }
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal.active { display: flex; }
-    .modal-content {
-      background: var(--white);
-      border-radius: 8px;
-      padding: 30px;
-      max-width: 500px;
-      width: 90%;
-    }
-    .modal h3 { margin-bottom: 20px; }
-    .modal-close {
-      float: right;
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-    }
-    .order-detail-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .order-detail-item:last-child { border-bottom: none; }
-    .activation-key {
-      font-size: 20px;
-      font-weight: bold;
-      color: var(--primary);
-      letter-spacing: 2px;
-      text-align: center;
-      padding: 15px;
-      background: #f0f7ff;
-      border-radius: 8px;
-      margin: 15px 0;
-      font-family: monospace;
-    }
-    .search-box {
-      margin-bottom: 20px;
-    }
-    .search-box input {
-      padding: 10px 15px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      width: 300px;
-      font-size: 14px;
-    }
-    .search-box input:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-  </style>
+  <link rel="stylesheet" href="/css/pages/admin.css">
 </head>
 <body>
   <div class="admin-layout">
@@ -186,7 +23,7 @@
           <li><a href="/admin-product"><span>📦 产品管理</span></a></li>
           <li><a href="/admin-orders"><span>📋 订单管理</span></a></li>
           <li><a href="/admin-installations"><span>📥 安装管理</span></a></li>
-          <li><a href="/admin-activations"><span>🔓 激活管理</span></a></li>
+          <li><a href="/admin-activations" class="active"><span>🔓 激活管理</span></a></li>
           <li><a href="/admin-newsletter"><span>📧 邮件订阅</span></a></li>
           <li><a href="/admin-support"><span>🎧 技术支持</span></a></li>
           <li><a href="/admin-faq"><span>❓ FAQ</span></a></li>
@@ -218,66 +55,62 @@
         </div>
       </nav>
     </aside>
+
     <main class="admin-main">
-    <div class="page-header">
-      <h1>软件激活管理</h1>
-    </div>
-
-    <div class="message" id="message"></div>
-
-    <!-- Stats -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="number" id="total-activations">0</div>
-        <div class="label">总激活数</div>
-      </div>
-      <div class="stat-card">
-        <div class="number" id="active-activations">0</div>
-        <div class="label">活跃</div>
-      </div>
-      <div class="stat-card">
-        <div class="number" id="inactive-activations">0</div>
-        <div class="label">未激活</div>
-      </div>
-      <div class="stat-card">
-        <div class="number" id="blocked-activations">0</div>
-        <div class="label">已封禁</div>
-      </div>
-    </div>
-
-    <!-- Search -->
-    <div class="form-card">
-      <div class="search-box">
-        <input type="text" id="search-input" placeholder="搜索姓名、邮箱、软件名称或激活码..." oninput="filterActivations()">
+      <div class="page-header">
+        <h1>激活管理</h1>
       </div>
 
-      <!-- Activations Table -->
-      <table class="orders-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>姓名</th>
-            <th>邮箱</th>
-            <th>软件名称</th>
-            <th>激活码</th>
-            <th>状态</th>
-            <th>到期日期</th>
-            <th>剩余天数</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="activations-tbody">
-          <tr><td colspan="9" class="empty-state">加载中...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </main></div>
+      <div class="message" id="message"></div>
 
-  <!-- Modal for Activation Details -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="number" id="total-activations">0</div>
+          <div class="label">总激活数</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="active-count">0</div>
+          <div class="label">有效激活</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="expiring-count">0</div>
+          <div class="label">即将过期</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="expired-count">0</div>
+          <div class="label">已过期</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="搜索MAC地址、软件名称或邮箱...">
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>MAC地址</th>
+              <th>软件</th>
+              <th>用户邮箱</th>
+              <th>状态</th>
+              <th>剩余天数</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="activations-tbody">
+            <tr><td colspan="7" class="empty-state">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
   <div class="modal" id="detail-modal">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal()">&times;</button>
-      <h3>激活详情</h3>
+      <h3 id="modal-title">激活详情</h3>
       <div id="modal-content"></div>
     </div>
   </div>
@@ -289,20 +122,13 @@
       try {
         const response = await fetch('/api/settings', { credentials: 'include' });
         const settings = await response.json();
-
         if (settings.companyName) {
           document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
           document.title = settings.companyName + ' - 激活管理';
         }
-
         if (settings.logo) {
           document.getElementById('header-logo-icon').outerHTML =
             '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
-        }
-
-        // 应用主题
-        if (settings.siteTheme) {
-          document.documentElement.setAttribute('data-theme', settings.siteTheme);
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -312,214 +138,109 @@
     async function loadActivations() {
       try {
         const response = await fetch('/api/activations', { credentials: 'include' });
-        if (response.status === 401) {
-          window.location.href = '/login';
-          return;
-        }
         activations = await response.json();
         renderStats();
         renderTable();
       } catch (error) {
         console.error('Error loading activations:', error);
-        showMessage('加载激活记录失败', 'error');
+        document.getElementById('activations-tbody').innerHTML =
+          '<tr><td colspan="7" class="empty-state" style="color:#ef4444;">加载失败</td></tr>';
       }
     }
 
     function renderStats() {
       const total = activations.length;
-      const active = activations.filter(a => a.status === 'active').length;
-      const inactive = activations.filter(a => a.status === 'inactive').length;
-      const blocked = activations.filter(a => a.status === 'blocked').length;
-
+      const active = activations.filter(a => new Date(a.expireDate) > new Date()).length;
+      const expiring = activations.filter(a => {
+        const days = Math.ceil((new Date(a.expireDate) - new Date()) / (1000 * 60 * 60 * 24));
+        return days > 0 && days <= 7;
+      }).length;
+      const expired = activations.filter(a => new Date(a.expireDate) <= new Date()).length;
       document.getElementById('total-activations').textContent = total;
-      document.getElementById('active-activations').textContent = active;
-      document.getElementById('inactive-activations').textContent = inactive;
-      document.getElementById('blocked-activations').textContent = blocked;
+      document.getElementById('active-count').textContent = active;
+      document.getElementById('expiring-count').textContent = expiring;
+      document.getElementById('expired-count').textContent = expired;
     }
 
-    function filterActivations() {
-      const search = document.getElementById('search-input').value.toLowerCase();
-      const filtered = activations.filter(a =>
-        (a.userName && a.userName.toLowerCase().includes(search)) ||
-        (a.email && a.email.toLowerCase().includes(search)) ||
-        (a.softwareName && a.softwareName.toLowerCase().includes(search)) ||
-        (a.organization && a.organization.toLowerCase().includes(search)) ||
-        (a.activationKey && a.activationKey.toLowerCase().includes(search))
-      );
-      renderTableData(filtered);
-    }
-
-    function renderTable() {
-      renderTableData(activations);
-    }
-
-    function renderTableData(data) {
+    function renderTable(data) {
       const tbody = document.getElementById('activations-tbody');
-
-      if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无激活记录</td></tr>';
+      const items = data || activations;
+      if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无激活记录</td></tr>';
         return;
       }
-
-      // 按时间倒序
-      data.sort((a, b) => new Date(b.activateDate || b.createdAt) - new Date(a.activateDate || a.createdAt));
-
-      tbody.innerHTML = data.map(activation => {
-        const statusClass = activation.status || 'active';
-        const statusText = statusClass === 'active' ? '活跃' : statusClass === 'inactive' ? '未激活' : '已封禁';
-
-        // 计算到期日期和剩余天数（优先使用订单信息）
-        let expireDate = '-';
-        let remainingDays = '-';
-        let expireClass = '';
-
-        if (activation.orderInfo) {
-          expireDate = formatDate(activation.orderInfo.expireDate);
-          remainingDays = activation.orderInfo.isExpired ? '已过期' : activation.orderInfo.remainingDays + '天';
-          expireClass = activation.orderInfo.isExpired ? 'inactive' : 'active';
-        } else if (activation.expireDate) {
-          const expDate = new Date(activation.expireDate);
-          const now = new Date();
-          const diff = Math.ceil((expDate - now) / (24 * 60 * 60 * 1000));
-          expireDate = formatDate(activation.expireDate);
-          remainingDays = diff < 0 ? '已过期' : diff + '天';
-          expireClass = diff < 0 ? 'inactive' : 'active';
+      tbody.innerHTML = items.map(act => {
+        const expireDate = new Date(act.expireDate);
+        const now = new Date();
+        const days = Math.ceil((expireDate - now) / (1000 * 60 * 60 * 24));
+        let statusClass = 'badge-success';
+        let statusText = '有效';
+        let daysText = days + '天';
+        if (days < 0) {
+          statusClass = 'badge-danger';
+          statusText = '已过期';
+          daysText = '已过期';
+        } else if (days <= 7) {
+          statusClass = 'badge-warning';
+          statusText = '即将过期';
         }
-
         return `
           <tr>
-            <td>#${escapeHtml(activation.id)}</td>
-            <td>${escapeHtml(activation.userName)}</td>
-            <td>${escapeHtml(activation.email || '-')}</td>
-            <td>${escapeHtml(activation.softwareName || activation.orderInfo?.softwareName || '-')}</td>
-            <td style="font-family: monospace; font-size: 12px;">${escapeHtml(activation.activationKey || '-')}</td>
-            <td><span class="status-badge ${escapeHtml(statusClass)}">${escapeHtml(statusText)}</span></td>
-            <td><span class="status-badge ${escapeHtml(expireClass)}">${escapeHtml(expireDate)}</span></td>
-            <td><span class="status-badge ${escapeHtml(expireClass)}">${escapeHtml(remainingDays)}</span></td>
-            <td>
-              <button class="btn-view" onclick="showDetail(${escapeHtml(activation.id)})">详情</button>
-              <button class="btn-delete" onclick="deleteActivation(${escapeHtml(activation.id)})">删除</button>
+            <td>${escapeHtml(act.id)}</td>
+            <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${escapeHtml(act.macAddress)}</code></td>
+            <td>${escapeHtml(act.softwareName)}</td>
+            <td>${escapeHtml(act.userEmail || '-')}</td>
+            <td><span class="badge ${statusClass}">${statusText}</span></td>
+            <td>${daysText}</td>
+            <td class="table-actions">
+              <button class="btn-edit" onclick="showDetail(${escapeHtml(act.id)})">详情</button>
+              <button class="btn-delete" onclick="deleteActivation(${escapeHtml(act.id)})">删除</button>
             </td>
           </tr>
         `;
       }).join('');
     }
 
-    function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    function formatDate(dateStr) {
-      if (!dateStr) return '-';
-      return new Date(dateStr).toLocaleString('zh-CN');
-    }
-
-    async function deleteActivation(id) {
-      if (!confirm('确定要删除这条激活记录吗？')) return;
-      try {
-        const response = await fetch(`/api/activations/${id}`, {
-          method: 'DELETE',
-          credentials: 'include'
-        });
-        if (response.ok) {
-          showMessage('删除成功', 'success');
-          loadActivations();
-        } else {
-          const data = await response.json();
-          showMessage(data.error || '删除失败', 'error');
-        }
-      } catch (error) {
-        showMessage('删除失败', 'error');
+    function filterActivations() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      if (!search) {
+        renderTable(activations);
+        return;
       }
+      const filtered = activations.filter(a =>
+        (a.macAddress && a.macAddress.toLowerCase().includes(search)) ||
+        (a.softwareName && a.softwareName.toLowerCase().includes(search)) ||
+        (a.userEmail && a.userEmail.toLowerCase().includes(search))
+      );
+      renderTable(filtered);
     }
 
-    async function showDetail(id) {
-      const activation = activations.find(a => a.id === id);
-      if (!activation) return;
-
-      const statusText = activation.status === 'active' ? '活跃' : activation.status === 'inactive' ? '未激活' : '已封禁';
-
-      // 计算订单信息
-      let orderInfoHtml = '';
-      if (activation.orderInfo) {
-        const expStatus = activation.orderInfo.isExpired ? '已过期' : '有效';
-        const expClass = activation.orderInfo.isExpired ? 'inactive' : 'active';
-        orderInfoHtml = `
-          <div class="order-detail-item" style="background: #f0f7ff; padding: 10px; border-radius: 6px; margin-top: 10px;">
-            <span style="font-weight: bold; color: var(--primary);">订单信息（授权码购买）</span>
-          </div>
-          <div class="order-detail-item">
-            <span>软件名称：</span>
-            <span>${escapeHtml(activation.orderInfo.softwareName)}</span>
-          </div>
-          <div class="order-detail-item">
-            <span>授权时长：</span>
-            <span>${escapeHtml(activation.orderInfo.duration)} (${activation.orderInfo.totalDays}天)</span>
-          </div>
-          <div class="order-detail-item">
-            <span>支付日期：</span>
-            <span>${formatDate(activation.orderInfo.paidDate)}</span>
-          </div>
-          <div class="order-detail-item">
-            <span>到期日期：</span>
-            <span class="status-badge ${expClass}">${formatDate(activation.orderInfo.expireDate)} - ${expStatus}</span>
-          </div>
-          <div class="order-detail-item">
-            <span>剩余天数：</span>
-            <span class="status-badge ${expClass}">${activation.orderInfo.isExpired ? '已过期' : activation.orderInfo.remainingDays + '天'}</span>
-          </div>
-        `;
-      }
-
+    function showDetail(id) {
+      const act = activations.find(a => a.id === id);
+      if (!act) return;
+      const expireDate = new Date(act.expireDate);
+      const days = Math.ceil((expireDate - new Date()) / (1000 * 60 * 60 * 24));
+      document.getElementById('modal-title').textContent = '激活详情 #' + act.id;
       document.getElementById('modal-content').innerHTML = `
-        <div class="order-detail-item">
-          <span>激活ID：</span>
-          <span>#${activation.id}</span>
+        <div class="form-group">
+          <label>MAC地址</label>
+          <input type="text" value="${escapeHtml(act.macAddress)}" readonly>
         </div>
-        <div class="order-detail-item">
-          <span>申请人：</span>
-          <span>${escapeHtml(activation.userName)}</span>
+        <div class="form-group">
+          <label>软件名称</label>
+          <input type="text" value="${escapeHtml(act.softwareName)}" readonly>
         </div>
-        <div class="order-detail-item">
-          <span>组织/公司：</span>
-          <span>${escapeHtml(activation.organization || '-')}</span>
+        <div class="form-group">
+          <label>用户邮箱</label>
+          <input type="text" value="${escapeHtml(act.userEmail || '-')}" readonly>
         </div>
-        <div class="order-detail-item">
-          <span>邮箱：</span>
-          <span>${escapeHtml(activation.email)}</span>
+        <div class="form-group">
+          <label>过期日期</label>
+          <input type="text" value="${expireDate.toLocaleString('zh-CN')}" readonly>
         </div>
-        <div class="order-detail-item">
-          <span>MAC地址：</span>
-          <span style="font-family: monospace;">${escapeHtml(activation.macAddress || '-')}</span>
-        </div>
-        <div class="order-detail-item">
-          <span>安装日期：</span>
-          <span>${activation.installDate || '-'}</span>
-        </div>
-        <div class="order-detail-item">
-          <span>激活日期：</span>
-          <span>${formatDate(activation.activateDate)}</span>
-        </div>
-        <div class="order-detail-item">
-          <span>状态：</span>
-          <span class="status-badge ${activation.status}">${statusText}</span>
-        </div>
-        ${orderInfoHtml}
-        <div style="margin-top: 20px;">
-          <p style="color: var(--text-light); font-size: 14px; margin-bottom: 10px;">激活码：</p>
-          <div class="activation-key" id="activation-key-display">${escapeHtml(activation.activationKey || '暂无')}</div>
-        </div>
-        <div style="margin-top: 20px;">
-          <p style="color: var(--text-light); font-size: 14px; margin-bottom: 10px;">修改状态：</p>
-          <select id="status-select" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
-            <option value="active" ${activation.status === 'active' ? 'selected' : ''}>活跃</option>
-            <option value="inactive" ${activation.status === 'inactive' ? 'selected' : ''}>未激活</option>
-            <option value="blocked" ${activation.status === 'blocked' ? 'selected' : ''}>已封禁</option>
-          </select>
-          <button onclick="updateStatus(${activation.id})" class="btn btn-primary" style="width: 100%;">保存状态</button>
+        <div class="form-group">
+          <label>剩余天数</label>
+          <input type="text" value="${days > 0 ? days + '天' : '已过期'}" readonly>
         </div>
       `;
       document.getElementById('detail-modal').classList.add('active');
@@ -529,27 +250,18 @@
       document.getElementById('detail-modal').classList.remove('active');
     }
 
-    async function updateStatus(id) {
-      const newStatus = document.getElementById('status-select').value;
-
+    async function deleteActivation(id) {
+      if (!confirm('确定要删除此激活记录吗？')) return;
       try {
-        const response = await fetch('/api/activations/' + id, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus }),
-          credentials: 'include'
-        });
-
+        const response = await fetch(`/api/activations/${id}`, { method: 'DELETE', credentials: 'include' });
         if (response.ok) {
-          showMessage('状态更新成功', 'success');
-          closeModal();
+          showMessage('删除成功', 'success');
           loadActivations();
         } else {
-          showMessage('状态更新失败', 'error');
+          showMessage('删除失败', 'error');
         }
       } catch (error) {
-        console.error('Error updating status:', error);
-        showMessage('状态更新失败', 'error');
+        showMessage('删除失败', 'error');
       }
     }
 
@@ -557,22 +269,9 @@
       const msg = document.getElementById('message');
       msg.textContent = text;
       msg.className = 'message ' + type;
-      setTimeout(() => {
-        msg.className = 'message';
-      }, 4000);
+      setTimeout(() => { msg.className = 'message'; }, 3000);
     }
 
-    // 点击模态框外部关闭
-    document.getElementById('detail-modal').addEventListener('click', function(e) {
-      if (e.target === this) closeModal();
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-      loadSettings();
-      loadActivations();
-    });
-
-    // 侧边栏子菜单切换
     function toggleSidebarSubmenu(link) {
       const submenu = link.nextElementSibling;
       if (submenu && submenu.classList.contains('sidebar-submenu')) {
@@ -581,19 +280,21 @@
       }
     }
 
-    // 高亮当前页面
-    const currentPath = window.location.pathname;
-    document.querySelectorAll('.sidebar-nav a').forEach(link => {
-      const href = link.getAttribute('href');
-      if (href === currentPath || href === currentPath + '/') {
-        link.classList.add('active');
-        const submenu = link.closest('.sidebar-submenu');
-        if (submenu) {
-          submenu.classList.add('open');
-          const parentLink = submenu.previousElementSibling;
-          if (parentLink) parentLink.classList.add('open');
-        }
-      }
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.getElementById('search-input').addEventListener('input', filterActivations);
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadActivations();
     });
   </script>
 </body>
