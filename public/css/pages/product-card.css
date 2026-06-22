@@ -280,15 +280,46 @@
   .product-card-btn { width: 100% !important; text-align: center !important; }
 }
 
-/* Category Badge (覆盖 .product-card-category 文字) */
+/* Category Badge (覆盖 .product-card-category 文字)
+   注意：background/color 不能用 !important，否则 modifier class
+   （.badge-enterprise-product 等）会被静默回退为灰色。
+   其余属性保持 !important 是为了在 product-card 卡片内的特异性格斗中胜出。 */
 .product-card-category-badge {
   display: inline-block !important;
   padding: 3px 10px !important;
   border-radius: 10px !important;
   font-size: 11px !important;
   font-weight: 500 !important;
-  color: white !important;
   margin-bottom: 8px !important;
-  background: #e5e5e5 !important;
-  color: #333 !important;
+  background: #e5e5e5;
+  color: #333;
+}
+
+/* 课程型分类 badge modifier classes（与 admin.css 中的定义同步）
+   必须在 product-card.css 中也有定义，因为首页只加载 product-card.css，
+   不加载 admin.css。组合选择器 .product-card-category-badge.X 的特异性
+   (0,2,0) 高于 base (0,1,0)，modifier 始终胜出。 */
+
+/* 企业产品 - 蓝色 */
+.product-card-category-badge.badge-enterprise-product {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+/* 外站课程 - 绿色 */
+.product-card-category-badge.badge-external-course {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+/* 企业内训 - 橙色 */
+.product-card-category-badge.badge-enterprise-internal {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+}
+
+/* GitHub 仓库 - 黑色渐变（贴近 GitHub 品牌色 #24292e → #0d1117） */
+.product-card-category-badge.badge-github-repo {
+  background: linear-gradient(135deg, #24292e 0%, #0d1117 100%);
+  color: white;
 }
