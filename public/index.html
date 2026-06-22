@@ -175,6 +175,17 @@
   <script>
     document.getElementById('footer-year').textContent = new Date().getFullYear();
 
+    // 分类名 → badge CSS class 映射
+    function getCategoryBadgeClass(category) {
+      const map = {
+        '企业产品': 'badge-enterprise-product',
+        '外站课程': 'badge-external-course',
+        '企业内训': 'badge-enterprise-internal',
+        'GitHub 仓库': 'badge-github-repo'
+      };
+      return map[category] || 'product-card-category-badge';
+    }
+
     let currentSlide = 0;
     let slideInterval;
     let heroProducts = [];
@@ -225,7 +236,7 @@
               <a href="/product/${product.id}" class="hero-card" ${hasImage ? 'style="background: linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.35)), url(\'' + product.image + '\'); background-size: cover; background-position: center;"' : ''}>
                 <div class="hero-card-inner">
                   <div class="hero-card-left">
-                    <span class="hero-card-badge">限时优惠</span>
+                    <span class="hero-card-badge ${getCategoryBadgeClass(product.category)}">${product.category || '软件'}</span>
                     <h3>${product.name}</h3>
                     ${product.features && product.features.length > 0 ? `<div class="hero-card-features">• ${product.features.slice(0,3).join(' • ')}</div>` : ''}
                   </div>
@@ -488,7 +499,7 @@
               ${imageHtml}
               <div class="product-card-content">
                 <h3 class="product-card-title"><a href="/product/${product.id}">${product.name}</a></h3>
-                <div class="product-card-category">${product.category || '软件'}</div>
+                <span class="product-card-category-badge ${getCategoryBadgeClass(product.category)}">${product.category || '软件'}</span>
                 ${featuresHtml}
                 <div class="product-card-pricing">${pricingHtml}</div>
                 <div class="product-card-footer">
