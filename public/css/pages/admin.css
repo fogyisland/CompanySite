@@ -552,6 +552,50 @@ body.sidebar-collapsed .admin-main {
   color: white;
 }
 
+/* 企业产品 - 蓝色 */
+.badge-enterprise-product {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+/* 外站课程 - 绿色 */
+.badge-external-course {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+/* 企业内训 - 橙色 */
+.badge-enterprise-internal {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+}
+
+/* GitHub 仓库 - 黑色渐变（贴近 GitHub 品牌色 #24292e → #0d1117） */
+.badge-github-repo {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: linear-gradient(135deg, #24292e 0%, #0d1117 100%);
+  color: white;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;
