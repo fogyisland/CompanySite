@@ -2203,6 +2203,49 @@ app.get('/api/docs/:productSlug/:docSlug', async (req, res) => {
   }
 });
 
+// ============ 动态（News）公开 API ============
+
+// 公开：列出已发布动态（支持 category + 分页）
+app.get('/api/news', async (req, res) => {
+  try {
+    const { category, page, pageSize } = req.query;
+    const news = await db.getPublishedNews({
+      category: category || null,
+      page: parseInt(page, 10) || 1,
+      pageSize: parseInt(pageSize, 10) || 12
+    });
+    res.json(news);
+  } catch (err) {
+    console.error('[public news list]', err);
+    res.status(500).json({ error: '加载失败' });
+  }
+});
+
+// 公开：动态详情（按 slug）。仅返回已发布；草稿/已撤稿一律 404（防止泄露）
+app.get('/api/news/:slug', async (req, res) => {
+  try {
+    const news = await db.getNewsBySlug(req.params.slug);
+    if (!news || news.status !== 'published') return res.status(404).json({ error: '动态不存在' });
+    res.json(news);
+  } catch (err) {
+    console.error('[public news detail]', err);
+    res.status(500).json({ error: '加载失败' });
+  }
+});
+
+// 公开：阅读量原子自增（每 IP 30/min，公共端点限流 S12/S13 模式）
+app.post('/api/news/:id/view', checkPublicEndpointRateLimit, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    await db.incrementNewsView(id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[public news view]', err);
+    res.status(500).json({ error: '更新阅读量失败' });
+  }
+});
+
 // 添加产品（需登录）
 app.post('/api/products', requireAuth, async (req, res) => {
   const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, courseLinks } = req.body;
@@ -2512,6 +2555,126 @@ app.post('/api/admin/docs/:docId/unpublish', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (e) {
     console.error('Admin unpublish doc error:', e);
+    res.status(500).json({ error: '撤稿失败' });
+  }
+});
+
+// ============ 动态（News）Admin API ============
+
+// Admin: 列出全部动态（含草稿）
+app.get('/api/admin/news', requireAuth, async (req, res) => {
+  try {
+    const news = await db.getAllNews();
+    res.json(news);
+  } catch (err) {
+    console.error('[admin news list]', err);
+    res.status(500).json({ error: '加载失败' });
+  }
+});
+
+// Admin: 单条动态详情
+app.get('/api/admin/news/:id', requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    const news = await db.getNews(id);
+    if (!news) return res.status(404).json({ error: '动态不存在' });
+    res.json(news);
+  } catch (err) {
+    console.error('[admin news get]', err);
+    res.status(500).json({ error: '加载失败' });
+  }
+});
+
+// Admin: 新建动态
+app.post('/api/admin/news', requireAuth, async (req, res) => {
+  try {
+    const { title, slug, excerpt, content_html, cover_image, category, is_pinned, sort_order } = req.body;
+    if (!title || !slug) return res.status(400).json({ error: '标题和 slug 必填' });
+    if (!/^[a-z0-9-]+$/.test(slug)) return res.status(400).json({ error: 'slug 仅允许小写字母、数字、连字符' });
+    const result = await db.createNews({
+      title, slug, excerpt,
+      contentHtml: content_html,
+      coverImage: cover_image,
+      category,
+      isPinned: is_pinned === true || is_pinned === 1,
+      sortOrder: parseInt(sort_order, 10) || 0
+    });
+    const username = req.session.userName || req.session.username || 'admin';
+    writeOperationLog('NEWS_CREATE', username, `News #${result.id} (${slug})`);
+    res.json(result);
+  } catch (err) {
+    console.error('[admin news create]', err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'slug 已存在' });
+    res.status(500).json({ error: '创建失败' });
+  }
+});
+
+// Admin: 更新动态
+app.put('/api/admin/news/:id', requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    const { title, slug, excerpt, content_html, cover_image, category, is_pinned, sort_order } = req.body;
+    await db.updateNews(id, {
+      title, slug, excerpt,
+      contentHtml: content_html,
+      coverImage: cover_image,
+      category,
+      isPinned: is_pinned === true || is_pinned === 1,
+      sortOrder: parseInt(sort_order, 10) || 0
+    });
+    const username = req.session.userName || req.session.username || 'admin';
+    writeOperationLog('NEWS_UPDATE', username, `News #${id} (${slug || ''})`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin news update]', err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'slug 已存在' });
+    res.status(500).json({ error: '更新失败' });
+  }
+});
+
+// Admin: 删除动态
+app.delete('/api/admin/news/:id', requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    await db.deleteNews(id);
+    const username = req.session.userName || req.session.username || 'admin';
+    writeOperationLog('NEWS_DELETE', username, `News #${id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin news delete]', err);
+    res.status(500).json({ error: '删除失败' });
+  }
+});
+
+// Admin: 发布动态
+app.post('/api/admin/news/:id/publish', requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    await db.publishNews(id);
+    const username = req.session.userName || req.session.username || 'admin';
+    writeOperationLog('NEWS_PUBLISH', username, `News #${id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin news publish]', err);
+    res.status(500).json({ error: '发布失败' });
+  }
+});
+
+// Admin: 撤稿动态
+app.post('/api/admin/news/:id/unpublish', requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    await db.unpublishNews(id);
+    const username = req.session.userName || req.session.username || 'admin';
+    writeOperationLog('NEWS_UNPUBLISH', username, `News #${id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin news unpublish]', err);
     res.status(500).json({ error: '撤稿失败' });
   }
 });
