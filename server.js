@@ -2616,6 +2616,10 @@ app.put('/api/admin/news/:id', requireAuth, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
     const { title, slug, excerpt, content_html, cover_image, category, is_pinned, sort_order } = req.body;
+    if (!title || !slug) return res.status(400).json({ error: '标题和 slug 必填' });
+    if (!/^[a-z0-9-]+$/.test(slug)) return res.status(400).json({ error: 'slug 仅允许小写字母、数字、连字符' });
+    const existing = await db.getNews(id);
+    if (!existing) return res.status(404).json({ error: '动态不存在' });
     await db.updateNews(id, {
       title, slug, excerpt,
       contentHtml: content_html,
@@ -2639,6 +2643,8 @@ app.delete('/api/admin/news/:id', requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    const existing = await db.getNews(id);
+    if (!existing) return res.status(404).json({ error: '动态不存在' });
     await db.deleteNews(id);
     const username = req.session.userName || req.session.username || 'admin';
     writeOperationLog('NEWS_DELETE', username, `News #${id}`);
@@ -2654,6 +2660,8 @@ app.post('/api/admin/news/:id/publish', requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    const existing = await db.getNews(id);
+    if (!existing) return res.status(404).json({ error: '动态不存在' });
     await db.publishNews(id);
     const username = req.session.userName || req.session.username || 'admin';
     writeOperationLog('NEWS_PUBLISH', username, `News #${id}`);
@@ -2669,6 +2677,8 @@ app.post('/api/admin/news/:id/unpublish', requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
+    const existing = await db.getNews(id);
+    if (!existing) return res.status(404).json({ error: '动态不存在' });
     await db.unpublishNews(id);
     const username = req.session.userName || req.session.username || 'admin';
     writeOperationLog('NEWS_UNPUBLISH', username, `News #${id}`);
