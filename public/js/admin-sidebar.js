@@ -10,6 +10,12 @@
   // ---- Nav 配置（11 项顶级 + submenu） ----
   const NAV = [
     {
+      group: '动态',
+      items: [
+        { id: 'nav-news', icon: 'megaphone', label: '动态管理', href: '/admin-news.html' }
+      ]
+    },
+    {
       group: '运营',
       items: [
         { icon: 'package', label: '产品管理', href: '/admin-product' },
