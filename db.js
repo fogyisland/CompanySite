@@ -2047,8 +2047,11 @@ async function getPublishedProductDoc(productSlug, docSlug) {
 
 // === News 模块（公告/公司动态） ===
 async function getAllNews() {
+  // 草稿 published_at 为 NULL：MySQL 默认 NULL 在 DESC 时排到最后，
+  // 管理员编辑草稿时永远找不到。用 COALESCE(published_at, updated_at)
+  // 让草稿按最后编辑时间倒序出现在列表顶部。
   const [rows] = await mysqlPool.query(
-    'SELECT * FROM news ORDER BY is_pinned DESC, published_at DESC, sort_order DESC, id DESC'
+    'SELECT * FROM news ORDER BY is_pinned DESC, COALESCE(published_at, updated_at) DESC, sort_order DESC, id DESC'
   );
   return rows;
 }
