@@ -189,6 +189,7 @@
         let html = '<div class="news-detail-container">';
         html += '<a href="/news.html" class="news-back-link">← 返回动态列表</a>';
         if (n.cover_image) html += '<div class="news-detail-cover" style="background-image:url(' + escapeHtml(n.cover_image) + ')"></div>';
+        else html += '<div class="news-detail-cover"></div>';
         html += '<div class="news-detail-meta">' + (n.category ? escapeHtml(n.category) + ' · ' : '') + formatDate(n.published_at) + ' · 👁 ' + (n.view_count || 0) + ' 阅读</div>';
         html += '<h1 class="news-detail-title">' + escapeHtml(n.title) + '</h1>';
         const safeHtml = window.DOMPurify ? window.DOMPurify.sanitize(n.content_html || '', { USE_PROFILES: { html: true } }) : (n.content_html || '');
