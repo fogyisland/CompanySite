@@ -279,3 +279,16 @@
   .product-card-footer { flex-direction: column !important; gap: 12px !important; }
   .product-card-btn { width: 100% !important; text-align: center !important; }
 }
+
+/* Category Badge (覆盖 .product-card-category 文字) */
+.product-card-category-badge {
+  display: inline-block !important;
+  padding: 3px 10px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: white !important;
+  margin-bottom: 8px !important;
+  background: #e5e5e5 !important;
+  color: #333 !important;
+}
