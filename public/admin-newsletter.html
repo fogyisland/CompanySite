@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 邮件订阅管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+    <h1 style="font-size: 24px; margin-bottom: 10px;">邮件订阅管理</h1>
+    <p style="color: var(--text-light); margin-bottom: 30px;">管理订阅用户列表和发送邮件</p>
+
+    <div class="message" id="message"></div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-value" id="subscriber-count">0</div>
+        <div class="stat-label">订阅用户</div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-section">
+        <h3 class="section-title">订阅用户列表</h3>
+        <div class="subscribers-list" id="subscribers-list">
+          <div style="padding: 20px; text-align: center; color: var(--text-light);">加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <form id="email-form">
+        <div class="form-section">
+          <h3 class="section-title">发送邮件</h3>
+
+          <div class="form-group">
+            <label for="subject">邮件主题</label>
+            <input type="text" id="subject" placeholder="输入邮件主题">
+          </div>
+
+          <div class="form-group">
+            <label for="content">邮件内容</label>
+            <textarea id="content" placeholder="输入邮件内容，支持HTML格式"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="/admin-settings" class="btn-back">&larr; 返回</a>
+          <button type="submit" class="btn btn-primary">发送邮件</button>
+        </div>
+      </form>
+    </div>
+  </main></div>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 邮件订阅管理';
+        }
+
+        // 更新头部Logo
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        // 应用主题
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    // 加载订阅者列表
+    async function loadSubscribers() {
+      try {
+        const response = await fetch('/api/subscribers', { credentials: 'include' });
+        const subscribers = await response.json();
+
+        document.getElementById('subscriber-count').textContent = subscribers.length;
+
+        if (subscribers.length === 0) {
+          document.getElementById('subscribers-list').innerHTML =
+            '<div style="padding: 20px; text-align: center; color: var(--text-light);">暂无订阅用户</div>';
+          return;
+        }
+
+        document.getElementById('subscribers-list').innerHTML = subscribers.map(s => `
+          <div class="subscriber-item">
+            <span class="subscriber-email">${escapeHtml(s.email)}</span>
+            <span class="subscriber-date">${escapeHtml(new Date(s.created_at).toLocaleDateString())}</span>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading subscribers:', error);
+        document.getElementById('subscribers-list').innerHTML =
+          '<div style="padding: 20px; text-align: center; color: var(--text-light);">加载失败</div>';
+      }
+    }
+
+    // 发送邮件
+    document.getElementById('email-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const subject = document.getElementById('subject').value;
+      const content = document.getElementById('content').value;
+
+      if (!subject || !content) {
+        showMessage('请填写邮件主题和内容', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject, content }),
+          credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage(data.message, 'success');
+          document.getElementById('subject').value = '';
+          document.getElementById('content').value = '';
+        } else {
+          showMessage(data.error || '发送失败', 'error');
+        }
+      } catch (error) {
+        showMessage('发送失败，请稍后重试', 'error');
+      }
+    });
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => { msg.className = 'message'; }, 5000);
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadSubscribers();
+    });
+
+    // 侧边栏子菜单切换
+    function toggleSidebarSubmenu(link) {
+      const submenu = link.nextElementSibling;
+      if (submenu && submenu.classList.contains('sidebar-submenu')) {
+        submenu.classList.toggle('open');
+        link.classList.toggle('open');
+      }
+    }
+
+    // 高亮当前页面
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+      const href = link.getAttribute('href');
+      if (href === currentPath || href === currentPath + '/') {
+        link.classList.add('active');
+        const submenu = link.closest('.sidebar-submenu');
+        if (submenu) {
+          submenu.classList.add('open');
+          const parentLink = submenu.previousElementSibling;
+          if (parentLink) parentLink.classList.add('open');
+        }
+      }
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

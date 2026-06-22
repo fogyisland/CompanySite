@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 数据遥测</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1704">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1704">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+    <div class="page-header">
+      <h1>数据遥测</h1>
+      <div class="admin-actions">
+        <button class="btn-danger btn-small" onclick="clearAllTelemetry()">清空全部数据</button>
+        <a href="/admin-overview" class="btn btn-outline btn-small">返回概览</a>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="number" id="stat-total">-</div>
+        <div class="label">总记录数</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="stat-24h">-</div>
+        <div class="label">24小时内</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="stat-apps">-</div>
+        <div class="label">应用数量</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="stat-platforms">-</div>
+        <div class="label">平台数量</div>
+      </div>
+    </div>
+
+    <!-- By App -->
+    <div class="form-card" id="by-app-card" style="display: none;">
+      <h3 style="margin-bottom: 15px;">按应用统计</h3>
+      <div id="by-app-stats"></div>
+    </div>
+
+    <!-- Telemetry Table -->
+    <div class="form-card">
+      <div class="table-container">
+        <table class="telemetry-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>设备ID</th>
+              <th>应用</th>
+              <th>版本</th>
+              <th>事件数</th>
+              <th>平台</th>
+              <th>IP</th>
+              <th>当前MAC</th>
+              <th>过期时间</th>
+              <th>是否过期</th>
+              <th>时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="telemetry-table">
+            <tr><td colspan="12" class="empty-state">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <button id="prev-btn" onclick="prevPage()">上一页</button>
+        <span id="page-info">第 1 页</span>
+        <button id="next-btn" onclick="nextPage()">下一页</button>
+      </div>
+    </div>
+  </main></div>
+
+  <!-- Detail Modal -->
+  <div id="detail-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="background: white; margin: 50px auto; padding: 30px; border-radius: 8px; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+      <h2>遥测详情 <button onclick="closeDetail()" style="float: right; border: none; background: none; font-size: 24px; cursor: pointer;">&times;</button></h2>
+      <div id="detail-content"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 0;
+    const pageSize = 50;
+    let totalCount = 0;
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 从 enrichment 字段计算过期显示文本/状态 class（loadTelemetry + showDetail 共用）
+    function computeExpireDisplay(row) {
+      const expireDate = row.enrichedExpireDate ? new Date(row.enrichedExpireDate) : null;
+      const isExpired = row.enrichedIsExpired;
+      return {
+        expireDate,
+        isExpired,
+        expireText: expireDate
+          ? escapeHtml(expireDate.toLocaleString('zh-CN'))
+          : '<span style="color: var(--admin-text-muted, #999);">未激活</span>',
+        statusClass: isExpired === null ? 'pending' : isExpired === 1 ? 'failed' : 'paid',
+        statusText:  isExpired === null ? '未激活' : isExpired === 1 ? '已过期' : '正常'
+      };
+    }
+
+    async function loadStats() {
+      try {
+        const response = await fetch('/api/telemetry/stats', { credentials: 'include' });
+        const stats = await response.json();
+
+        document.getElementById('stat-total').textContent = stats.total || 0;
+        document.getElementById('stat-24h').textContent = stats.last24h || 0;
+        document.getElementById('stat-apps').textContent = stats.byApp ? stats.byApp.length : 0;
+        document.getElementById('stat-platforms').textContent = stats.byPlatform ? stats.byPlatform.length : 0;
+
+        // Show by-app stats
+        if (stats.byApp && stats.byApp.length > 0) {
+          document.getElementById('by-app-card').style.display = 'block';
+          document.getElementById('by-app-stats').innerHTML = stats.byApp.map(app =>
+            '<span style="display: inline-block; margin: 5px; padding: 8px 15px; background: var(--light-bg); border-radius: 4px;">' +
+            escapeHtml(app.app_name) + ': <strong>' + app.c + '</strong></span>'
+          ).join('');
+        }
+
+        if (stats.byPlatform && stats.byPlatform.length > 0) {
+          document.getElementById('by-app-card').style.display = 'block';
+          document.getElementById('by-app-stats').innerHTML += '<h4 style="margin-top: 20px;">按平台:</h4>' +
+            stats.byPlatform.map(p =>
+              '<span style="display: inline-block; margin: 5px; padding: 8px 15px; background: var(--light-bg); border-radius: 4px;">' +
+              escapeHtml(p.platform || 'Unknown') + ': <strong>' + p.c + '</strong></span>'
+            ).join('');
+        }
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
+    }
+
+    async function loadTelemetry() {
+      try {
+        const offset = currentPage * pageSize;
+        const response = await fetch('/api/telemetry?limit=' + pageSize + '&offset=' + offset, { credentials: 'include' });
+        const result = await response.json();
+
+        totalCount = result.total || 0;
+        const data = result.data || [];
+
+        const tbody = document.getElementById('telemetry-table');
+
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="12" class="empty-state">暂无遥测数据</td></tr>';
+          document.getElementById('prev-btn').disabled = true;
+          document.getElementById('next-btn').disabled = true;
+          return;
+        }
+
+        tbody.innerHTML = data.map(t => {
+          const events = Array.isArray(t.events) ? t.events : [];
+          const firstSeen = t.firstSeen ? new Date(t.firstSeen).toLocaleString('zh-CN') : '-';
+          const { expireText, statusClass, statusText } = computeExpireDisplay(t);
+
+          return `
+            <tr>
+              <td>${escapeHtml(String(t.id))}</td>
+              <td style="font-family: monospace; font-size: 11px;" title="${escapeHtml(t.deviceId)}">${escapeHtml(t.deviceId.substring(0, 8))}...</td>
+              <td><span class="app-badge">${escapeHtml(t.appName)}</span></td>
+              <td>${escapeHtml(t.appVersion || '-')}</td>
+              <td><span class="event-count">${events.length}</span></td>
+              <td>${escapeHtml(t.platform || '-')}</td>
+              <td>${escapeHtml(t.clientIp || '-')}</td>
+              <td style="font-family: monospace; font-size: 11px;">${escapeHtml(t.deviceId)}</td>
+              <td>${expireText}</td>
+              <td><span class="status-tag ${statusClass}">${statusText}</span></td>
+              <td>${escapeHtml(new Date(t.createdAt).toLocaleString('zh-CN'))}</td>
+              <td>
+                <button class="btn-small" onclick="showDetail(${t.id})">详情</button>
+                <button class="btn-danger btn-small" onclick="deleteTelemetry(${t.id})">删除</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        updatePagination();
+      } catch (error) {
+        console.error('Error loading telemetry:', error);
+        document.getElementById('telemetry-table').innerHTML =
+          '<tr><td colspan="12" class="empty-state" style="color: red;">加载失败</td></tr>';
+      }
+    }
+
+    function updatePagination() {
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const currentPageNum = currentPage + 1;
+
+      document.getElementById('page-info').textContent = `第 ${currentPageNum} / ${totalPages || 1} 页 (共 ${totalCount} 条)`;
+      document.getElementById('prev-btn').disabled = currentPage === 0;
+      document.getElementById('next-btn').disabled = (currentPage + 1) * pageSize >= totalCount;
+    }
+
+    function prevPage() {
+      if (currentPage > 0) {
+        currentPage--;
+        loadTelemetry();
+      }
+    }
+
+    function nextPage() {
+      if ((currentPage + 1) * pageSize < totalCount) {
+        currentPage++;
+        loadTelemetry();
+      }
+    }
+
+    async function showDetail(id) {
+      try {
+        const offset = currentPage * pageSize;
+        const response = await fetch('/api/telemetry?limit=1000&offset=0', { credentials: 'include' });
+        const result = await response.json();
+        const t = result.data.find(x => x.id === id);
+
+        if (!t) return;
+
+        const { expireText, statusClass, statusText } = computeExpireDisplay(t);
+        const events = Array.isArray(t.events) ? t.events : [];
+        const eventsHtml = events.length > 0
+          ? events.map(e => `
+              <div style="margin: 10px 0; padding: 10px; background: var(--light-bg); border-radius: 4px;">
+                <strong>${escapeHtml(e.eventType || 'Unknown')}</strong>
+                <span style="color: var(--text-light); font-size: 12px; margin-left: 10px;">${escapeHtml(e.timestamp || '')}</span>
+                <pre style="margin: 5px 0 0 0; font-size: 12px; white-space: pre-wrap;">${JSON.stringify(e.properties || {}, null, 2)}</pre>
+              </div>
+            `).join('')
+          : '<p>无事件数据</p>';
+
+        document.getElementById('detail-content').innerHTML = `
+          <div style="margin-top: 20px;">
+            <p><strong>设备ID:</strong> <code>${escapeHtml(t.deviceId)}</code></p>
+            <p><strong>应用名称:</strong> ${escapeHtml(t.appName)}</p>
+            <p><strong>版本:</strong> ${escapeHtml(t.appVersion || '-')}</p>
+            <p><strong>首次运行:</strong> ${t.firstSeen ? new Date(t.firstSeen).toLocaleString('zh-CN') : '-'}</p>
+            <p><strong>平台:</strong> ${escapeHtml(t.platform || '-')}</p>
+            <p><strong>操作系统:</strong> ${escapeHtml(t.osVersion || '-')}</p>
+            <p><strong>IP地址:</strong> ${escapeHtml(t.clientIp || '-')}</p>
+            <p><strong>User-Agent:</strong> <code>${escapeHtml(t.userAgent || '-')}</code></p>
+            <p><strong>接收时间:</strong> ${new Date(t.createdAt).toLocaleString('zh-CN')}</p>
+            <p><strong>当前 MAC:</strong> <code>${escapeHtml(t.deviceId)}</code></p>
+            <p><strong>过期时间:</strong> ${expireText}</p>
+            <p><strong>是否过期:</strong> <span class="status-tag ${statusClass}">${statusText}</span></p>
+            <h3 style="margin-top: 20px;">事件列表 (${events.length})</h3>
+            ${eventsHtml}
+          </div>
+        `;
+        document.getElementById('detail-modal').style.display = 'block';
+      } catch (error) {
+        console.error('Error showing detail:', error);
+      }
+    }
+
+    function closeDetail() {
+      document.getElementById('detail-modal').style.display = 'none';
+    }
+
+    async function deleteTelemetry(id) {
+      if (!confirm('确定要删除这条遥测记录吗？')) return;
+
+      try {
+        const response = await fetch('/api/telemetry/' + id, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        if (response.ok) {
+          loadTelemetry();
+          loadStats();
+        }
+      } catch (error) {
+        console.error('Error deleting telemetry:', error);
+      }
+    }
+
+    async function clearAllTelemetry() {
+      if (!confirm('警告：确定要清空所有遥测数据吗？此操作不可恢复！')) return;
+      if (!confirm('再次确认：所有遥测数据将被永久删除！')) return;
+
+      try {
+        const response = await fetch('/api/telemetry', {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        if (response.ok) {
+          currentPage = 0;
+          loadTelemetry();
+          loadStats();
+        }
+      } catch (error) {
+        console.error('Error clearing telemetry:', error);
+      }
+    }
+
+    // Load settings
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 数据遥测';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        // 应用主题
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadStats();
+      loadTelemetry();
+    });
+
+    // Close modal on outside click
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeDetail();
+      }
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

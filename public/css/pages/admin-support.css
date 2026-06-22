@@ -1,0 +1,120 @@
+/* 限定作用域 */
+.admin-main { /* ... existing 父级 ... */ }
+
+/* 表格 */
+.admin-main .tickets-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--admin-bg-card);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+}
+.admin-main .tickets-table thead { background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(139,92,246,0.04) 100%); }
+.admin-main .tickets-table th { padding: 14px 16px; text-align: left; font-weight: 600; font-size: 13px; color: var(--admin-text-primary); }
+.admin-main .tickets-table td { padding: 14px 16px; border-top: 1px solid var(--admin-border-light); font-size: 14px; color: var(--admin-text-primary); }
+.admin-main .tickets-table tbody tr { transition: background 0.15s ease; }
+.admin-main .tickets-table tbody tr:hover { background: var(--admin-bg-hover); }
+.admin-main .tickets-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.015); }
+.admin-main .tickets-table tbody tr:nth-child(even):hover { background: var(--admin-bg-hover); }
+
+/* 徽章 */
+.admin-main .priority-badge,
+.admin-main .status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+.admin-main .priority-badge.high { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+.admin-main .priority-badge.normal { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+.admin-main .priority-badge.low { background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%); }
+.admin-main .status-badge.open { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.admin-main .status-badge.replied { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+.admin-main .status-badge.resolved { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.admin-main .status-badge.closed { background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%); }
+
+/* 按钮 */
+.admin-main .btn-view {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white; border: none; border-radius: 8px;
+  padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(59,130,246,0.3);
+  transition: all 0.2s ease;
+}
+.admin-main .btn-view:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(59,130,246,0.4); }
+.admin-main .btn-resolve {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white; border: none; border-radius: 10px;
+  padding: 10px 20px; font-size: 14px; font-weight: 500; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16,185,129,0.3);
+  transition: all 0.2s ease;
+}
+.admin-main .btn-resolve:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(16,185,129,0.4); }
+
+/* 详情字段 */
+.admin-main .ticket-detail-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--admin-border-light);
+  font-size: 14px;
+}
+.admin-main .ticket-detail-item:last-child { border-bottom: none; }
+.admin-main .ticket-detail-item .label {
+  min-width: 100px;
+  color: var(--admin-text-muted);
+  font-weight: 500;
+}
+
+/* 回复区 */
+.admin-main .replies-section { margin-top: 24px; }
+.admin-main .replies-section h4 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--admin-text-primary); }
+.admin-main .reply-item { display: flex; margin-bottom: 12px; }
+.admin-main .reply-item.user { justify-content: flex-start; }
+.admin-main .reply-item.admin { justify-content: flex-end; }
+.admin-main .reply-item .reply-content {
+  padding: 12px 16px;
+  max-width: 70%;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.admin-main .reply-item.user .reply-content {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: var(--admin-text-primary);
+  border-radius: 14px 14px 14px 4px;
+}
+.admin-main .reply-item.admin .reply-content {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 14px 14px 4px 14px;
+}
+.admin-main .reply-item .reply-header {
+  font-size: 12px;
+  margin-bottom: 4px;
+  opacity: 0.75;
+}
+
+/* 回复表单 */
+.admin-main .reply-form { margin-top: 24px; }
+.admin-main .reply-form h4 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--admin-text-primary); }
+.admin-main .reply-form textarea {
+  width: 100%; min-height: 100px; padding: 12px 14px;
+  border: 1px solid var(--admin-border); border-radius: 10px;
+  font-size: 14px; font-family: inherit; resize: vertical;
+  transition: all 0.2s ease;
+}
+.admin-main .reply-form textarea:focus {
+  outline: none; border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px rgba(9,105,218,0.12);
+}
+.admin-main .reply-form-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px;
+}

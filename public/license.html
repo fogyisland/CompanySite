@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>软件许可协议 - 博铭科技</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/components/header.css">
+  <style>
+    .license-container {
+      max-width: 860px;
+      margin: 60px auto;
+      padding: 0 24px;
+    }
+    .license-header {
+      text-align: center;
+      margin-bottom: 56px;
+      padding: 48px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      border-radius: 20px;
+      color: white;
+    }
+    .license-header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+    .license-header p {
+      font-size: 16px;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+    .license-meta {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 24px;
+      font-size: 14px;
+      opacity: 0.85;
+    }
+    .license-content {
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 20px;
+      padding: 48px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .license-content h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--primary);
+      margin: 36px 0 16px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--primary);
+      display: inline-block;
+    }
+    .license-content h2:first-of-type {
+      margin-top: 0;
+    }
+    .license-content h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 24px 0 12px;
+    }
+    .license-content p {
+      line-height: 1.9;
+      color: var(--text);
+      margin-bottom: 16px;
+      font-size: 15px;
+    }
+    .license-content ul, .license-content ol {
+      margin: 16px 0;
+      padding-left: 28px;
+      color: var(--text);
+    }
+    .license-content li {
+      margin-bottom: 10px;
+      line-height: 1.7;
+      font-size: 15px;
+    }
+    .license-content strong {
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .license-note {
+      background: linear-gradient(135deg, rgba(19, 60, 138, 0.04) 0%, rgba(19, 60, 138, 0.08) 100%);
+      border-left: 4px solid var(--primary);
+      padding: 20px 24px;
+      margin: 32px 0;
+      border-radius: 0 12px 12px 0;
+    }
+    .license-note p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-light);
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--primary);
+      text-decoration: none;
+      margin-top: 32px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 768px) {
+      .license-header {
+        padding: 32px 24px;
+      }
+      .license-header h1 {
+        font-size: 28px;
+      }
+      .license-meta {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .license-content {
+        padding: 28px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="header-logo-icon">BM</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions" id="header-actions">
+        <button class="header-cart" onclick="renderCartModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h19.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+          </svg>
+          <span id="cart-badge" class="cart-badge" style="display:none;">0</span>
+          <span class="cart-text">购物车</span>
+        </button>
+        <a href="/user-login" class="header-login" id="header-login">登录</a>
+        <a href="/admin-product" class="header-admin" id="header-admin" style="display:none;">管理中心</a>
+        <a href="#" class="header-logout" id="header-logout" style="display:none;" onclick="headerLogout()">退出</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="license-container">
+      <div class="license-header">
+        <h1>软件许可协议</h1>
+        <p>博铭科技软件产品最终用户许可协议</p>
+        <div class="license-meta">
+          <span>版本：1.0</span>
+          <span>更新日期：2026年1月1日</span>
+        </div>
+      </div>
+
+      <div class="license-content">
+        <h2>一、协议概述</h2>
+        <p>本《软件许可协议》（以下简称"本协议"）是您与博铭科技之间关于使用博铭科技软件产品（以下简称"本软件"）的法律协议。您在安装、复制或使用本软件之前，应仔细阅读本协议的全部内容。一旦您安装、复制或使用本软件，即表示您同意接受本协议的全部条款和条件。如果您不同意本协议，请不要安装、复制或使用本软件。</p>
+
+        <h2>二、知识产权</h2>
+        <p>本软件及其所有副本、相关文档、本协议印刷品以及本软件附带的任何有形物品，均为博铭科技所有，受中华人民共和国著作权法、国际版权公约以及其他知识产权法律和条约的保护。您确认博铭科技拥有本软件的所有知识产权或已获得合法授权，您不会因使用本软件而获得本软件的所有权。</p>
+
+        <h2>三、许可授予</h2>
+        <p>在您遵守本协议全部条款的前提下，博铭科技在此授予您以下非独占性、不可转让的有限权利：</p>
+        <ul>
+          <li><strong>安装与使用：</strong>您有权在您拥有的设备上安装和运行本软件的一个副本，用于非商业性个人用途或本协议允许的其他用途；</li>
+          <li><strong>备份复制：</strong>您有权制作本软件的备份副本一份，用于存档或替代您正在使用的原始副本；</li>
+          <li><strong>授权转让：</strong>在遵守本协议全部条款的前提下，您可以将本软件的一次性使用权转让给其他人，但需确保该他人同意本协议的全部条款。</li>
+        </ul>
+
+        <h2>四、限制条款</h2>
+        <p>您明确理解和同意，您不得从事以下任何行为：</p>
+        <ul>
+          <li>不得对本软件进行任何形式的修改、改编、翻译、反向工程、反编译或 disassemble，除非适用的法律明确允许；</li>
+          <li>不得出租、租赁、出借、再授权或分发本软件，或在任何网络化环境中提供本软件供多个用户同时使用；</li>
+          <li>不得将本软件用于任何非法目的，或超出本协议明确授权的用途；</li>
+          <li>不得删除或更改本软件上包含的任何版权、商标或其他所有权声明；</li>
+          <li>不得使用本软件从事任何侵犯博铭科技或第三方知识产权的活动；</li>
+          <li>不得对本软件或授权文件进行破解、篡改或非法获取授权信息。</li>
+        </ul>
+
+        <h2>五、授权验证</h2>
+        <p>本软件可能要求您在首次使用或定期使用时进行授权验证。您确认：</p>
+        <ul>
+          <li>您有权使用购买时获得的授权码/激活码进行软件激活；</li>
+          <li>每个授权码仅可绑定一台设备（以MAC地址为准），除非产品说明另有规定；</li>
+          <li>授权验证失败可能导致软件功能受限，您应联系博铭科技技术支持获取帮助；</li>
+          <li>您有责任妥善保管授权信息，因保管不当导致的授权丢失由您自行承担。</li>
+        </ul>
+
+        <h2>六、保密性</h2>
+        <p>您理解并同意，本软件包含博铭科技的核心技术秘密和商业机密（以下统称"保密信息"）。您应采取一切合理措施来保护这些保密信息，防止其被未经授权地披露或使用。无论本协议是否终止，您均应持续履行本条规定的保密义务。</p>
+
+        <h2>七、免责声明与有限保证</h2>
+        <p><strong>本软件按"现状"提供，博铭科技明确声明不对本软件提供任何明示或暗示的保证，包括但不限于对适销性、特定用途适用性、无侵权性的保证。</strong></p>
+        <p>在适用法律允许的最大范围内，博铭科技不对因使用或无法使用本软件而产生的任何特殊、偶然、间接、惩罚性或继发性损害承担任何责任，即使博铭科技已被告知此类损害发生的可能性。</p>
+        <p>您理解并同意，本软件可能包含第三方组件，其许可条款可能不同于本协议，请参考相关组件的许可说明。</p>
+
+        <h2>八、协议终止</h2>
+        <p>本协议自您接受之日起生效，至本软件被永久停用或您的授权终止时终止。您可以随时通过销毁本软件及其所有副本和相关文档来终止本协议。本协议也可以因以下原因被博铭科技终止：</p>
+        <ul>
+          <li>您违反了本协议的任何条款，且在博铭科技书面通知后30日内未进行补救；</li>
+          <li>您从事了任何侵犯博铭科技知识产权的活动；</li>
+          <li>博铭科技认为您使用本软件的方式可能对博铭科技或第三方造成损害。</li>
+        </ul>
+        <p>协议终止后，您必须立即销毁本软件及其所有副本和相关文档，并停止一切使用行为。</p>
+
+        <h2>九、出口限制</h2>
+        <p>您不得将本软件出口或再出口至任何受联合国、中国或其他适用法律制裁的国家或地区，也不得将其用于任何禁止的用途。</p>
+
+        <h2>十、管辖法律与争议解决</h2>
+        <p>本协议的解释、执行和争议解决均适用中华人民共和国法律。如双方因本协议发生争议，应首先通过友好协商解决；协商不成的，任一方可向博铭科技所在地有管辖权的人民法院提起诉讼。</p>
+
+        <h2>十一、协议更新</h2>
+        <p>博铭科技保留随时修改本协议条款的权利。修改后的协议将通过本软件内提示或博铭科技官网公布的方式通知您。如果您不同意修改后的协议，您有权在通知后30日内终止本协议。继续使用本软件即表示您接受修改后的协议。</p>
+
+        <div class="license-note">
+          <p><strong>联系我们：</strong>如您对本协议有任何疑问，请联系博铭科技：<br>
+          电子邮箱：raymond.xu@booming.one<br>
+          网站：https://www.booming.one</p>
+        </div>
+
+        <a href="/" class="back-link">&larr; 返回首页</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3 id="footer-brand-name">博铭科技</h3>
+          <p>专注企业级软件解决方案，为您的业务保驾护航。我们致力于为企业和个人用户提供高质量的软件产品。</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <ul>
+            <li><a href="/">全部产品</a></li>
+            <li><a href="/about">关于我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <ul>
+            <li><a href="/support">技术支持</a></li>
+            <li><a href="/faq">常见问题</a></li>
+            <li><a href="/contact">联系我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>法律</h4>
+          <ul>
+            <li><a href="/privacy">隐私政策</a></li>
+            <li><a href="/terms">服务条款</a></li>
+            <li><a href="/license">软件许可</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <span id="footer-year"></span> <span id="footer-company-bottom">博铭科技</span>. 保留所有权利。</span>
+        <div class="footer-contact">
+          <a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a>
+          <a href="#" class="footer-email-subscribe" onclick="toggleEmailSubscribe(event)">订阅更新</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Cart Modal -->
+  <div id="cart-modal" class="modal">
+    <div class="cart-modal-content">
+      <div class="cart-modal-header">
+        <h3>购物车</h3>
+        <button class="cart-modal-close" onclick="closeCartModal()">&times;</button>
+      </div>
+      <div id="cart-content" class="cart-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/js/cart.js"></script>
+  <script>
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = settings.companyName;
+          document.getElementById('footer-brand-name').textContent = settings.companyName;
+          document.getElementById('footer-company-bottom').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 软件许可协议';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      updateCartBadge();
+    });
+  </script>
+  <script src="/js/header-auth.js" defer></script>
+  <script src="/js/public-theme.js" defer></script>
+</body>
+</html>

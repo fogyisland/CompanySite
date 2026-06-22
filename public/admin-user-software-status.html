@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 用户软件状态</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+      <div class="page-header">
+        <h1>用户软件状态</h1>
+      </div>
+
+      <div class="message" id="message"></div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="total-uss">0</div>
+          <div class="stat-label">总记录</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-number" id="active-uss">0</div>
+          <div class="stat-label">正常</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-number" id="expired-uss">0</div>
+          <div class="stat-label">已过期</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-number" id="locked-uss">0</div>
+          <div class="stat-label">管理员锁定</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="搜索用户或软件名..." oninput="filterStatus()">
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>用户</th>
+                <th>软件</th>
+                <th>首次安装</th>
+                <th>最近激活</th>
+                <th>累计天数</th>
+                <th>到期日</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="status-tbody">
+              <tr><td colspan="9" class="empty-state">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let statusList = [];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) { window.location.href = '/login'; return; }
+        const settings = await response.json();
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 用户软件状态';
+        }
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+        if (settings.siteTheme) document.documentElement.setAttribute('data-theme', settings.siteTheme);
+      } catch (error) { console.error('Error loading settings:', error); }
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s == null ? '' : String(s);
+      return div.innerHTML;
+    }
+
+    function formatDate(s) {
+      if (!s) return '-';
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('zh-CN');
+    }
+
+    async function loadStatus() {
+      try {
+        const response = await fetch('/api/admin/user-software-status', { credentials: 'include' });
+        if (response.status === 401) { window.location.href = '/login'; return; }
+        statusList = await response.json();
+        renderStats();
+        renderTable();
+      } catch (error) {
+        console.error('Error loading user software status:', error);
+        showMessage('加载用户软件状态失败', 'error');
+      }
+    }
+
+    function renderStats() {
+      document.getElementById('total-uss').textContent = statusList.length;
+      document.getElementById('active-uss').textContent = statusList.filter(x => x.lock === 0).length;
+      document.getElementById('expired-uss').textContent = statusList.filter(x => x.lock === 1).length;
+      document.getElementById('locked-uss').textContent = statusList.filter(x => x.lock === 2).length;
+    }
+
+    function filterStatus() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const filtered = statusList.filter(x =>
+        !search ||
+        (x.userName && x.userName.toLowerCase().includes(search)) ||
+        (x.softwareShortName && x.softwareShortName.toLowerCase().includes(search))
+      );
+      renderTableData(filtered);
+    }
+
+    function renderTable() { renderTableData(statusList); }
+
+    function renderTableData(data) {
+      const tbody = document.getElementById('status-tbody');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无用户软件状态记录</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(item => {
+        let lockText, lockColor;
+        if (item.lock === 0) { lockText = '正常'; lockColor = '#22c55e'; }
+        else if (item.lock === 1) { lockText = '已过期'; lockColor = '#ef4444'; }
+        else if (item.lock === 2) { lockText = '管理员锁定'; lockColor = '#ef4444'; }
+        else { lockText = '未知状态'; lockColor = '#94a3b8'; }
+        const actionBtn = item.lock === 0
+          ? `<button class="btn btn-danger" onclick="lockRecord(${item.id})">锁定</button>`
+          : `<button class="btn btn-success" onclick="unlockRecord(${item.id})">解锁</button>`;
+        return `
+          <tr>
+            <td>${item.id}</td>
+            <td>${escapeHtml(item.userName)}</td>
+            <td>${escapeHtml(item.softwareShortName)}</td>
+            <td>${formatDate(item.firstRun)}</td>
+            <td>${formatDate(item.lastActivatedAt)}</td>
+            <td>${item.duration}</td>
+            <td>${formatDate(item.expireDate)}</td>
+            <td><span style="color: ${lockColor}; font-weight: 600;">${lockText}</span></td>
+            <td>${actionBtn}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function lockRecord(id) {
+      if (!confirm('确定锁定此记录？锁定后该用户将无法使用此软件。')) return;
+      const response = await fetch(`/api/admin/user-software-status/${id}/lock`, { method: 'POST', credentials: 'include' });
+      if (response.status === 401) { window.location.href = '/login'; return; }
+      if (response.ok) { showMessage('已锁定', 'success'); loadStatus(); }
+      else { showMessage('锁定失败', 'error'); }
+    }
+
+    async function unlockRecord(id) {
+      if (!confirm('确定解锁此记录？')) return;
+      const response = await fetch(`/api/admin/user-software-status/${id}/unlock`, { method: 'POST', credentials: 'include' });
+      if (response.status === 401) { window.location.href = '/login'; return; }
+      if (response.ok) { showMessage('已解锁', 'success'); loadStatus(); }
+      else { showMessage('解锁失败', 'error'); }
+    }
+
+    function showMessage(text, type) {
+      const el = document.getElementById('message');
+      el.textContent = text;
+      el.className = 'message ' + type;
+      setTimeout(() => { el.textContent = ''; el.className = 'message'; }, 3000);
+    }
+
+    loadSettings();
+    loadStatus();
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

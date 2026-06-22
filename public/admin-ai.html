@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - AI设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main settings-page">
+      <h1 class="page-title">AI设置</h1>
+      <p class="page-desc">配置AI服务提供商，支持OpenAI、Claude等</p>
+
+      <div class="alert" id="message"></div>
+
+      <!-- AI 配置 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">AI连接配置</h3>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="ai-enabled" style="width:auto;">
+              <span>启用AI功能</span>
+            </label>
+          </div>
+          <div class="field">
+            <label>AI服务商</label>
+            <select id="ai-provider" onchange="toggleCustomEndpoint()">
+              <option value="openai">OpenAI (GPT)</option>
+              <option value="claude">Anthropic (Claude)</option>
+              <option value="custom">自定义 (OpenAI兼容)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>API Key</label>
+            <input type="password" id="ai-api-key" placeholder="sk-..." autocomplete="off">
+            <p class="field-hint">您的API密钥将安全存储</p>
+          </div>
+          <div class="field">
+            <label>API Endpoint</label>
+            <input type="text" id="ai-endpoint" placeholder="https://api.openai.com/v1">
+            <p class="field-hint">自定义AI服务时需填写完整URL</p>
+          </div>
+          <div class="field">
+            <label>模型名称</label>
+            <input type="text" id="ai-model" placeholder="gpt-3.5-turbo" list="model-suggestions">
+            <datalist id="model-suggestions">
+              <option value="gpt-3.5-turbo">
+              <option value="gpt-4">
+              <option value="gpt-4-turbo">
+              <option value="gpt-4o">
+              <option value="claude-3-sonnet-20240229">
+              <option value="claude-3-opus-20240229">
+            </datalist>
+          </div>
+          <div class="field-row" style="margin-top:16px;">
+            <button class="btn-secondary" onclick="testConnection()">测试连接</button>
+            <button class="btn-primary" onclick="saveSettings()">保存设置</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 使用说明 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">使用说明</h3>
+          <div class="field">
+            <p><strong>1. 获取API Key</strong></p>
+            <p class="field-hint">
+              OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a><br>
+              Claude: <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>
+            </p>
+          </div>
+          <div class="field">
+            <p><strong>2. 启用后可用</strong></p>
+            <p class="field-hint">网站描述AI优化、产品描述AI优化</p>
+          </div>
+          <div class="field">
+            <p><strong>3. 费用</strong></p>
+            <p class="field-hint">AI调用费用由服务商收取，博铭不收额外费用</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions-back">
+        <a href="/admin-product" class="link-back">← 返回</a>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let settings = {};
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - AI设置';
+        }
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+
+        const ai = settings.aiConfig || settings.ai || {};
+        document.getElementById('ai-enabled').checked = ai.enabled || false;
+        document.getElementById('ai-provider').value = ai.provider || 'openai';
+        document.getElementById('ai-api-key').value = ai.apiKey || '';
+        document.getElementById('ai-endpoint').value = ai.endpoint || '';
+        document.getElementById('ai-model').value = ai.model || 'gpt-3.5-turbo';
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        showMessage('加载设置失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'alert alert-' + type;
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 4000);
+    }
+
+    function toggleCustomEndpoint() {
+      const provider = document.getElementById('ai-provider').value;
+      const endpointInput = document.getElementById('ai-endpoint');
+      endpointInput.placeholder = provider === 'claude' ? 'https://api.anthropic.com/v1' : 'https://api.openai.com/v1';
+    }
+
+    async function saveSettings() {
+      const ai = {
+        enabled: document.getElementById('ai-enabled').checked,
+        provider: document.getElementById('ai-provider').value,
+        apiKey: document.getElementById('ai-api-key').value,
+        endpoint: document.getElementById('ai-endpoint').value,
+        model: document.getElementById('ai-model').value
+      };
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ai })
+        });
+        if (response.ok) {
+          showMessage('设置已保存', 'success');
+          settings.ai = ai;
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    async function testConnection() {
+      const apiKey = document.getElementById('ai-api-key').value;
+      const provider = document.getElementById('ai-provider').value;
+      const endpoint = document.getElementById('ai-endpoint').value;
+      const model = document.getElementById('ai-model').value;
+
+      if (!apiKey) { showMessage('请先输入API Key', 'error'); return; }
+
+      try {
+        const response = await fetch('/api/ai/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ provider, apiKey, endpoint, model })
+        });
+        const result = await response.json();
+        if (result.success) {
+          showMessage('连接测试成功', 'success');
+        } else {
+          showMessage('连接失败: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showMessage('连接失败', 'error');
+      }
+    }
+
+    }
+
+    document.addEventListener('DOMContentLoaded', loadSettings);
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

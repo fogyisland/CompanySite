@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{product_name} - 博铭科技</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <style>
+    .product-detail {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    .product-header {
+      display: flex;
+      gap: 48px;
+      margin-bottom: 48px;
+      padding-bottom: 48px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      align-items: center;
+    }
+    .product-header .product-image {
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 16px;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    .product-icon {
+      width: 140px;
+      height: 140px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 56px;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(19, 60, 138, 0.3);
+    }
+    .product-info {
+      flex: 1;
+    }
+    .product-info h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .product-meta {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .product-meta span {
+      background: linear-gradient(135deg, rgba(19, 60, 138, 0.06) 0%, rgba(19, 60, 138, 0.1) 100%);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      color: var(--primary);
+      font-weight: 500;
+    }
+    .product-price {
+      font-size: 36px;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+    }
+    .product-price small {
+      font-size: 15px;
+      color: var(--text-light);
+      font-weight: normal;
+    }
+    .product-actions {
+      display: flex;
+      gap: 16px;
+    }
+    .course-links-list {
+      margin: 24px 0;
+    }
+    .course-link-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text);
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+    .course-link-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+      border-color: rgba(139, 92, 246, 0.4);
+    }
+    .course-link-card .platform-name {
+      font-weight: 500;
+      font-size: 15px;
+    }
+    .course-link-card .visit-icon {
+      color: #7c3aed;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .features-section {
+      margin: 36px 0;
+      padding: 32px;
+      background: linear-gradient(135deg, rgba(19, 60, 138, 0.03) 0%, rgba(19, 60, 138, 0.06) 100%);
+      border-radius: 16px;
+      border: 1px solid rgba(19, 60, 138, 0.06);
+    }
+    .features-section h3 {
+      margin: 0 0 20px;
+      color: var(--primary);
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .features-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: white;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .feature-item span {
+      color: #10b981;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .pricing-section {
+      margin: 36px 0;
+      padding: 32px;
+      background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+      border-radius: 16px;
+      border: 1px solid rgba(19, 60, 138, 0.08);
+    }
+    .pricing-section h3 {
+      margin: 0 0 8px;
+      color: var(--primary);
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .pricing-desc {
+      color: var(--text-light);
+      font-size: 14px;
+      margin: 0 0 24px;
+    }
+    .pricing-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+    .pricing-card {
+      background: white;
+      border: 2px solid rgba(0,0,0,0.06);
+      border-radius: 14px;
+      padding: 24px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .pricing-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 8px 24px rgba(19, 60, 138, 0.15);
+      transform: translateY(-3px);
+    }
+    .pricing-card-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .pricing-duration {
+      font-weight: bold;
+      color: var(--primary);
+      font-size: 16px;
+    }
+    .pricing-badge {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .pricing-card-price {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+    .pricing-card-unit {
+      font-size: 12px;
+      color: var(--text-light);
+    }
+    .product-content {
+      margin-top: 30px;
+      line-height: 1.8;
+      color: var(--text);
+    }
+    .product-content h3 {
+      color: var(--primary);
+      margin-bottom: 15px;
+    }
+    .product-content h2 {
+      font-size: 20px;
+      margin: 30px 0 15px;
+      color: var(--primary);
+    }
+    .product-content p {
+      margin-bottom: 15px;
+    }
+    .product-content ul, .product-content ol {
+      margin: 15px 0;
+      padding-left: 25px;
+    }
+    .product-content li {
+      margin-bottom: 8px;
+    }
+    .product-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .product-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    .product-content th, .product-content td {
+      border: 1px solid var(--border);
+      padding: 10px;
+      text-align: left;
+    }
+    .product-content th {
+      background: var(--secondary);
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--primary);
+      margin-bottom: 20px;
+      text-decoration: none;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    .features-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: var(--secondary);
+      border-radius: 6px;
+    }
+    .feature-item span {
+      color: var(--success);
+    }
+    .not-found {
+      text-align: center;
+      padding: 100px 20px;
+    }
+    .not-found h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+    .loading {
+      text-align: center;
+      padding: 100px 20px;
+      color: var(--text-light);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo" id="header-logo">
+        <div class="logo-icon" id="header-logo-icon">🌍</div>
+        <span class="logo-text" id="header-logo-text"> 博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions" id="header-actions">
+        <button class="header-cart" onclick="renderCartModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h19.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+          </svg>
+          <span id="cart-badge" class="cart-badge" style="display:none;">0</span>
+        </button>
+        <a href="/user-login" class="header-login" id="header-login">登录</a>
+        <a href="#" class="header-logout" id="header-logout" style="display:none;" onclick="headerLogout()">退出</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="product-detail" id="product-content">
+      <div class="loading">加载中...</div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3 id="footer-brand-name">博铭科技</h3>
+          <p>专注企业级软件解决方案，为您的业务保驾护航。我们致力于为企业和个人用户提供高质量的软件产品。</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <ul>
+            <li><a href="/#products">全部产品</a></li>
+            <li><a href="/about">关于我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <ul>
+            <li><a href="/support">技术支持</a></li>
+            <li><a href="/faq">常见问题</a></li>
+            <li><a href="/contact">联系我们</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <span id="footer-year"></span> <span id="footer-company">博铭科技</span>. 保留所有权利。</span>
+        <div class="footer-contact">
+          <a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a>
+          <a href="#" class="footer-email-subscribe" onclick="toggleEmailSubscribe(event)">订阅更新</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Cart Modal -->
+  <div class="modal" id="cart-modal">
+    <div class="cart-modal-content">
+      <div class="cart-modal-header">
+        <h3>购物车</h3>
+        <button class="cart-modal-close" onclick="closeCartModal()">&times;</button>
+      </div>
+      <div id="cart-content" class="cart-modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+    // 获取URL参数
+    function getProductIdFromUrl() {
+      const path = window.location.pathname;
+      const match = path.match(/\/product\/(\d+)/);
+      return match ? match[1] : null;
+    }
+
+    // 加载产品数据
+    async function loadProduct() {
+      const productId = getProductIdFromUrl();
+      if (!productId) {
+        showNotFound();
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/products/' + productId);
+        if (!response.ok) {
+          showNotFound();
+          return;
+        }
+
+        const product = await response.json();
+
+        // 如果有详情页文件，获取详情内容
+        if (product.detailPage) {
+          try {
+            const detailResponse = await fetch(product.detailPage);
+            if (detailResponse.ok) {
+              const detailHtml = await detailResponse.text();
+              // 提取body内容
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(detailHtml, 'text/html');
+              const bodyContent = doc.body.innerHTML;
+              product.detailContent = bodyContent;
+            }
+          } catch (e) {
+            console.log('No detail content found');
+          }
+        }
+
+        renderProduct(product);
+      } catch (error) {
+        console.error('Error loading product:', error);
+        showNotFound();
+      }
+    }
+
+    // 渲染产品详情
+    function renderProduct(product) {
+      document.title = product.name + ' - 博铭科技';
+
+      const features = product.features || [];
+      const featuresHtml = features.length > 0
+        ? `<div class="features-section">
+            <h3>功能特点</h3>
+            <div class="features-list">
+              ${features.map(f => `<div class="feature-item"><span>✓</span> ${escapeHtml(f)}</div>`).join('')}
+            </div>
+           </div>`
+        : '';
+
+      const pricingTiers = product.pricingTiers;
+      let pricingHtml = '';
+      if (pricingTiers && pricingTiers.length > 0) {
+        pricingHtml = `<div class="pricing-section">
+          <h3>授权方案</h3>
+          <p class="pricing-desc">选择适合您的授权时长，到期后可续费续期</p>
+          <div class="pricing-cards">
+            ${pricingTiers.map(tier => `
+              <div class="pricing-card" onclick="selectTier(${product.id}, ${tier.duration}, '${tier.label}', ${tier.price})">
+                <div class="pricing-card-header">
+                  <span class="pricing-duration">${escapeHtml(tier.label)}</span>
+                  <span class="pricing-badge">${tier.duration >= 12 ? '最划算' : ''}</span>
+                </div>
+                <div class="pricing-card-price">¥${tier.price}</div>
+                <div class="pricing-card-unit">${tier.duration}个月授权</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      }
+
+      const content = product.detailContent || product.description || '';
+      const contentHtml = content
+        ? `<div class="product-content">
+            <h3>产品详情</h3>
+            ${content}
+          </div>`
+        : '';
+
+      document.getElementById('product-content').innerHTML = `
+        <a href="/" class="back-link">&larr; 返回首页</a>
+        <div class="product-header">
+          ${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" class="product-image">` : `<div class="product-icon">${product.icon || '📦'}</div>`}
+          <div class="product-info">
+            <h1>${escapeHtml(product.name)}</h1>
+            <div class="product-meta">
+              ${product.category ? `<span>${escapeHtml(product.category)}</span>` : ''}
+              ${product.version ? `<span>v${escapeHtml(product.version)}</span>` : ''}
+              ${product.platform ? `<span>${escapeHtml(product.platform)}</span>` : ''}
+            </div>
+            ${(product.isCourse === true || product.isCourse === 1) ? `
+              <div class="course-links-list" id="course-links-container">
+                ${(Array.isArray(product.courseLinks) ? product.courseLinks : [])
+                  .filter(link => isSafeUrl(link.url))
+                  .map(link => `
+                    <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="course-link-card">
+                      <span class="platform-name">${escapeHtml(getPlatformLabel(link.platform))}</span>
+                      <span class="visit-icon">访问 →</span>
+                    </a>
+                  `).join('')}
+              </div>
+            ` : `
+              <div class="product-price">
+                ¥${(product.pricingTiers && product.pricingTiers.length > 0) ? Math.min(...product.pricingTiers.map(t => t.price)) : product.price}
+                <small>/ 起</small>
+              </div>
+              <div class="product-actions">
+                <button class="btn btn-primary" onclick="addProductToCart(${product.id})">立即购买</button>
+              </div>
+            `}
+          </div>
+        </div>
+
+        ${featuresHtml}
+        ${pricingHtml}
+        ${contentHtml}
+      `;
+    }
+
+    function selectTier(productId, duration, label, price) {
+      addToCartWithTierIndex(productId, duration, label, price);
+    }
+
+    async function addToCartWithTierIndex(productId, duration, label, price) {
+      try {
+        const response = await fetch('/api/products/' + productId);
+        const product = await response.json();
+        // 找到对应的tier索引
+        const tierIndex = product.pricingTiers.findIndex(t => t.duration === duration);
+        addToCart(product, tierIndex, label);
+      } catch (error) {
+        console.error('Error:', error);
+        alert('操作失败');
+      }
+    }
+
+    function showNotFound() {
+      document.getElementById('product-content').innerHTML = `
+        <div class="not-found">
+          <h2>产品未找到</h2>
+          <p>抱歉，您查找的产品不存在或已下架。</p>
+          <a href="/" class="btn btn-primary">返回首页</a>
+        </div>
+      `;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    const COURSE_PLATFORMS = [
+      { value: 'bilibili',      label: 'B站' },
+      { value: 'youtube',       label: 'YouTube' },
+      { value: 'github',        label: 'GitHub' },
+      { value: 'imooc',         label: '慕课网' },
+      { value: 'tencent-class', label: '腾讯课堂' },
+      { value: 'netease-class', label: '网易云课堂' },
+      { value: 'zhihu',         label: '知乎' },
+      { value: 'juejin',        label: '掘金' },
+      { value: 'csdn',          label: 'CSDN' },
+      { value: 'wechat-mp',     label: '微信公众号' },
+      { value: 'other',         label: '其他' }
+    ];
+
+    function getPlatformLabel(platform) {
+      if (typeof platform !== 'string' || !platform) return '';
+      if (platform.startsWith('custom:')) return platform.slice(7);
+      const found = COURSE_PLATFORMS.find(p => p.value === platform);
+      return found ? found.label : platform;
+    }
+
+    function isSafeUrl(url) {
+      if (typeof url !== 'string' || !url) return false;
+      return /^https?:\/\//i.test(url.trim());
+    }
+
+    // 页面加载完成后获取产品数据
+    document.addEventListener('DOMContentLoaded', () => {
+      // Parallelize independent fetches to reduce page-load round trips
+      Promise.all([
+        loadSettings(),
+        loadProduct()
+      ]).catch(err => console.error('Init error:', err));
+      updateCartBadge();
+    });
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName;
+          document.getElementById('footer-company').textContent = settings.companyName;
+        }
+
+        if (settings.logo) {
+          const logoIcon = document.getElementById('header-logo-icon');
+          logoIcon.outerHTML = '<img src="' + settings.logo + '" alt="Logo" style="height:32px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+  </script>
+  <script src="/js/cart.js"></script>
+  <script>
+    // Add product to cart (for product detail page)
+    async function addProductToCart(productId) {
+      try {
+        const response = await fetch('/api/products/' + productId);
+        const product = await response.json();
+
+        if (product.pricingTiers && product.pricingTiers.length > 0) {
+          // Use first tier by default
+          const tier = product.pricingTiers[0];
+          addToCart(product, 0, tier.label);
+        } else {
+          addToCart(product, -1, '永久授权');
+        }
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        alert('添加失败，请稍后重试');
+      }
+    }
+  </script>
+
+  <!-- 产品文档 section（公开） -->
+  <div class="product-docs-section" id="product-docs-section" style="display:none">
+    <h3 style="margin-top: 32px; margin-bottom: 16px; font-size: 20px; font-weight: 600; color: var(--text-primary, #1a1a1a);">📚 产品文档</h3>
+    <div id="product-docs-list" style="display: grid; gap: 12px;"></div>
+  </div>
+
+  <script>
+    (async function loadProductDocs() {
+      try {
+        const pathMatch = window.location.pathname.match(/^\/product\/([^\/]+)/);
+        if (!pathMatch) return;
+        const slug = pathMatch[1];
+        const res = await fetch(`/api/products/${encodeURIComponent(slug)}/docs`);
+        if (!res.ok) return;
+        const docs = await res.json();
+        if (!Array.isArray(docs) || docs.length === 0) return;
+        const section = document.getElementById('product-docs-section');
+        const list = document.getElementById('product-docs-list');
+        list.innerHTML = docs.map(d => `
+          <a href="/doc/${encodeURIComponent(slug)}/${encodeURIComponent(d.slug)}" style="display: block; padding: 14px 18px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; text-decoration: none; color: #1a1a1a; transition: all 0.2s;" onmouseover="this.style.borderColor='#0969da';this.style.boxShadow='0 2px 8px rgba(9,105,218,0.1)';" onmouseout="this.style.borderColor='#e5e7eb';this.style.boxShadow='none';">
+            <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">${escapeHtml(d.title)}</div>
+            ${d.excerpt ? `<div style="color: #666; font-size: 14px;">${escapeHtml(d.excerpt)}</div>` : ''}
+            ${d.published_at ? `<div style="color: #999; font-size: 12px; margin-top: 4px;">${new Date(d.published_at).toLocaleDateString('zh-CN')}</div>` : ''}
+          </a>
+        `).join('');
+        section.style.display = 'block';
+      } catch (e) {
+        console.error('Load product docs failed:', e);
+      }
+    })();
+  </script>
+  <script src="/js/header-auth.js" defer></script>
+  <script src="/js/public-theme.js" defer></script>
+</body>
+</html>

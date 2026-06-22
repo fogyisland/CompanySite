@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 安全设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main settings-page">
+      <h1 class="page-title">安全设置</h1>
+      <p class="page-desc">管理系统安全设置、登录日志和IP封禁</p>
+
+      <div class="alert" id="message"></div>
+
+      <!-- 统计 -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-num" id="blocked-count">0</div>
+          <div class="stat-label">封禁IP</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="max-attempts-display">100</div>
+          <div class="stat-label">封禁阈值</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="login-count">0</div>
+          <div class="stat-label">登录日志</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="operation-count">0</div>
+          <div class="stat-label">操作日志</div>
+        </div>
+      </div>
+
+      <!-- 登录限制 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">登录限制</h3>
+          <div class="field">
+            <label>封禁阈值（次）</label>
+            <input type="number" id="max-attempts" value="100" min="10" max="10000">
+            <p class="field-hint">超过此次数后IP将被封禁</p>
+          </div>
+          <div class="field">
+            <label>严重警告阈值（次）</label>
+            <input type="number" id="critical-attempts" value="1000" min="100" max="100000">
+            <p class="field-hint">超过此次数将触发安全告警</p>
+          </div>
+          <div class="field">
+            <label>封禁时长（分钟）</label>
+            <input type="number" id="lockout-duration" value="60" min="1" max="1440">
+            <p class="field-hint">IP被封禁的持续时间</p>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-heading">API 限流</h3>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="api-rate-limit-enabled" checked style="width:auto;">
+              <span>启用 API 限流</span>
+            </label>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>时间窗口（毫秒）</label>
+              <input type="number" id="api-rate-window" value="1000" min="100">
+            </div>
+            <div class="field">
+              <label>最大请求数</label>
+              <input type="number" id="api-rate-max" value="100" min="10">
+            </div>
+          </div>
+          <div class="field">
+            <label>封禁时长（毫秒）</label>
+            <input type="number" id="api-rate-block" value="60000" min="1000">
+          </div>
+          <div class="field">
+            <label>IP 白名单（每行一个）</label>
+            <textarea id="api-rate-whitelist" rows="3" placeholder="每行一个IP地址"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions-bar">
+          <button class="btn-primary" onclick="saveSecurityConfig()">保存设置</button>
+        </div>
+      </div>
+
+      <!-- 封禁列表 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">封禁IP列表</h3>
+          <div class="blocked-list" id="blocked-list">
+            <p class="empty-text">暂无封禁记录</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 日志 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">日志详情</h3>
+          <div class="log-tabs">
+            <button class="log-tab active" data-type="login" onclick="switchTab('login')">登录</button>
+            <button class="log-tab" data-type="operation" onclick="switchTab('operation')">操作</button>
+          </div>
+
+          <div class="log-content active" id="login-content">
+            <div class="log-toolbar">
+              <select id="login-date-select" onchange="loadLog('login')"></select>
+              <button class="btn-secondary" onclick="loadLog('login')">刷新</button>
+            </div>
+            <div class="log-container" id="login-log-content">加载中...</div>
+          </div>
+
+          <div class="log-content" id="operation-content">
+            <div class="log-toolbar">
+              <select id="operation-date-select" onchange="loadLog('operation')"></select>
+              <button class="btn-secondary" onclick="loadLog('operation')">刷新</button>
+            </div>
+            <div class="log-container" id="operation-log-content">加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions-back">
+        <a href="/admin-product" class="link-back">← 返回</a>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let securityConfig = {};
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 安全设置';
+        }
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadSecurityConfig() {
+      try {
+        const response = await fetch('/api/security/config', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        securityConfig = await response.json();
+        document.getElementById('max-attempts').value = securityConfig.maxAttempts;
+        document.getElementById('critical-attempts').value = securityConfig.criticalAttempts;
+        document.getElementById('lockout-duration').value = securityConfig.lockoutDuration / 60000;
+        document.getElementById('max-attempts-display').textContent = securityConfig.maxAttempts;
+        document.getElementById('critical-display').textContent = securityConfig.criticalAttempts;
+
+        const apiRateLimit = securityConfig.apiRateLimit || {};
+        document.getElementById('api-rate-limit-enabled').checked = apiRateLimit.enabled !== false;
+        document.getElementById('api-rate-window').value = apiRateLimit.windowMs || 1000;
+        document.getElementById('api-rate-max').value = apiRateLimit.maxRequests || 100;
+        document.getElementById('api-rate-block').value = apiRateLimit.blockDuration || 60000;
+        document.getElementById('api-rate-whitelist').value = (apiRateLimit.whitelist || []).join('\n');
+      } catch (error) {
+        console.error('Error loading security config:', error);
+      }
+    }
+
+    async function saveSecurityConfig() {
+      const whitelistText = document.getElementById('api-rate-whitelist').value;
+      const whitelist = whitelistText.split('\n').map(ip => ip.trim()).filter(ip => ip);
+      const data = {
+        maxAttempts: parseInt(document.getElementById('max-attempts').value),
+        criticalAttempts: parseInt(document.getElementById('critical-attempts').value),
+        lockoutDuration: parseInt(document.getElementById('lockout-duration').value) * 60000,
+        apiRateLimit: {
+          enabled: document.getElementById('api-rate-limit-enabled').checked,
+          windowMs: parseInt(document.getElementById('api-rate-window').value),
+          maxRequests: parseInt(document.getElementById('api-rate-max').value),
+          blockDuration: parseInt(document.getElementById('api-rate-block').value),
+          whitelist: whitelist
+        }
+      };
+      try {
+        const response = await fetch('/api/security/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+          credentials: 'include'
+        });
+        if (response.ok) {
+          showMessage('设置保存成功', 'success');
+          loadSecurityConfig();
+          loadBlockedIPs();
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    async function loadBlockedIPs() {
+      try {
+        const response = await fetch('/api/security/blocked', { credentials: 'include' });
+        const data = await response.json();
+        document.getElementById('blocked-count').textContent = data.blocked.length;
+        if (data.blocked.length === 0) {
+          document.getElementById('blocked-list').innerHTML = '<p class="empty-text">暂无封禁记录</p>';
+          return;
+        }
+        document.getElementById('blocked-list').innerHTML = data.blocked.map(item => `
+          <div class="blocked-item">
+            <div class="blocked-info">
+              <span class="blocked-ip">${escapeHtml(item.ip)}</span>
+              <span class="blocked-reason">${escapeHtml(item.reason)}</span>
+              <span class="blocked-time">${new Date(item.until).toLocaleString('zh-CN')}</span>
+            </div>
+            <button class="btn-secondary" onclick="unblockIP('${escapeHtml(item.ip)}')">解封</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading blocked IPs:', error);
+      }
+    }
+
+    async function unblockIP(ip) {
+      if (!confirm('确定要解封此IP吗？')) return;
+      try {
+        const response = await fetch('/api/security/unblock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip }),
+          credentials: 'include'
+        });
+        if (response.ok) {
+          showMessage('IP已解封', 'success');
+          loadBlockedIPs();
+        } else {
+          showMessage('解封失败', 'error');
+        }
+      } catch (error) {
+        showMessage('解封失败', 'error');
+      }
+    }
+
+    async function loadLogFiles() {
+      const types = ['login', 'operation'];
+      const counts = { login: 0, operation: 0 };
+      for (const type of types) {
+        const response = await fetch('/api/security/logs?type=' + type, { credentials: 'include' });
+        const data = await response.json();
+        counts[type] = data.files ? data.files.length : 0;
+        const select = document.getElementById(type + '-date-select');
+        if (select && data.files) {
+          select.innerHTML = data.files.map(f => `<option value="${f}">${f}</option>`).join('');
+        }
+      }
+      document.getElementById('login-count').textContent = counts.login;
+      document.getElementById('operation-count').textContent = counts.operation;
+    }
+
+    function switchTab(type) {
+      document.querySelectorAll('.log-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.type === type);
+      });
+      document.querySelectorAll('.log-content').forEach(c => {
+        c.classList.toggle('active', c.id === type + '-content');
+      });
+      loadLog(type);
+    }
+
+    async function loadLog(type) {
+      const select = document.getElementById(type + '-date-select');
+      const container = document.getElementById(type + '-log-content');
+      const date = select.value;
+      if (!date) { container.textContent = '暂无日志记录'; return; }
+      try {
+        const dateStr = date.replace(type + '-', '').replace('.log', '');
+        const response = await fetch('/api/security/logs/' + dateStr + '?type=' + type, { credentials: 'include' });
+        const data = await response.json();
+        if (!data.content) { container.textContent = '暂无日志记录'; return; }
+        const lines = data.content.split('\n').filter(l => l.trim());
+        container.innerHTML = lines.map(line => `<div class="log-line">${escapeHtml(line)}</div>`).join('');
+      } catch (error) {
+        container.textContent = '加载失败';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'alert alert-' + type;
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 4000);
+    }
+
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadSecurityConfig();
+      loadBlockedIPs();
+      loadLogFiles().then(() => {
+        loadLog('login');
+        loadLog('operation');
+      });
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

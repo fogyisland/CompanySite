@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 技术支持管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+  <link rel="stylesheet" href="/css/pages/admin-support.css?v=20260622-1100">
+  <link rel="stylesheet" href="/css/admin-support-modal.css?v=20260622-1100">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+    <div class="page-header">
+      <h1>技术支持工单</h1>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="number" id="total-tickets">0</div>
+        <div class="label">总工单</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="open-tickets">0</div>
+        <div class="label">待处理</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="replied-tickets">0</div>
+        <div class="label">已回复</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="resolved-tickets">0</div>
+        <div class="label">已解决</div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="form-card">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="搜索主题、姓名或邮箱..." oninput="filterTickets()">
+        <select id="status-filter" onchange="filterTickets()">
+          <option value="">全部状态</option>
+          <option value="open">待处理</option>
+          <option value="replied">已回复</option>
+          <option value="resolved">已解决</option>
+          <option value="closed">已关闭</option>
+        </select>
+      </div>
+
+      <!-- Tickets Table -->
+      <table class="tickets-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>主题</th>
+            <th>提交人</th>
+            <th>邮箱</th>
+            <th>优先级</th>
+            <th>状态</th>
+            <th>提交时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tickets-tbody">
+          <tr><td colspan="8" class="empty-state">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main></div>
+
+  <!-- Modal for Ticket Detail -->
+  <div class="admin-support-modal-backdrop" id="detail-modal" hidden>
+    <div class="admin-support-modal" onclick="event.stopPropagation()">
+      <button class="admin-support-modal-close" onclick="closeModal()">&times;</button>
+      <h3>工单详情 - #<span id="modal-ticket-id"></span></h3>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script>
+    let tickets = [];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 技术支持管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        // 应用主题
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadTickets() {
+      try {
+        const response = await fetch('/api/support', { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        tickets = await response.json();
+        renderStats();
+        renderTable();
+      } catch (error) {
+        console.error('Error loading tickets:', error);
+        showMessage('加载工单失败', 'error');
+      }
+    }
+
+    function renderStats() {
+      const total = tickets.length;
+      const open = tickets.filter(t => t.status === 'open').length;
+      const replied = tickets.filter(t => t.status === 'replied').length;
+      const resolved = tickets.filter(t => t.status === 'resolved').length;
+
+      document.getElementById('total-tickets').textContent = total;
+      document.getElementById('open-tickets').textContent = open;
+      document.getElementById('replied-tickets').textContent = replied;
+      document.getElementById('resolved-tickets').textContent = resolved;
+    }
+
+    function filterTickets() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const statusFilter = document.getElementById('status-filter').value;
+
+      const filtered = tickets.filter(t => {
+        const matchSearch = !search ||
+          t.subject.toLowerCase().includes(search) ||
+          (t.userName && t.userName.toLowerCase().includes(search)) ||
+          (t.userEmail && t.userEmail.toLowerCase().includes(search));
+        const matchStatus = !statusFilter || t.status === statusFilter;
+        return matchSearch && matchStatus;
+      });
+
+      renderTableData(filtered);
+    }
+
+    function renderTable() {
+      renderTableData(tickets);
+    }
+
+    function renderTableData(data) {
+      const tbody = document.getElementById('tickets-tbody');
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无工单</td></tr>';
+        return;
+      }
+
+      data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      tbody.innerHTML = data.map(ticket => {
+        const statusClass = ticket.status;
+        const statusText = { open: '待处理', replied: '已回复', resolved: '已解决', closed: '已关闭' }[ticket.status] || ticket.status;
+        const priorityClass = ticket.priority || 'normal';
+        const priorityText = { high: '紧急', normal: '普通', low: '低' }[ticket.priority] || '普通';
+
+        return `
+          <tr>
+            <td>#${escapeHtml(ticket.id)}</td>
+            <td>${escapeHtml(ticket.subject)}</td>
+            <td>${escapeHtml(ticket.userName)}</td>
+            <td>${escapeHtml(ticket.userEmail)}</td>
+            <td><span class="priority-badge ${escapeHtml(priorityClass)}">${escapeHtml(priorityText)}</span></td>
+            <td><span class="status-badge ${escapeHtml(statusClass)}">${escapeHtml(statusText)}</span></td>
+            <td>${formatDate(ticket.createdAt)}</td>
+            <td>
+              <button class="btn-view" onclick="showDetail(${escapeHtml(ticket.id)})">查看</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleString('zh-CN');
+    }
+
+    async function showDetail(id) {
+      const ticket = tickets.find(t => t.id === id);
+      if (!ticket) return;
+
+      const replies = ticket.replies || [];
+      const statusText = { open: '待处理', replied: '已回复', resolved: '已解决', closed: '已关闭' }[ticket.status] || ticket.status;
+      const priorityText = { high: '紧急', normal: '普通', low: '低' }[ticket.priority] || '普通';
+
+      let repliesHtml = '';
+      if (replies.length === 0) {
+        repliesHtml = '<p style="color: var(--text-light); text-align: center;">暂无回复</p>';
+      } else {
+        repliesHtml = replies.map(reply => `
+          <div class="reply-item ${reply.adminName ? 'admin' : 'user'}">
+            <div class="reply-header">
+              <span>${reply.adminName || escapeHtml(ticket.userName)}</span>
+              <span>${formatDate(reply.createdAt)}</span>
+            </div>
+            <div class="reply-content">${reply.content}</div>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('modal-ticket-id').textContent = ticket.id;
+      document.getElementById('modal-content').innerHTML = `
+        <div class="ticket-detail-item">
+          <span class="label">主题：</span>
+          <span>${escapeHtml(ticket.subject)}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">提交人：</span>
+          <span>${escapeHtml(ticket.userName)}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">邮箱：</span>
+          <span><a href="mailto:${escapeHtml(ticket.userEmail)}">${escapeHtml(ticket.userEmail)}</a></span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">电话：</span>
+          <span>${escapeHtml(ticket.userPhone || '-')}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">优先级：</span>
+          <span class="priority-badge ${ticket.priority || 'normal'}">${priorityText}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">状态：</span>
+          <span class="status-badge ${ticket.status}">${statusText}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">提交时间：</span>
+          <span>${formatDate(ticket.createdAt)}</span>
+        </div>
+        <div class="ticket-detail-item">
+          <span class="label">问题描述：</span>
+          <span style="white-space: pre-wrap;">${escapeHtml(ticket.description)}</span>
+        </div>
+
+        <div class="replies-section">
+          <h4>回复历史</h4>
+          ${repliesHtml}
+        </div>
+
+        <div class="reply-form">
+          <h4>添加回复</h4>
+          <textarea id="reply-content" placeholder="输入回复内容..."></textarea>
+          <div class="reply-form-actions">
+            <input type="checkbox" id="resolve-checkbox">
+            <label for="resolve-checkbox">同时标记为已解决</label>
+            <button class="btn-resolve" onclick="submitReply(${ticket.id})">发送回复</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('detail-modal').hidden = false;
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').hidden = true;
+    }
+
+    async function submitReply(id) {
+      const content = document.getElementById('reply-content').value.trim();
+      const isResolved = document.getElementById('resolve-checkbox').checked;
+
+      if (!content) {
+        alert('请输入回复内容');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/support/' + id + '/reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, isResolved }),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('回复已发送', 'success');
+          document.getElementById('reply-content').value = '';
+          document.getElementById('resolve-checkbox').checked = false;
+          closeModal();
+          loadTickets();
+        } else {
+          const data = await response.json();
+          showMessage(data.error || '发送失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showMessage('发送失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadTickets();
+    });
+
+    // 侧边栏子菜单切换
+    function toggleSidebarSubmenu(link) {
+      const submenu = link.nextElementSibling;
+      if (submenu && submenu.classList.contains('sidebar-submenu')) {
+        submenu.classList.toggle('open');
+        link.classList.toggle('open');
+      }
+    }
+
+    // 高亮当前页面
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+      const href = link.getAttribute('href');
+      if (href === currentPath || href === currentPath + '/') {
+        link.classList.add('active');
+        const submenu = link.closest('.sidebar-submenu');
+        if (submenu) {
+          submenu.classList.add('open');
+          const parentLink = submenu.previousElementSibling;
+          if (parentLink) parentLink.classList.add('open');
+        }
+      }
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - FAQ管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+    <div class="page-header">
+      <h1>FAQ管理</h1>
+      <button class="btn-add" onclick="showAddForm()">添加FAQ</button>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <!-- Add/Edit Form -->
+    <div class="form-card edit-form" id="edit-form">
+      <h3 style="margin-bottom: 20px;" id="form-title">添加FAQ</h3>
+      <input type="hidden" id="faq-id">
+      <div class="form-group">
+        <label>问题</label>
+        <input type="text" id="faq-question" placeholder="请输入问题">
+      </div>
+      <div class="form-group">
+        <label>答案</label>
+        <textarea id="faq-answer" placeholder="请输入答案"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn-add" onclick="saveFaq()">保存</button>
+        <button class="btn-cancel" onclick="hideForm()">取消</button>
+      </div>
+    </div>
+
+    <!-- FAQ List -->
+    <div class="form-card">
+      <table class="faq-table">
+        <thead>
+          <tr>
+            <th style="width: 50px;">ID</th>
+            <th>问题</th>
+            <th>答案</th>
+            <th style="width: 150px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="faq-table">
+          <!-- FAQs loaded dynamically -->
+        </tbody>
+      </table>
+      <div class="empty-state" id="empty-state" style="display: none;">
+        <p>暂无FAQ，请点击"添加FAQ"创建</p>
+      </div>
+    </div>
+  </main></div>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    let faqs = [];
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - FAQ管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        // 应用主题
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    // 加载FAQs
+    async function loadFaqs() {
+      try {
+        const response = await fetch('/api/faqs', { credentials: 'include' });
+        faqs = await response.json();
+        renderTable();
+      } catch (error) {
+        console.error('Error loading FAQs:', error);
+        showMessage('加载FAQ失败', 'error');
+      }
+    }
+
+    // 渲染表格
+    function renderTable() {
+      const tbody = document.getElementById('faq-table');
+      const emptyState = document.getElementById('empty-state');
+
+      if (!faqs || faqs.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      tbody.innerHTML = faqs.map(faq => `
+        <tr>
+          <td>${escapeHtml(faq.id)}</td>
+          <td>${escapeHtml(faq.question)}</td>
+          <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(faq.answer)}</td>
+          <td class="actions">
+            <button class="btn-edit" onclick="editFaq(${escapeHtml(faq.id)})">编辑</button>
+            <button class="btn-delete" onclick="deleteFaq(${escapeHtml(faq.id)})">删除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // 显示添加表单
+    function showAddForm() {
+      document.getElementById('form-title').textContent = '添加FAQ';
+      document.getElementById('faq-id').value = '';
+      document.getElementById('faq-question').value = '';
+      document.getElementById('faq-answer').value = '';
+      document.getElementById('edit-form').classList.add('active');
+    }
+
+    // 编辑FAQ
+    function editFaq(id) {
+      const faq = faqs.find(f => f.id === id);
+      if (!faq) return;
+
+      document.getElementById('form-title').textContent = '编辑FAQ';
+      document.getElementById('faq-id').value = faq.id;
+      document.getElementById('faq-question').value = faq.question;
+      document.getElementById('faq-answer').value = faq.answer;
+      document.getElementById('edit-form').classList.add('active');
+    }
+
+    // 隐藏表单
+    function hideForm() {
+      document.getElementById('edit-form').classList.remove('active');
+    }
+
+    // 保存FAQ
+    async function saveFaq() {
+      const id = document.getElementById('faq-id').value;
+      const question = document.getElementById('faq-question').value.trim();
+      const answer = document.getElementById('faq-answer').value.trim();
+
+      if (!question || !answer) {
+        showMessage('问题和答案不能为空', 'error');
+        return;
+      }
+
+      try {
+        let response;
+        if (id) {
+          // 更新
+          response = await fetch('/api/faqs/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, answer }),
+            credentials: 'include'
+          });
+        } else {
+          // 添加
+          response = await fetch('/api/faqs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, answer }),
+            credentials: 'include'
+          });
+        }
+
+        if (response.ok) {
+          showMessage(id ? 'FAQ更新成功' : 'FAQ添加成功', 'success');
+          hideForm();
+          loadFaqs();
+        } else {
+          const data = await response.json();
+          showMessage(data.error || '保存失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving FAQ:', error);
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    // 删除FAQ
+    async function deleteFaq(id) {
+      if (!confirm('确定要删除这个FAQ吗？')) return;
+
+      try {
+        const response = await fetch('/api/faqs/' + id, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('FAQ删除成功', 'success');
+          loadFaqs();
+        } else {
+          showMessage('删除失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting FAQ:', error);
+        showMessage('删除失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadFaqs();
+    });
+
+    // 侧边栏子菜单切换
+    function toggleSidebarSubmenu(link) {
+      const submenu = link.nextElementSibling;
+      if (submenu && submenu.classList.contains('sidebar-submenu')) {
+        submenu.classList.toggle('open');
+        link.classList.toggle('open');
+      }
+    }
+
+    // 高亮当前页面
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+      const href = link.getAttribute('href');
+      if (href === currentPath || href === currentPath + '/') {
+        link.classList.add('active');
+        const submenu = link.closest('.sidebar-submenu');
+        if (submenu) {
+          submenu.classList.add('open');
+          const parentLink = submenu.previousElementSibling;
+          if (parentLink) parentLink.classList.add('open');
+        }
+      }
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

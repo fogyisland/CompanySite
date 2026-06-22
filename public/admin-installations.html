@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 安装记录管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+      <div class="page-header">
+        <h1>安装记录管理</h1>
+      </div>
+
+      <div class="message" id="message"></div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="total-installs">0</div>
+          <div class="stat-label">总安装数</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-number" id="active-installs">0</div>
+          <div class="stat-label">有效</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-number" id="expiring-installs">0</div>
+          <div class="stat-label">7天内到期</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-number" id="expired-installs">0</div>
+          <div class="stat-label">已过期</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="搜索软件名称、用户或邮箱..." oninput="filterInstalls()">
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>软件名称</th>
+                <th>用户</th>
+                <th>邮箱</th>
+                <th>组织/公司</th>
+                <th>MAC地址</th>
+                <th>安装日期</th>
+                <th>到期日期</th>
+                <th>剩余天数</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="installs-tbody">
+              <tr><td colspan="10" class="empty-state">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal" id="detail-modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <h3>安装详情 - #<span id="modal-id"></span></h3>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script>
+    let installations = [];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 安装记录管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadInstallations() {
+      try {
+        const response = await fetch('/api/installs', { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        installations = await response.json();
+        renderStats();
+        renderTable();
+      } catch (error) {
+        console.error('Error loading installations:', error);
+        showMessage('加载安装记录失败', 'error');
+      }
+    }
+
+    function renderStats() {
+      const total = installations.length;
+      let active = 0;
+      let expiring = 0;
+      let expired = 0;
+
+      installations.forEach(inst => {
+        if (inst.remainingDays > 7) {
+          active++;
+        } else if (inst.remainingDays > 0) {
+          expiring++;
+        } else {
+          expired++;
+        }
+      });
+
+      document.getElementById('total-installs').textContent = total;
+      document.getElementById('active-installs').textContent = active;
+      document.getElementById('expiring-installs').textContent = expiring;
+      document.getElementById('expired-installs').textContent = expired;
+    }
+
+    function filterInstalls() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const filtered = installations.filter(inst =>
+        !search ||
+        (inst.softwareName && inst.softwareName.toLowerCase().includes(search)) ||
+        (inst.userName && inst.userName.toLowerCase().includes(search)) ||
+        (inst.userEmail && inst.userEmail.toLowerCase().includes(search)) ||
+        (inst.organization && inst.organization.toLowerCase().includes(search))
+      );
+      renderTableData(filtered);
+    }
+
+    function renderTable() {
+      renderTableData(installations);
+    }
+
+    function renderTableData(data) {
+      const tbody = document.getElementById('installs-tbody');
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-state">暂无安装记录</td></tr>';
+        return;
+      }
+
+      data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      tbody.innerHTML = data.map(inst => {
+        const remaining = inst.remainingDays || 0;
+        let daysClass = '';
+        let daysText = remaining > 0 ? remaining + ' 天' : '已过期';
+
+        if (remaining <= 0) {
+          daysClass = 'danger';
+        } else if (remaining <= 7) {
+          daysClass = 'warning';
+        }
+
+        return `
+          <tr>
+            <td>#${escapeHtml(inst.id)}</td>
+            <td>${escapeHtml(inst.softwareName)}</td>
+            <td>${escapeHtml(inst.userName)}</td>
+            <td>${escapeHtml(inst.userEmail)}</td>
+            <td>${escapeHtml(inst.organization || '-')}</td>
+            <td>${escapeHtml(inst.macAddress || '-')}</td>
+            <td>${formatDate(inst.installDate)}</td>
+            <td>${formatDate(inst.expireDate)}</td>
+            <td><span class="status-badge ${remaining <= 0 ? 'expired' : remaining <= 7 ? 'warning' : 'active'}">${escapeHtml(daysText)}</span></td>
+            <td>
+              <button class="btn btn-sm" onclick="showDetail(${escapeHtml(inst.id)})">详情</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteInstall(${escapeHtml(inst.id)})">删除</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleDateString('zh-CN');
+    }
+
+    function showDetail(id) {
+      const inst = installations.find(i => i.id === id);
+      if (!inst) return;
+
+      const remaining = inst.remainingDays || 0;
+      let statusText = '有效';
+      let statusClass = 'active';
+      if (remaining <= 0) {
+        statusText = '已过期';
+        statusClass = 'expired';
+      } else if (remaining <= 7) {
+        statusText = '即将到期';
+        statusClass = 'warning';
+      }
+
+      document.getElementById('modal-id').textContent = inst.id;
+      document.getElementById('modal-content').innerHTML = `
+        <div class="detail-item">
+          <span class="label">软件名称：</span>
+          <span>${escapeHtml(inst.softwareName)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">软件版本：</span>
+          <span>${escapeHtml(inst.softwareVersion || '-')}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">用户名称：</span>
+          <span>${escapeHtml(inst.userName)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">邮箱地址：</span>
+          <span>${escapeHtml(inst.userEmail)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">组织/公司：</span>
+          <span>${escapeHtml(inst.organization || '-')}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">MAC地址：</span>
+          <span>${escapeHtml(inst.macAddress || '-')}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">安装日期：</span>
+          <span>${formatDate(inst.installDate)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">到期日期：</span>
+          <span>${formatDate(inst.expireDate)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">剩余天数：</span>
+          <span class="status-badge ${remaining <= 0 ? 'expired' : remaining <= 7 ? 'warning' : 'active'}">${remaining > 0 ? remaining + ' 天' : '已过期'}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">状态：</span>
+          <span class="status-badge ${statusClass}">${statusText}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">注册时间：</span>
+          <span>${formatDate(inst.createdAt)}</span>
+        </div>
+      `;
+      document.getElementById('detail-modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('active');
+    }
+
+    async function deleteInstall(id) {
+      if (!confirm('确定要删除此安装记录吗？')) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/installs/' + id, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          const data = await response.json();
+          showMessage(data.error || '删除失败', 'error');
+          return;
+        }
+        showMessage('删除成功', 'success');
+        loadInstallations();
+      } catch (error) {
+        console.error('Error deleting installation:', error);
+        showMessage('删除失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadInstallations();
+    });
+
+    function toggleSidebarSubmenu(link) {
+      const submenu = link.nextElementSibling;
+      if (submenu && submenu.classList.contains('sidebar-submenu')) {
+        submenu.classList.toggle('open');
+        link.classList.toggle('open');
+      }
+    }
+
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+      const href = link.getAttribute('href');
+      if (href === currentPath || href === currentPath + '/') {
+        link.classList.add('active');
+        const submenu = link.closest('.sidebar-submenu');
+        if (submenu) {
+          submenu.classList.add('open');
+          const parentLink = submenu.previousElementSibling;
+          if (parentLink) parentLink.classList.add('open');
+        }
+      }
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

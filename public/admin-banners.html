@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 横条管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+    <h1 style="font-size: 24px; margin-bottom: 10px;">横条管理</h1>
+    <p style="color: var(--text-light); margin-bottom: 30px;">管理首页展示的横条广告，可上传图片和设置标题描述</p>
+
+    <div class="message" id="message"></div>
+
+    <div class="banner-list" id="banner-list">
+      <!-- Banners will be loaded here -->
+    </div>
+
+    <button class="add-banner-btn" onclick="addBanner()">+ 添加横条</button>
+  </main></div>
+
+  <input type="file" id="banner-upload-input" accept="image/*">
+
+  <script>
+    let banners = [];
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 横条管理';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        // 应用主题
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadBanners() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        const settings = await response.json();
+        banners = settings.banners || [];
+        renderBanners();
+      } catch (error) {
+        console.error('Error loading banners:', error);
+        showMessage('加载横条失败', 'error');
+      }
+    }
+
+    function renderBanners() {
+      const list = document.getElementById('banner-list');
+
+      if (banners.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 40px;">暂无横条，点击下方按钮添加</p>';
+        return;
+      }
+
+      list.innerHTML = banners.map((banner, index) => `
+        <div class="banner-item" data-index="${index}">
+          <div class="banner-preview" id="preview-${index}">
+            ${banner.image ? '<img src="' + banner.image + '?t=' + Date.now() + '" alt="Banner">' : '<span class="placeholder">暂无图片</span>'}
+          </div>
+          <div class="banner-form">
+            <div class="form-group">
+              <label>标题</label>
+              <input type="text" id="title-${index}" value="${banner.title || ''}" placeholder="输入横条标题">
+            </div>
+            <div class="form-group">
+              <label>描述</label>
+              <textarea id="desc-${index}" placeholder="输入横条描述">${banner.description || ''}</textarea>
+            </div>
+            <div class="banner-actions">
+              <button class="btn-upload" onclick="document.getElementById('banner-upload-input').click(); currentEditIndex=${index};">上传图片</button>
+              <button class="btn btn-primary" onclick="saveBanner(${index})">保存</button>
+              <button class="btn-remove" onclick="removeBanner(${index})">删除</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    let currentEditIndex = -1;
+
+    async function uploadBannerImage(file) {
+      const formData = new FormData();
+      formData.append('banner', file);
+
+      try {
+        const response = await fetch('/api/upload-banner', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return data.path;
+        }
+        return null;
+      } catch (error) {
+        console.error('Error uploading banner:', error);
+        return null;
+      }
+    }
+
+    document.getElementById('banner-upload-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file || currentEditIndex < 0) return;
+
+      const imagePath = await uploadBannerImage(file);
+      if (imagePath) {
+        banners[currentEditIndex].image = imagePath;
+        document.getElementById('preview-' + currentEditIndex).innerHTML =
+          '<img src="' + imagePath + '?t=' + Date.now() + '" alt="Banner">';
+      }
+      e.target.value = '';
+    });
+
+    function addBanner() {
+      banners.push({ title: '', description: '', image: '' });
+      renderBanners();
+    }
+
+    function saveBanner(index) {
+      const title = document.getElementById('title-' + index).value;
+      const description = document.getElementById('desc-' + index).value;
+
+      banners[index].title = title;
+      banners[index].description = description;
+
+      saveBanners();
+    }
+
+    function removeBanner(index) {
+      if (!confirm('确定要删除此横条吗？')) return;
+
+      const imagePath = banners[index].image;
+      if (imagePath && imagePath.startsWith('/uploads/')) {
+        // 图片会在下次上传时被覆盖，这里不删除物理文件
+      }
+
+      banners.splice(index, 1);
+      saveBanners();
+    }
+
+    async function saveBanners() {
+      try {
+        const response = await fetch('/api/banners', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ banners }),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('保存成功', 'success');
+          renderBanners();
+        } else {
+          showMessage('保存失败', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving banners:', error);
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 3000);
+    }
+
+    // 侧边栏子菜单切换
+    function toggleSidebarSubmenu(link) {
+      const submenu = link.nextElementSibling;
+      if (submenu && submenu.classList.contains('sidebar-submenu')) {
+        submenu.classList.toggle('open');
+        link.classList.toggle('open');
+      }
+    }
+
+    // 高亮当前页面
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.sidebar-nav a').forEach(link => {
+      const href = link.getAttribute('href');
+      if (href === currentPath || href === currentPath + '/') {
+        link.classList.add('active');
+        const submenu = link.closest('.sidebar-submenu');
+        if (submenu) {
+          submenu.classList.add('open');
+          const parentLink = submenu.previousElementSibling;
+          if (parentLink) parentLink.classList.add('open');
+        }
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadBanners();
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

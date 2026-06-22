@@ -1,0 +1,246 @@
+<h2>后台 UI 主题方案 — 细化版（B/C/D）</h2>
+<p class="subtitle">B 信息密集、C 商务留白、D 企业级——3 套都按真实后台规格细化。主题切换放在右上角头像菜单里，点开预览。</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px">
+  <div class="option" data-choice="theme-b" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>GitHub 风 — 信息密集</h3>
+      <p>侧栏 232px、表格高密度、表单紧凑。多列、单页信息量大。给"天天看 200 行订单"的人。</p>
+      <div style="margin:10px 0 4px;font-size:11px;color:#64748b"><b>主色</b> #0969da &nbsp; <b>字号</b> 12-13px &nbsp; <b>行高</b> 32px</div>
+    </div>
+  </div>
+  <div class="option" data-choice="theme-c" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Stripe 风 — 商务留白</h3>
+      <p>侧栏 240px、内容宽留白、卡片化、统计数字大。给"看仪表盘决策"的人。</p>
+      <div style="margin:10px 0 4px;font-size:11px;color:#64748b"><b>主色</b> #635bff &nbsp; <b>字号</b> 14-15px &nbsp; <b>行高</b> 48px</div>
+    </div>
+  </div>
+  <div class="option" data-choice="theme-d" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Ant Design Pro 风 — 企业级</h3>
+      <p>侧栏深色 208px + 顶部面包屑 + 标签页 + 多级菜单。表单表格表单感强。给"管 N 个模块"的人。</p>
+      <div style="margin:10px 0 4px;font-size:11px;color:#64748b"><b>主色</b> #1677ff &nbsp; <b>字号</b> 13-14px &nbsp; <b>行高</b> 40px</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Theme B (GitHub) — detailed ============ -->
+<h3 style="margin-top:8px">B · GitHub 风 — 详情</h3>
+<div style="display:flex;height:340px;border:1px solid #d0d7de;border-radius:6px;overflow:hidden;font-family:ui-sans-serif;font-size:12px;margin-bottom:24px;background:#fff">
+  <!-- sidebar -->
+  <div style="width:232px;background:#f6f8fa;border-right:1px solid #d0d7de;padding:8px 0;flex-shrink:0">
+    <div style="padding:8px 14px;font-weight:600;font-size:13px;color:#24292f;border-bottom:1px solid #d0d7de;margin-bottom:6px">🏢 博铭管理</div>
+    <div style="padding:5px 14px;color:#24292f;background:#eaeef2;border-left:3px solid #0969da">📦 产品管理</div>
+    <div style="padding:4px 14px 4px 32px;color:#57606a;font-size:11px">├ 文档</div>
+    <div style="padding:4px 14px 4px 32px;color:#57606a;font-size:11px">├ 媒体</div>
+    <div style="padding:4px 14px 4px 32px;color:#57606a;font-size:11px">└ 分类</div>
+    <div style="padding:5px 14px;color:#24292f">📋 订单</div>
+    <div style="padding:5px 14px;color:#24292f">📥 安装记录</div>
+    <div style="padding:5px 14px;color:#24292f">🔓 激活码</div>
+    <div style="padding:5px 14px;color:#24292f">💻 用户软件</div>
+    <div style="padding:5px 14px;color:#24292f">📊 日志 ▼</div>
+    <div style="padding:5px 14px;color:#24292f">📧 邮件</div>
+    <div style="padding:5px 14px;color:#24292f">⚙️ 系统设置</div>
+  </div>
+  <!-- main -->
+  <div style="flex:1;display:flex;flex-direction:column">
+    <div style="background:#fff;border-bottom:1px solid #d0d7de;padding:8px 16px;display:flex;align-items:center;gap:12px;height:40px">
+      <input placeholder="🔍 搜索..." style="border:1px solid #d0d7de;border-radius:4px;padding:4px 10px;width:280px;font-size:12px">
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <span style="color:#57606a;font-size:11px">主题 ▾</span>
+        <div style="background:#0969da;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px">A</div>
+      </div>
+    </div>
+    <div style="flex:1;padding:14px 18px;background:#fff;overflow:auto">
+      <div style="display:flex;align-items:center;margin-bottom:10px">
+        <h2 style="font-size:18px;margin:0;color:#24292f">用户软件状态</h2>
+        <button style="margin-left:auto;background:#0969da;color:#fff;border:none;padding:4px 12px;border-radius:4px;font-size:12px">+ 新增记录</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+        <div style="background:#f6f8fa;padding:8px 10px;border:1px solid #d0d7de;border-radius:4px"><div style="color:#57606a;font-size:11px">总记录</div><div style="font-size:20px;font-weight:600;color:#24292f">128</div></div>
+        <div style="background:#f6f8fa;padding:8px 10px;border:1px solid #d0d7de;border-radius:4px"><div style="color:#57606a;font-size:11px">正常</div><div style="font-size:20px;font-weight:600;color:#1a7f37">112</div></div>
+        <div style="background:#f6f8fa;padding:8px 10px;border:1px solid #d0d7de;border-radius:4px"><div style="color:#57606a;font-size:11px">过期</div><div style="font-size:20px;font-weight:600;color:#9a6700">14</div></div>
+        <div style="background:#f6f8fa;padding:8px 10px;border:1px solid #d0d7de;border-radius:4px"><div style="color:#57606a;font-size:11px">锁定</div><div style="font-size:20px;font-weight:600;color:#cf222e">2</div></div>
+      </div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse;border:1px solid #d0d7de">
+        <thead><tr style="background:#f6f8fa;text-align:left">
+          <th style="padding:6px 10px;font-weight:600;color:#24292f;border-bottom:1px solid #d0d7de;font-size:11px">ID</th>
+          <th style="padding:6px 10px;font-weight:600;color:#24292f;border-bottom:1px solid #d0d7de;font-size:11px">用户</th>
+          <th style="padding:6px 10px;font-weight:600;color:#24292f;border-bottom:1px solid #d0d7de;font-size:11px">软件</th>
+          <th style="padding:6px 10px;font-weight:600;color:#24292f;border-bottom:1px solid #d0d7de;font-size:11px">到期</th>
+          <th style="padding:6px 10px;font-weight:600;color:#24292f;border-bottom:1px solid #d0d7de;font-size:11px">状态</th>
+          <th style="padding:6px 10px;font-weight:600;color:#24292f;border-bottom:1px solid #d0d7de;font-size:11px">操作</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:5px 10px;border-bottom:1px solid #eaeef2;color:#57606a">21</td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2">admin</td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2">task25test</td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2">2026-07-19</td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2"><span style="background:#dafbe1;color:#1a7f37;padding:1px 8px;border-radius:10px;font-size:11px">● 正常</span></td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2"><a style="color:#0969da;text-decoration:none;margin-right:8px">锁定</a><a style="color:#0969da;text-decoration:none">详情</a></td></tr>
+          <tr style="background:#f6f8fa"><td style="padding:5px 10px;border-bottom:1px solid #eaeef2;color:#57606a">22</td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2">user1</td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2">test</td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2">2026-06-20</td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2"><span style="background:#ffebe9;color:#cf222e;padding:1px 8px;border-radius:10px;font-size:11px">● 已过期</span></td><td style="padding:5px 10px;border-bottom:1px solid #eaeef2"><a style="color:#0969da;text-decoration:none;margin-right:8px">解锁</a><a style="color:#0969da;text-decoration:none">详情</a></td></tr>
+          <tr><td style="padding:5px 10px;color:#57606a">23</td><td style="padding:5px 10px">boming</td><td style="padding:5px 10px">task25test</td><td style="padding:5px 10px">2026-08-01</td><td style="padding:5px 10px"><span style="background:#dafbe1;color:#1a7f37;padding:1px 8px;border-radius:10px;font-size:11px">● 正常</span></td><td style="padding:5px 10px"><a style="color:#0969da;text-decoration:none;margin-right:8px">锁定</a><a style="color:#0969da;text-decoration:none">详情</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Theme C (Stripe) — detailed ============ -->
+<h3>C · Stripe 风 — 详情</h3>
+<div style="display:flex;height:340px;border:1px solid #e3e8ee;border-radius:8px;overflow:hidden;font-family:ui-sans-serif;font-size:13px;margin-bottom:24px;background:#f6f9fc;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+  <div style="width:240px;background:#fff;border-right:1px solid #e3e8ee;padding:18px 0;flex-shrink:0">
+    <div style="padding:0 18px 18px;font-weight:700;font-size:15px;color:#0a2540">博铭后台</div>
+    <div style="padding:9px 18px;color:#635bff;background:#f6f5ff;border-right:3px solid #635bff;display:flex;align-items:center;gap:8px">📦 <span>产品</span></div>
+    <div style="padding:9px 18px;color:#425466;display:flex;align-items:center;gap:8px">📋 订单</div>
+    <div style="padding:9px 18px;color:#425466;display:flex;align-items:center;gap:8px">📥 安装</div>
+    <div style="padding:9px 18px;color:#425466;display:flex;align-items:center;gap:8px">🔓 激活</div>
+    <div style="padding:9px 18px;color:#425466;display:flex;align-items:center;gap:8px">💻 状态</div>
+    <div style="padding:9px 18px;color:#425466;display:flex;align-items:center;gap:8px">📧 邮件</div>
+    <div style="margin-top:auto;padding:18px;border-top:1px solid #e3e8ee;margin-top:40px;color:#425466;display:flex;align-items:center;gap:8px">⚙️ 设置</div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column">
+    <div style="background:#f6f9fc;padding:14px 32px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:13px;color:#425466">产品 / <span style="color:#0a2540;font-weight:500">task25test</span></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+        <span style="color:#425466;font-size:12px">主题 ▾</span>
+        <div style="background:#635bff;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px">A</div>
+      </div>
+    </div>
+    <div style="flex:1;padding:24px 32px;overflow:auto">
+      <h2 style="font-size:24px;font-weight:600;margin:0 0 4px;color:#0a2540">用户软件状态</h2>
+      <div style="color:#425466;margin-bottom:20px;font-size:13px">查看所有用户的软件使用情况</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:20px">
+        <div style="background:#fff;padding:18px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+          <div style="color:#425466;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">总记录</div>
+          <div style="font-size:30px;font-weight:600;color:#0a2540;letter-spacing:-0.5px">128</div>
+        </div>
+        <div style="background:#fff;padding:18px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+          <div style="color:#425466;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">正常</div>
+          <div style="font-size:30px;font-weight:600;color:#0a2540;letter-spacing:-0.5px">112</div>
+        </div>
+        <div style="background:#fff;padding:18px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+          <div style="color:#425466;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">过期</div>
+          <div style="font-size:30px;font-weight:600;color:#cf222e;letter-spacing:-0.5px">14</div>
+        </div>
+        <div style="background:#fff;padding:18px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+          <div style="color:#425466;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">锁定</div>
+          <div style="font-size:30px;font-weight:600;color:#0a2540;letter-spacing:-0.5px">2</div>
+        </div>
+      </div>
+      <div style="background:#fff;padding:6px 18px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <thead><tr style="text-align:left">
+            <th style="padding:14px 0;color:#425466;font-weight:500;font-size:12px;border-bottom:1px solid #e3e8ee">用户</th>
+            <th style="padding:14px 0;color:#425466;font-weight:500;font-size:12px;border-bottom:1px solid #e3e8ee">软件</th>
+            <th style="padding:14px 0;color:#425666;font-weight:500;font-size:12px;border-bottom:1px solid #e3e8ee">到期</th>
+            <th style="padding:14px 0;color:#425466;font-weight:500;font-size:12px;border-bottom:1px solid #e3e8ee">状态</th>
+            <th style="padding:14px 0;color:#425466;font-weight:500;font-size:12px;border-bottom:1px solid #e3e8ee;text-align:right">操作</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:16px 0;border-bottom:1px solid #f6f9fc;color:#0a2540">admin</td><td style="padding:16px 0;border-bottom:1px solid #f6f9fc">task25test</td><td style="padding:16px 0;border-bottom:1px solid #f6f9fc">2026/07/19</td><td style="padding:16px 0;border-bottom:1px solid #f6f9fc"><span style="background:#e3fcef;color:#0a7c42;padding:3px 10px;border-radius:12px;font-size:12px">正常</span></td><td style="padding:16px 0;border-bottom:1px solid #f6f9fc;text-align:right"><button style="background:#635bff;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px">锁定</button></td></tr>
+            <tr><td style="padding:16px 0;border-bottom:1px solid #f6f9fc;color:#0a2540">user1</td><td style="padding:16px 0;border-bottom:1px solid #f6f9fc">test</td><td style="padding:16px 0;border-bottom:1px solid #f6f9fc">2026/06/20</td><td style="padding:16px 0;border-bottom:1px solid #f6f9fc"><span style="background:#ffebe9;color:#cf222e;padding:3px 10px;border-radius:12px;font-size:12px">已过期</span></td><td style="padding:16px 0;border-bottom:1px solid #f6f9fc;text-align:right"><button style="background:#fff;color:#635bff;border:1px solid #635bff;padding:6px 14px;border-radius:6px;font-size:12px">解锁</button></td></tr>
+            <tr><td style="padding:16px 0;color:#0a2540">boming</td><td style="padding:16px 0">task25test</td><td style="padding:16px 0">2026/08/01</td><td style="padding:16px 0"><span style="background:#e3fcef;color:#0a7c42;padding:3px 10px;border-radius:12px;font-size:12px">正常</span></td><td style="padding:16px 0;text-align:right"><button style="background:#635bff;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px">锁定</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Theme D (Ant Design Pro) — detailed ============ -->
+<h3>D · Ant Design Pro 风 — 详情</h3>
+<div style="display:flex;flex-direction:column;height:380px;border:1px solid #f0f0f0;border-radius:4px;overflow:hidden;font-family:ui-sans-serif;font-size:13px;margin-bottom:24px;background:#f0f2f5">
+  <div style="background:#001529;color:#fff;padding:0 16px;display:flex;align-items:center;height:48px;gap:20px">
+    <div style="font-weight:600;font-size:15px">🏢 博铭管理后台</div>
+    <div style="color:rgba(255,255,255,0.65);font-size:12px">用户软件状态</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:14px;color:rgba(255,255,255,0.85);font-size:12px">
+      <span>🔔</span>
+      <span>主题 ▾</span>
+      <div style="background:#1677ff;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px">A</div>
+    </div>
+  </div>
+  <div style="display:flex;flex:1">
+    <div style="width:208px;background:#001529;color:rgba(255,255,255,0.85);padding:8px 0;flex-shrink:0">
+      <div style="padding:9px 16px;color:#fff;background:#1677ff;display:flex;align-items:center;gap:8px">📦 产品</div>
+      <div style="padding:9px 16px;display:flex;align-items:center;gap:8px">📋 订单</div>
+      <div style="padding:9px 16px;display:flex;align-items:center;gap:8px">📥 安装</div>
+      <div style="padding:9px 16px;display:flex;align-items:center;gap:8px">🔓 激活</div>
+      <div style="padding:9px 16px;display:flex;align-items:center;gap:8px">💻 状态</div>
+      <div style="padding:9px 16px;display:flex;align-items:center;gap:8px">📧 邮件</div>
+      <div style="padding:9px 16px;display:flex;align-items:center;gap:8px">📊 日志 ▼</div>
+      <div style="padding:6px 16px 6px 38px;color:rgba(255,255,255,0.65);font-size:12px">登录记录</div>
+      <div style="padding:6px 16px 6px 38px;color:rgba(255,255,255,0.65);font-size:12px">操作日志</div>
+      <div style="padding:9px 16px;display:flex;align-items:center;gap:8px">⚙️ 设置</div>
+    </div>
+    <div style="flex:1;padding:14px;overflow:auto">
+      <div style="background:#fff;border-radius:4px;padding:16px 20px">
+        <div style="display:flex;align-items:center;margin-bottom:14px">
+          <div>
+            <h2 style="font-size:18px;margin:0;color:rgba(0,0,0,0.85);font-weight:600">用户软件状态</h2>
+            <div style="color:rgba(0,0,0,0.45);font-size:12px;margin-top:2px">管理所有用户的软件激活与到期</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button style="background:#fff;border:1px solid #d9d9d9;color:rgba(0,0,0,0.85);padding:5px 14px;border-radius:2px;font-size:13px">导出</button>
+            <button style="background:#1677ff;color:#fff;border:none;padding:5px 14px;border-radius:2px;font-size:13px">+ 新增</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div style="border:1px solid #f0f0f0;padding:12px 14px;border-radius:4px"><div style="color:rgba(0,0,0,0.45);font-size:12px;margin-bottom:6px">总记录</div><div style="font-size:24px;font-weight:500;color:rgba(0,0,0,0.85)">128</div></div>
+          <div style="border:1px solid #f0f0f0;padding:12px 14px;border-radius:4px"><div style="color:rgba(0,0,0,0.45);font-size:12px;margin-bottom:6px">正常</div><div style="font-size:24px;font-weight:500;color:#52c41a">112</div></div>
+          <div style="border:1px solid #f0f0f0;padding:12px 14px;border-radius:4px"><div style="color:rgba(0,0,0,0.45);font-size:12px;margin-bottom:6px">过期</div><div style="font-size:24px;font-weight:500;color:#faad14">14</div></div>
+          <div style="border:1px solid #f0f0f0;padding:12px 14px;border-radius:4px"><div style="color:rgba(0,0,0,0.45);font-size:12px;margin-bottom:6px">锁定</div><div style="font-size:24px;font-weight:500;color:#f5222d">2</div></div>
+        </div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse;border:1px solid #f0f0f0">
+          <thead><tr style="background:#fafafa">
+            <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #f0f0f0;font-weight:500;color:rgba(0,0,0,0.85);font-size:13px">用户</th>
+            <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #f0f0f0;font-weight:500;color:rgba(0,0,0,0.85);font-size:13px">软件</th>
+            <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #f0f0f0;font-weight:500;color:rgba(0,0,0,0.85);font-size:13px">到期</th>
+            <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #f0f0f0;font-weight:500;color:rgba(0,0,0,0.85);font-size:13px">状态</th>
+            <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #f0f0f0;font-weight:500;color:rgba(0,0,0,0.85);font-size:13px">操作</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;color:rgba(0,0,0,0.85)">admin</td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0">task25test</td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0">2026-07-19</td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0"><span style="color:#52c41a">● 正常</span></td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0"><button style="background:#ff4d4f;color:#fff;border:none;padding:3px 12px;border-radius:2px;font-size:12px">锁定</button></td></tr>
+            <tr style="background:#fafafa"><td style="padding:10px 12px;color:rgba(0,0,0,0.85)">user1</td><td style="padding:10px 12px">test</td><td style="padding:10px 12px">2026-06-20</td><td style="padding:10px 12px"><span style="color:#faad14">● 已过期</span></td><td style="padding:10px 12px"><button style="background:#fff;border:1px solid #1677ff;color:#1677ff;padding:3px 12px;border-radius:2px;font-size:12px">解锁</button></td></tr>
+            <tr><td style="padding:10px 12px;color:rgba(0,0,0,0.85)">boming</td><td style="padding:10px 12px">task25test</td><td style="padding:10px 12px">2026-08-01</td><td style="padding:10px 12px"><span style="color:#52c41a">● 正常</span></td><td style="padding:10px 12px"><button style="background:#ff4d4f;color:#fff;border:none;padding:3px 12px;border-radius:2px;font-size:12px">锁定</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Theme picker dropdown mockup ============ -->
+<h3>主题切换入口（3 套通用）</h3>
+<p style="color:#475569">点右上角头像菜单里的「主题」项，弹出预览选择。也可在「设置」里改默认主题。</p>
+<div style="display:flex;gap:16px;align-items:flex-start">
+  <div style="width:240px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px 0;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:ui-sans-serif;font-size:13px">
+    <div style="padding:8px 14px;display:flex;align-items:center;gap:10px">
+      <div style="background:#635bff;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px">A</div>
+      <div><div style="font-weight:500">admin</div><div style="color:#64748b;font-size:11px">管理员</div></div>
+    </div>
+    <div style="height:1px;background:#f1f5f9;margin:4px 0"></div>
+    <div style="padding:8px 14px;display:flex;align-items:center;gap:8px">👤 个人资料</div>
+    <div style="padding:8px 14px;display:flex;align-items:center;gap:8px;background:#f1f5f9">🎨 主题 ▾</div>
+    <div style="padding:8px 14px;display:flex;align-items:center;gap:8px">⚙️ 设置</div>
+    <div style="height:1px;background:#f1f5f9;margin:4px 0"></div>
+    <div style="padding:8px 14px;display:flex;align-items:center;gap:8px;color:#dc2626">🚪 退出登录</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08);width:340px">
+    <div style="font-weight:600;margin-bottom:10px">选择主题</div>
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;border:2px solid #1677ff;border-radius:6px;margin-bottom:6px;background:#f8fafc">
+      <div style="width:36px;height:24px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:3px;display:flex"><div style="width:14px;background:#fff;border-right:1px solid #d0d7de"></div><div style="flex:1"></div></div>
+      <div><div style="font-weight:500;font-size:13px">GitHub 风</div><div style="color:#64748b;font-size:11px">信息密集 · 多列高效</div></div>
+      <div style="margin-left:auto;color:#1677ff;font-weight:600">✓</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px">
+      <div style="width:36px;height:24px;background:#fff;border:1px solid #e3e8ee;border-radius:3px;display:flex"><div style="width:14px;background:#fff;border-right:1px solid #e3e8ee"></div><div style="flex:1"></div></div>
+      <div><div style="font-weight:500;font-size:13px">Stripe 风</div><div style="color:#64748b;font-size:11px">商务留白 · 决策仪表盘</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #e5e7eb;border-radius:6px">
+      <div style="width:36px;height:24px;background:#001529;border:1px solid #001529;border-radius:3px;display:flex"><div style="width:14px;background:#001529;border-right:1px solid #1677ff"></div><div style="flex:1"></div></div>
+      <div><div style="font-weight:500;font-size:13px">Ant Design Pro 风</div><div style="color:#64748b;font-size:11px">企业级 · 多模块管理</div></div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:24px">3 套都对，就照这个细化执行？还是哪套还有要调整的地方（颜色 / 间距 / 字号）？</p>

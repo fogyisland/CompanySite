@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 用户中心</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <style>
+    .user-container {
+      max-width: 1280px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .user-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+    .user-header h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .user-welcome {
+      color: var(--text-light);
+      font-size: 14px;
+      margin-top: 6px;
+    }
+    .user-nav {
+      display: flex;
+      gap: 12px;
+    }
+    .user-nav a {
+      padding: 12px 24px;
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.25s ease;
+    }
+    .user-nav a:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: 0 4px 12px rgba(19, 60, 138, 0.1);
+    }
+    .user-nav .btn-outline {
+      background: transparent;
+    }
+    .tab-nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0;
+      border-bottom: 2px solid rgba(0,0,0,0.06);
+    }
+    .tab-btn {
+      padding: 16px 32px;
+      background: var(--secondary);
+      border: none;
+      border-radius: 12px 12px 0 0;
+      cursor: pointer;
+      font-size: 15px;
+      color: var(--text);
+      margin-right: 8px;
+      transition: all 0.25s ease;
+      font-weight: 500;
+    }
+    .tab-btn:hover {
+      background: rgba(19, 60, 138, 0.08);
+      color: var(--primary);
+    }
+    .tab-btn.active {
+      background: var(--white);
+      color: var(--primary);
+      font-weight: 600;
+      border: 2px solid rgba(0,0,0,0.06);
+      border-bottom: 2px solid var(--white);
+      margin-bottom: -2px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    }
+    .tab-content {
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-top: none;
+      border-radius: 0 0 16px 16px;
+      padding: 32px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .security-logs-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .security-logs-table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+    .security-logs-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-light);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      white-space: nowrap;
+    }
+    .security-logs-table td {
+      padding: 12px 16px;
+      font-size: 14px;
+      color: var(--text);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+      vertical-align: top;
+    }
+    .security-logs-table td.log-col-time { white-space: nowrap; }
+    .security-logs-table td.log-col-ip { white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .security-logs-table td.log-col-ua { word-break: break-all; }
+    .security-logs-table tr:last-child td {
+      border-bottom: none;
+    }
+    .security-logs-table .log-status {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .security-logs-table .log-status.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .security-logs-table .log-status.failed {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .security-logs-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-light);
+      font-size: 14px;
+    }
+    .profile-form {
+      max-width: 500px;
+    }
+    .profile-form .form-group {
+      margin-bottom: 24px;
+    }
+    .profile-form label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 500;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .profile-form input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
+      font-size: 15px;
+      transition: all 0.2s ease;
+    }
+    .profile-form input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.12);
+    }
+    .profile-form small {
+      display: block;
+      margin-top: 8px;
+      color: var(--text-light);
+      font-size: 13px;
+    }
+    .profile-form input[readonly] {
+      background: var(--secondary);
+      cursor: not-allowed;
+    }
+    .order-card {
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 16px;
+      transition: all 0.25s ease;
+    }
+    .order-card:last-child {
+      margin-bottom: 0;
+    }
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+    .order-id {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .order-date {
+      font-size: 13px;
+      color: var(--text-light);
+    }
+    .order-status {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .order-status.pending {
+      background: #fff3e0;
+      color: #e65100;
+    }
+    .order-status.paid {
+      background: #ecfdf5;
+      color: var(--success);
+    }
+    .order-status.cancelled {
+      background: #fef2f2;
+      color: #d32f2f;
+    }
+    .order-items {
+      margin-bottom: 15px;
+    }
+    .order-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--secondary);
+    }
+    .order-item:last-child {
+      border-bottom: none;
+    }
+    .order-item-name {
+      flex: 1;
+      color: var(--text);
+    }
+    .order-item-duration {
+      color: var(--text-light);
+      font-size: 13px;
+      margin-right: 15px;
+    }
+    .order-item-price {
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .order-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 15px;
+      border-top: 1px solid var(--border);
+    }
+    .order-total {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .order-total span {
+      color: var(--primary);
+      font-size: 22px;
+    }
+    .btn-detail {
+      padding: 8px 20px;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-detail:hover {
+      background: var(--primary-dark);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .empty-state h3 {
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .empty-state p {
+      color: var(--text-light);
+      margin-bottom: 20px;
+    }
+    .empty-state a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: #10b981;
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #d32f2f;
+      display: block;
+    }
+    .admin-entry-card {
+      background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+      border: 1px solid #fb923c;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(251, 146, 60, 0.15);
+    }
+    .admin-entry-content {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .admin-entry-icon {
+      font-size: 36px;
+      flex-shrink: 0;
+    }
+    .admin-entry-text {
+      flex: 1;
+    }
+    .admin-entry-text h3 {
+      color: #9a3412;
+      margin: 0 0 6px 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .admin-entry-text p {
+      color: #c2410c;
+      margin: 0;
+      font-size: 14px;
+    }
+    .admin-entry-btn {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+      color: white;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      white-space: nowrap;
+      transition: all 0.3s;
+      box-shadow: 0 3px 8px rgba(234, 88, 12, 0.3);
+      flex-shrink: 0;
+    }
+    .admin-entry-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(234, 88, 12, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="user-container">
+    <div id="admin-entry" class="admin-entry-card" style="display:none;">
+      <div class="admin-entry-content">
+        <span class="admin-entry-icon">⚙️</span>
+        <div class="admin-entry-text">
+          <h3>管理后台</h3>
+          <p>您具有管理员权限，可以进入后台管理系统</p>
+        </div>
+        <a href="/admin-overview" class="admin-entry-btn">进入管理后台 →</a>
+      </div>
+    </div>
+
+    <div class="user-header">
+      <div>
+        <h1>用户中心</h1>
+        <p class="user-welcome">欢迎回来，<span id="username"></span></p>
+      </div>
+      <div class="user-nav">
+        <a href="/" class="btn-outline">继续购物</a>
+        <a href="#" onclick="logout()">退出登录</a>
+      </div>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('profile')">个人资料</button>
+      <button class="tab-btn" onclick="switchTab('orders')">我的订单</button>
+      <button class="tab-btn" onclick="switchTab('security')">安全日志</button>
+      <button class="tab-btn" onclick="switchTab('software')">我的软件</button>
+    </div>
+
+    <div class="tab-content" id="tab-profile">
+      <form class="profile-form" id="profile-form">
+        <div class="form-group">
+          <label for="username-display">用户名</label>
+          <input type="text" id="username-display" readonly>
+          <small>用户名不可修改</small>
+        </div>
+        <div class="form-group">
+          <label for="email">邮箱</label>
+          <input type="email" id="email" placeholder="请输入邮箱地址">
+        </div>
+        <div class="form-group">
+          <label for="phone">电话</label>
+          <input type="tel" id="phone" placeholder="请输入联系电话">
+        </div>
+        <div class="form-group">
+          <label for="new-password">新密码（留空则不修改）</label>
+          <input type="password" id="new-password" placeholder="请输入新密码">
+        </div>
+        <button type="submit" class="btn btn-primary">保存修改</button>
+      </form>
+    </div>
+
+    <div class="tab-content" id="tab-orders" style="display: none;">
+      <div id="orders-list">
+        <!-- Orders loaded dynamically -->
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-security" style="display: none;">
+      <div id="security-logs-content">
+        <div class="security-logs-empty">加载中...</div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-software" style="display: none;">
+      <h3>我的软件</h3>
+      <div id="software-list"></div>
+    </div>
+  </main>
+
+  <script>
+    let currentUser = null;
+
+    async function loadSiteSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 用户中心';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadUserCenter() {
+      await loadSiteSettings();
+
+      // 检查用户是否登录
+      const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
+      const authData = await authResponse.json();
+
+      if (!authData.loggedIn) {
+        window.location.href = '/user-login';
+        return;
+      }
+
+      document.getElementById('username').textContent = authData.username;
+
+      // 检查是否管理员，显示管理后台入口
+      // 复用上面已获取的 authData, 避免重复请求
+      if (authData.isAdmin) {
+        document.getElementById('admin-entry').style.display = 'block';
+      }
+
+      // 加载用户信息
+      const profileResponse = await fetch('/api/user/profile', { credentials: 'include' });
+      currentUser = await profileResponse.json();
+
+      document.getElementById('username-display').value = currentUser.username;
+      document.getElementById('email').value = currentUser.email || '';
+      document.getElementById('phone').value = currentUser.phone || '';
+
+      // 加载用户订单
+      const ordersResponse = await fetch('/api/orders', { credentials: 'include' });
+      const orders = await ordersResponse.json();
+
+      renderOrders(orders);
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+
+      const tabIndex = { profile: 1, orders: 2, security: 3, software: 4 }[tab];
+      document.querySelector(`.tab-btn:nth-child(${tabIndex})`).classList.add('active');
+      document.getElementById(`tab-${tab}`).style.display = 'block';
+
+      if (tab === 'security') loadSecurityLogs();
+      else if (tab === 'software') loadSoftwareStatus();
+    }
+
+    let securityLogsLoaded = false;
+
+    async function loadSecurityLogs() {
+      if (securityLogsLoaded) return;
+      const container = document.getElementById('security-logs-content');
+      try {
+        const response = await fetch('/api/user/security-logs', { credentials: 'include' });
+        const { logs } = await response.json();
+        if (!logs || logs.length === 0) {
+          container.innerHTML = '<div class="security-logs-empty">暂无登录记录</div>';
+          securityLogsLoaded = true;
+          return;
+        }
+        const rows = logs.map(log => {
+          const isSuccess = log.status === 'success' || log.status === 'SUCCESS';
+          const statusClass = isSuccess ? 'success' : 'failed';
+          const statusText = isSuccess ? '成功' : '失败';
+          const d = new Date(log.createdAt || Date.now());
+          const date = isNaN(d.getTime()) ? '-' : d.toLocaleString('zh-CN');
+          return `<tr>
+            <td class="log-col-time">${date}</td>
+            <td class="log-col-ip">${escapeHtml(log.ip || '-')}</td>
+            <td class="log-col-ua">${escapeHtml(log.userAgent || '-')}</td>
+            <td><span class="log-status ${statusClass}">${statusText}</span></td>
+          </tr>`;
+        }).join('');
+        container.innerHTML = `<div class="security-logs-wrapper"><table class="security-logs-table">
+          <thead><tr><th>时间</th><th>IP 地址</th><th>设备 / 浏览器</th><th>状态</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`;
+        securityLogsLoaded = true;
+      } catch (error) {
+        container.innerHTML = '<div class="security-logs-empty">加载失败，请重试</div>';
+        console.error('Security logs error:', error);
+      }
+    }
+
+    async function loadSoftwareStatus() {
+      try {
+        const response = await fetch('/api/user/software-status', { credentials: 'include' });
+        const items = await response.json();
+        const container = document.getElementById('software-list');
+
+        if (!items || items.length === 0) {
+          container.innerHTML = '<p style="color: var(--text-light);">还没有购买任何软件</p>';
+          return;
+        }
+
+        container.innerHTML = items.map(item => {
+          const lockText = item.lock === 2 ? '管理员锁定' : item.lock === 1 ? '已过期' : '正常';
+          const lockColor = item.lock === 0 ? '#22c55e' : '#ef4444';
+          let expireText = '未激活';
+          if (item.expireDate) {
+            const d = new Date(item.expireDate);
+            expireText = isNaN(d.getTime()) ? '未激活' : d.toLocaleDateString('zh-CN');
+          }
+          return `
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between;">
+                <strong>${escapeHtml(item.softwareShortName)}</strong>
+                <span style="color: ${lockColor};">${lockText}</span>
+              </div>
+              <div style="color: var(--text-light); font-size: 14px; margin-top: 8px;">
+                到期日: ${expireText} | 累计: ${item.duration} 天
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error('Load software status failed:', e);
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 保存个人资料
+    document.getElementById('profile-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value
+      };
+
+      const newPassword = document.getElementById('new-password').value;
+      if (newPassword) {
+        data.password = newPassword;
+      }
+
+      try {
+        const response = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showMessage('保存成功', 'success');
+          document.getElementById('new-password').value = '';
+        } else {
+          const error = await response.json();
+          showMessage(error.error || '保存失败', 'error');
+        }
+      } catch (error) {
+        showMessage('保存失败', 'error');
+      }
+    });
+
+    function renderOrders(orders) {
+      const ordersList = document.getElementById('orders-list');
+
+      if (!orders || orders.length === 0) {
+        ordersList.innerHTML = `
+          <div class="empty-state">
+            <h3>暂无订单</h3>
+            <p>您还没有购买任何产品</p>
+            <a href="/">前往购物</a>
+          </div>
+        `;
+        return;
+      }
+
+      // 按时间倒序排列
+      orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      ordersList.innerHTML = orders.map(order => {
+        const statusClass = order.status;
+        // 如果订单已激活且有授权码，显示已激活状态
+        const isActivated = order.isActivated || (order.status === 'paid');
+        const statusText = order.status === 'cancelled' ? '已取消' : (order.status === 'pending' ? '待支付' : (order.isActivated ? '已激活' : '已支付'));
+        const paidDateRaw = order.paidAt ? new Date(order.paidAt) : null;
+        const paidDate = (paidDateRaw && !isNaN(paidDateRaw.getTime())) ? paidDateRaw.toLocaleString() : '';
+        const createdDateRaw = order.createdAt ? new Date(order.createdAt) : null;
+        const createdDateStr = (createdDateRaw && !isNaN(createdDateRaw.getTime())) ? createdDateRaw.toLocaleString() : '';
+
+        // 解析激活码
+        let activationCodes = [];
+        try {
+          if (order.activationCodes) {
+            try {
+              activationCodes = JSON.parse(order.activationCodes);
+              // 确保是数组
+              if (!Array.isArray(activationCodes)) {
+                activationCodes = [activationCodes];
+              }
+            } catch (e) {
+              // 旧数据格式：纯字符串，直接作为单条激活码
+              activationCodes = [order.activationCodes];
+            }
+          }
+        } catch (e) {
+          activationCodes = [];
+        }
+
+        let codesHtml = '';
+        // 已激活时显示授权码（只读）
+        if (order.status === 'paid' && activationCodes.length > 0 && order.isActivated) {
+          codesHtml = `
+            <div style="margin-top: 10px; padding: 10px; background: #ecfdf5; border-radius: 6px; border: 1px solid #10b981;">
+              <div style="font-size: 12px; color: #10b981; margin-bottom: 5px;">✓ 已激活 - 您的授权码：</div>
+              ${activationCodes.map(code => `<div style="font-family: monospace; font-size: 13px; letter-spacing: 1px; margin: 3px 0;">${code}</div>`).join('')}
+              <div style="font-size: 11px; color: #666; margin-top: 5px;">每组授权码可供一台设备使用</div>
+            </div>
+          `;
+        } else if (order.status === 'paid' && activationCodes.length > 0) {
+          codesHtml = `
+            <div style="margin-top: 10px; padding: 10px; background: #f0f7ff; border-radius: 6px;">
+              <div style="font-size: 12px; color: var(--text-light); margin-bottom: 5px;">您的授权码：</div>
+              ${activationCodes.map(code => `<div style="font-family: monospace; font-size: 13px; letter-spacing: 1px; margin: 3px 0;">${code}</div>`).join('')}
+              <div style="font-size: 11px; color: #666; margin-top: 5px;">每组授权码可供一台设备使用</div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="order-card">
+            <div class="order-header">
+              <div>
+                <span class="order-id">${escapeHtml(order.orderNumber || ('订单 #' + order.id))}</span>
+                <span class="order-date" style="margin-left: 15px;">${createdDateStr}</span>
+              </div>
+              <span class="order-status ${statusClass}">${statusText}</span>
+            </div>
+            <div class="order-items">
+              ${order.items.map(item => `
+                <div class="order-item">
+                  <span class="order-item-name">${escapeHtml(item.name)}</span>
+                  <span class="order-item-duration">${escapeHtml(item.duration || '永久授权')}</span>
+                  <span class="order-item-price">¥${escapeHtml(item.price)}</span>
+                </div>
+              `).join('')}
+            </div>
+            ${codesHtml}
+            <div class="order-footer">
+              <div class="order-total">
+                合计：<span>¥${escapeHtml(order.totalAmount)}</span>
+                ${order.status === 'paid' && paidDate ? `<br><small style="font-size: 12px; color: var(--text-light); font-weight: normal;">支付时间：${paidDate}</small>` : ''}
+              </div>
+              <a href="/order-detail?id=${escapeHtml(order.id)}" class="btn-detail">查看详情</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function logout() {
+      try {
+        await fetch('/api/user/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        window.location.href = '/';
+      } catch (error) {
+        showMessage('退出失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => {
+        msg.className = 'message';
+      }, 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', loadUserCenter);
+  </script>
+  <script src="/js/public-theme.js" defer></script>
+</body>
+</html>

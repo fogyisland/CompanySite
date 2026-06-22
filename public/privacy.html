@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 隐私政策</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <style>
+    .legal-container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .legal-header {
+      text-align: center;
+      margin-bottom: 48px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid rgba(0,0,0,0.06);
+    }
+    .legal-header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+    .legal-header .date {
+      color: var(--text-light);
+      font-size: 14px;
+    }
+    .legal-content {
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
+      padding: 48px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .legal-content h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-top: 36px;
+      margin-bottom: 16px;
+      color: var(--primary);
+    }
+    .legal-content h2:first-child {
+      margin-top: 0;
+    }
+    .legal-content p {
+      line-height: 1.9;
+      margin-bottom: 16px;
+      color: var(--text);
+      font-size: 15px;
+    }
+    .legal-content ul {
+      margin-bottom: 16px;
+      padding-left: 28px;
+    }
+    .legal-content li {
+      line-height: 1.8;
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 32px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions" id="header-actions">
+        <button class="header-cart" onclick="renderCartModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h19.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+          </svg>
+          <span id="cart-badge" class="cart-badge" style="display:none;">0</span>
+        </button>
+        <a href="/user-login" class="header-login" id="header-login">登录</a>
+        <a href="#" class="header-logout" id="header-logout" style="display:none;" onclick="headerLogout()">退出</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="legal-container">
+    <div class="legal-header">
+      <h1>隐私政策</h1>
+      <p class="date">更新时间：2026年1月1日</p>
+    </div>
+
+    <div class="legal-content">
+      <h2>1. 信息收集</h2>
+      <p>我们承诺保护您的个人隐私。本隐私政策说明了我们如何收集、使用和保护您的信息。</p>
+      <p>我们收集的信息包括：</p>
+      <ul>
+        <li>账户信息：用户名、电子邮件地址、密码等注册信息</li>
+        <li>交易信息：购买记录、订单详情、支付信息</li>
+        <li>使用数据：产品使用情况、访问日志、IP地址等</li>
+        <li>联系信息：您与我们沟通时提供的信息</li>
+      </ul>
+
+      <h2>2. 信息使用</h2>
+      <p>我们收集的信息将用于以下目的：</p>
+      <ul>
+        <li>提供和维护我们的软件产品和服务</li>
+        <li>处理您的购买交易和订单</li>
+        <li>提供客户支持和技术服务</li>
+        <li>发送重要的产品更新和安全通知</li>
+        <li>改进我们的产品和服务</li>
+        <li>遵守法律义务</li>
+      </ul>
+
+      <h2>3. 信息保护</h2>
+      <p>我们采用行业标准的安全措施来保护您的个人信息，包括：</p>
+      <ul>
+        <li>数据加密：使用SSL/TLS加密传输敏感数据</li>
+        <li>访问控制：严格限制员工访问用户数据的权限</li>
+        <li>安全存储：使用安全的服务器存储用户数据</li>
+        <li>定期审计：定期进行安全评估和漏洞扫描</li>
+      </ul>
+
+      <h2>4. 信息共享</h2>
+      <p>我们不会出售、出租或以其他方式向第三方披露您的个人信息，除非：</p>
+      <ul>
+        <li>获得您的明确同意</li>
+        <li>为提供您要求的服务而必须共享（如支付处理）</li>
+        <li>法律法规要求</li>
+        <li>保护我们的权利、隐私、安全或财产</li>
+      </ul>
+
+      <h2>5. Cookie使用</h2>
+      <p>我们使用Cookie和类似技术来增强您的浏览体验，包括：</p>
+      <ul>
+        <li>记住您的偏好设置</li>
+        <li>维持登录状态</li>
+        <li>分析网站流量和使用情况</li>
+      </ul>
+
+      <h2>6. 您的权利</h2>
+      <p>您对您的个人信息拥有以下权利：</p>
+      <ul>
+        <li>访问您的个人数据</li>
+        <li>更正不准确的信息</li>
+        <li>删除您的个人数据</li>
+        <li>撤回同意</li>
+        <li>数据可携带性</li>
+      </ul>
+
+      <h2>7. 儿童隐私</h2>
+      <p>我们的服务不面向13岁以下的儿童。我们不会故意收集儿童的个人信息。</p>
+
+      <h2>8. 政策更新</h2>
+      <p>我们可能会不时更新本隐私政策。任何更新将在本页面发布，并更新"更新时间"日期。我们建议您定期查看本政策以了解最新信息。</p>
+
+      <h2>9. 联系我们</h2>
+      <p>如果您对本隐私政策有任何疑问或担忧，请联系我们：</p>
+      <p>电子邮箱：raymond.xu@booming.one<br>
+      地址：北京市海淀区科技园区</p>
+    </div>
+
+    <a href="/" class="back-link">&larr; 返回首页</a>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3 id="footer-brand-name">博铭科技</h3>
+          <p>专注企业级软件解决方案，为您的业务保驾护航。我们致力于为企业和个人用户提供高质量的软件产品。</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <ul>
+            <li><a href="/">全部产品</a></li>
+            <li><a href="/about">关于我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <ul>
+            <li><a href="/support">技术支持</a></li>
+            <li><a href="/faq">常见问题</a></li>
+            <li><a href="/contact">联系我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>法律</h4>
+          <ul>
+            <li><a href="/privacy">隐私政策</a></li>
+            <li><a href="/terms">服务条款</a></li>
+            <li><a href="/license">软件许可</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <span id="footer-year"></span> <span id="footer-company-bottom">博铭科技</span>. 保留所有权利。</span>
+        <div class="footer-contact">
+          <a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a>
+          <a href="#" class="footer-email-subscribe" onclick="toggleEmailSubscribe(event)">订阅更新</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 隐私政策';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    function toggleEmailSubscribe(e) {
+      e.preventDefault();
+      const modal = document.getElementById('subscribe-modal');
+      if (modal) {
+        modal.classList.add('active');
+      }
+    }
+
+    function closeSubscribeModal() {
+      const modal = document.getElementById('subscribe-modal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      updateCartBadge();
+
+      const subscribeForm = document.getElementById('subscribe-form-modal');
+      if (subscribeForm) {
+        subscribeForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          const email = document.getElementById('subscribe-email-modal').value;
+          const messageEl = document.getElementById('subscribe-message-modal');
+
+          try {
+            const response = await fetch('/api/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+              messageEl.textContent = data.message;
+              messageEl.style.color = '#22c55e';
+              document.getElementById('subscribe-email-modal').value = '';
+              setTimeout(() => closeSubscribeModal(), 2000);
+            } else {
+              messageEl.textContent = data.error || '订阅失败';
+              messageEl.style.color = '#ef4444';
+            }
+          } catch (error) {
+            messageEl.textContent = '订阅失败，请稍后重试';
+            messageEl.style.color = '#ef4444';
+          }
+        });
+      }
+    });
+  </script>
+
+  <!-- Subscribe Modal -->
+  <div class="modal" id="subscribe-modal">
+    <div class="cart-modal-content" style="max-width: 400px;">
+      <div class="cart-modal-header">
+        <h3>订阅更新</h3>
+        <button class="cart-modal-close" onclick="closeSubscribeModal()">&times;</button>
+      </div>
+      <div class="cart-modal-body">
+        <p style="margin-bottom: 20px; color: var(--text-secondary);">订阅我们的邮件列表，第一时间获取产品更新和优惠信息</p>
+        <form id="subscribe-form-modal">
+          <div style="margin-bottom: 15px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="subscribe-agree" required style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-size: 14px; color: var(--text-secondary);">我已阅读并同意《<a href="/terms" target="_blank" style="color: var(--primary);">服务条款</a>》和《<a href="/privacy" target="_blank" style="color: var(--primary);">隐私政策</a>》</span>
+            </label>
+          </div>
+          <input type="email" id="subscribe-email-modal" placeholder="请输入您的邮箱地址" required style="width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; margin-bottom: 15px; box-sizing: border-box;">
+          <div id="subscribe-message-modal" style="margin-bottom: 15px; font-size: 14px;"></div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">订阅</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/cart.js"></script>
+  <script src="/js/header-auth.js" defer></script>
+  <script src="/js/public-theme.js" defer></script>
+</body>
+</html>

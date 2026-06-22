@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>产品文档 - 博铭后台</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <script src="/js/admin-theme.js" defer></script>
+  <!-- Quill 1.3.7 snow theme (本地化，详见 public/vendor/vendor-manifest.json) -->
+  <link href="/vendor/quill/1.3.7/quill.snow.css" rel="stylesheet">
+  <script src="/vendor/quill/1.3.7/quill.min.js" defer></script>
+  <style>
+    .docs-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; padding: 12px; background: var(--admin-bg-card, #fff); border: 1px solid var(--admin-border, #e5e7eb); border-radius: var(--admin-radius, 4px); }
+    .docs-toolbar select, .docs-toolbar input { padding: 6px 12px; border: 1px solid var(--admin-border, #e5e7eb); border-radius: var(--admin-radius, 4px); font-size: var(--admin-font-size-base, 13px); background: var(--admin-bg-card, #fff); color: var(--admin-text-primary, #1a1a1a); }
+    .docs-list { background: var(--admin-bg-card, #fff); border: 1px solid var(--admin-border, #e5e7eb); border-radius: var(--admin-radius, 4px); }
+    .docs-list-item { padding: 12px 16px; border-bottom: 1px solid var(--admin-border-light, #f0f0f0); display: flex; align-items: center; gap: 12px; }
+    .docs-list-item:last-child { border-bottom: none; }
+    .docs-list-item .doc-title-text { flex: 1; font-weight: 500; }
+    .docs-list-item .doc-status { padding: 2px 10px; border-radius: 12px; font-size: var(--admin-font-size-sm, 12px); }
+    .doc-status-published { background: #d1fae5; color: #065f46; }
+    .doc-status-draft { background: #fef3c7; color: #92400e; }
+    .docs-editor-panel { background: var(--admin-bg-card, #fff); border: 1px solid var(--admin-border, #e5e7eb); border-radius: var(--admin-radius, 4px); padding: 20px; margin-top: 16px; }
+    .editor-field { margin-bottom: 14px; }
+    .editor-field label { display: block; font-weight: 500; margin-bottom: 6px; color: var(--admin-text-primary, #1a1a1a); }
+    .editor-field input, .editor-field textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--admin-border, #e5e7eb); border-radius: var(--admin-radius, 4px); font-size: var(--admin-font-size-base, 13px); background: var(--admin-bg-card, #fff); color: var(--admin-text-primary, #1a1a1a); box-sizing: border-box; }
+    .editor-field #doc-editor-container { background: #fff; border-radius: var(--admin-radius, 4px); min-height: 360px; }
+    .editor-field #doc-editor-container .ql-editor { min-height: 320px; font-size: 15px; line-height: 1.6; }
+    .admin-btn-primary { padding: 8px 16px; background: var(--admin-primary, #0969da); color: #fff; border: 1px solid var(--admin-primary, #0969da); border-radius: var(--admin-radius, 4px); cursor: pointer; font-size: var(--admin-font-size-base, 13px); }
+    .admin-btn-primary:hover { opacity: 0.9; }
+    .admin-btn-secondary { padding: 8px 16px; background: var(--admin-bg-card, #fff); color: var(--admin-text-primary, #1a1a1a); border: 1px solid var(--admin-border, #e5e7eb); border-radius: var(--admin-radius, 4px); cursor: pointer; font-size: var(--admin-font-size-base, 13px); }
+    .admin-btn-secondary:hover { background: var(--admin-bg-hover, #f6f8fa); }
+  </style>
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <!-- 侧栏：复制 admin-product.html 的侧栏结构，在产品管理后插入"产品文档"项并 active -->
+    <main class="admin-main">
+      <h1 style="margin-bottom: 16px">产品文档管理</h1>
+
+      <div class="docs-toolbar">
+        <label>产品：
+          <select id="product-select"></select>
+        </label>
+        <button class="admin-btn-primary" onclick="createNewDoc()">+ 新建文档</button>
+        <a id="view-public-link" href="#" target="_blank" style="margin-left: auto; color: var(--admin-primary, #0969da); text-decoration: none;">查看公开文档列表 →</a>
+      </div>
+
+      <div class="docs-list" id="docs-list">
+        <div style="padding: 20px; text-align: center; color: var(--admin-text-muted, #666);">请先选择产品</div>
+      </div>
+
+      <div class="docs-editor-panel" id="editor-panel" style="display: none">
+        <h2 id="editor-title" style="margin-top: 0">新建文档</h2>
+        <div class="editor-field">
+          <label>标题</label>
+          <input type="text" id="doc-title" placeholder="如：快速开始">
+        </div>
+        <div class="editor-field">
+          <label>Slug（URL 段，小写字母/数字/连字符）</label>
+          <input type="text" id="doc-slug" placeholder="如：quick-start">
+        </div>
+        <div class="editor-field">
+          <label>摘要（选填，列表展示）</label>
+          <textarea id="doc-excerpt" rows="2" placeholder="简短描述文档内容"></textarea>
+        </div>
+        <div class="editor-field">
+          <label>正文</label>
+          <div id="doc-editor-container"></div>
+        </div>
+        <div class="editor-field">
+          <label>排序（数字小靠前）</label>
+          <input type="number" id="doc-sort-order" value="0" style="width: 120px">
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button class="admin-btn-primary" onclick="saveDoc('draft')">保存草稿</button>
+          <button class="admin-btn-secondary" onclick="saveDoc('published')">发布</button>
+          <button class="admin-btn-secondary" onclick="cancelEdit()" style="margin-left: auto">取消</button>
+          <button class="admin-btn-secondary" id="delete-btn" onclick="deleteCurrentDoc()" style="display: none; background: #fef2f2; color: #b91c1c; border-color: #b91c1c;">删除</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let currentProductId = null;
+    let currentProductSlug = '';
+    let currentDocId = null;
+    let quill = null;
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    }
+
+    function ensureQuillLoaded(cb) {
+      if (typeof Quill !== 'undefined') return cb();
+      const wait = setInterval(() => {
+        if (typeof Quill !== 'undefined') { clearInterval(wait); cb(); }
+      }, 50);
+      setTimeout(() => { clearInterval(wait); if (typeof Quill === 'undefined') alert('Quill 编辑器加载失败'); }, 5000);
+    }
+
+    async function loadProducts() {
+      const res = await fetch('/api/products', { credentials: 'include' });
+      if (!res.ok) { alert('加载产品失败'); return; }
+      const products = await res.json();
+      const sel = document.getElementById('product-select');
+      // 注意：API 返回字段是 shortName（camelCase），不是 short_name
+      sel.innerHTML = products.map(p => `<option value="${p.id}" data-slug="${escapeHtml(p.shortName || p.short_name || '')}">${escapeHtml(p.name)}</option>`).join('');
+      sel.onchange = () => loadDocs();
+      if (products.length > 0) {
+        currentProductId = parseInt(sel.value, 10);
+        currentProductSlug = sel.options[sel.selectedIndex].dataset.slug;
+        document.getElementById('view-public-link').href = `/product.html`;
+        loadDocs();
+      }
+    }
+
+    async function loadDocs() {
+      const sel = document.getElementById('product-select');
+      currentProductId = parseInt(sel.value, 10);
+      currentProductSlug = sel.options[sel.selectedIndex].dataset.slug;
+      document.getElementById('view-public-link').href = `/product.html`;
+      const res = await fetch(`/api/admin/products/${currentProductId}/docs`, { credentials: 'include' });
+      if (!res.ok) { document.getElementById('docs-list').innerHTML = '<div style="padding: 20px; text-align: center; color: #b91c1c;">加载文档失败</div>'; return; }
+      const docs = await res.json();
+      const list = document.getElementById('docs-list');
+      if (docs.length === 0) {
+        list.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">该产品暂无文档</div>';
+        return;
+      }
+      list.innerHTML = docs.map(d => `
+        <div class="docs-list-item">
+          <div class="doc-title-text">${escapeHtml(d.title)} <span style="color: #666; font-weight: 400; font-size: 12px;">/${escapeHtml(d.slug)}</span></div>
+          <span class="doc-status doc-status-${d.status}">${d.status === 'published' ? '已发布' : '草稿'}</span>
+          <button class="admin-btn-secondary" onclick="editDoc(${d.id})">编辑</button>
+          ${d.status === 'published' ? `<button class="admin-btn-secondary" onclick="togglePublish(${d.id}, 'unpublish')">撤稿</button>` : `<button class="admin-btn-primary" onclick="togglePublish(${d.id}, 'publish')">发布</button>`}
+        </div>
+      `).join('');
+    }
+
+    function createNewDoc() {
+      currentDocId = null;
+      document.getElementById('editor-title').textContent = '新建文档';
+      document.getElementById('doc-title').value = '';
+      document.getElementById('doc-slug').value = '';
+      document.getElementById('doc-excerpt').value = '';
+      document.getElementById('doc-sort-order').value = '0';
+      document.getElementById('delete-btn').style.display = 'none';
+      document.getElementById('editor-panel').style.display = 'block';
+      initEditor('');
+    }
+
+    async function editDoc(id) {
+      const res = await fetch(`/api/admin/docs/${id}`, { credentials: 'include' });
+      if (!res.ok) { alert('加载文档失败'); return; }
+      const doc = await res.json();
+      currentDocId = id;
+      document.getElementById('editor-title').textContent = '编辑文档';
+      document.getElementById('doc-title').value = doc.title || '';
+      document.getElementById('doc-slug').value = doc.slug || '';
+      document.getElementById('doc-excerpt').value = doc.excerpt || '';
+      document.getElementById('doc-sort-order').value = doc.sort_order || 0;
+      document.getElementById('delete-btn').style.display = 'inline-block';
+      document.getElementById('editor-panel').style.display = 'block';
+      initEditor(doc.content_html || '');
+    }
+
+    let quillContainerInUse = false;
+
+    function initEditor(initialContent) {
+      ensureQuillLoaded(() => {
+        const container = document.getElementById('doc-editor-container');
+        if (!quill) {
+          // First-time init: create Quill once
+          quill = new Quill(container, {
+            theme: 'snow',
+            modules: {
+              toolbar: {
+                container: [
+                  [{ header: [2, 3, false] }],
+                  ['bold', 'italic', 'underline', 'strike'],
+                  [{ list: 'ordered' }, { list: 'bullet' }],
+                  ['blockquote', 'code-block'],
+                  ['link', 'image'],
+                  ['clean']
+                ],
+                handlers: {
+                  image: function() {
+                    const input = document.createElement('input');
+                    input.setAttribute('type', 'file');
+                    input.setAttribute('accept', 'image/jpeg,image/png,image/gif,image/webp,image/svg+xml');
+                    input.click();
+                    input.onchange = async () => {
+                      const file = input.files[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) { alert('图片大小超过 5MB'); return; }
+                      const fd = new FormData();
+                      fd.append('file', file);
+                      try {
+                        const r = await fetch('/api/upload-doc-image', { method: 'POST', body: fd, credentials: 'include' });
+                        if (!r.ok) throw new Error('Upload failed: ' + r.status);
+                        const j = await r.json();
+                        const range = quill.getSelection(true);
+                        quill.insertEmbed(range.index, 'image', j.location, 'user');
+                      } catch (err) {
+                        console.error(err);
+                        alert('图片上传失败');
+                      }
+                    };
+                  }
+                }
+              }
+            }
+          });
+        }
+        // Always swap content on existing instance
+        quill.setText('');  // clear
+        if (initialContent) {
+          quill.clipboard.dangerouslyPasteHTML(initialContent, 'silent');
+        }
+      });
+    }
+
+    async function saveDoc(intent) {
+      const title = document.getElementById('doc-title').value.trim();
+      const slug = document.getElementById('doc-slug').value.trim();
+      const excerpt = document.getElementById('doc-excerpt').value.trim();
+      const sort_order = parseInt(document.getElementById('doc-sort-order').value, 10) || 0;
+      const content_html = quill ? quill.root.innerHTML : '';
+      if (!title || !slug) { alert('标题和 slug 必填'); return; }
+      if (!/^[a-z0-9-]+$/.test(slug)) { alert('slug 仅允许小写字母、数字、连字符'); return; }
+      let docId = currentDocId;
+      try {
+        if (docId) {
+          const r = await fetch(`/api/admin/docs/${docId}`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, slug, content_html, excerpt, sort_order })
+          });
+          if (!r.ok) { const j = await r.json(); alert(j.error || '更新失败'); return; }
+        } else {
+          const r = await fetch(`/api/admin/products/${currentProductId}/docs`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, slug, content_html, excerpt, sort_order })
+          });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error || '创建失败'); return; }
+          docId = j.id;
+          currentDocId = docId;
+        }
+        if (intent === 'published') {
+          await fetch(`/api/admin/docs/${docId}/publish`, { method: 'POST', credentials: 'include' });
+        }
+        cancelEdit();
+        loadDocs();
+      } catch (e) {
+        console.error(e);
+        alert('保存失败：' + e.message);
+      }
+    }
+
+    async function togglePublish(id, action) {
+      try {
+        await fetch(`/api/admin/docs/${id}/${action}`, { method: 'POST', credentials: 'include' });
+        loadDocs();
+      } catch (e) { console.error(e); alert('操作失败'); }
+    }
+
+    async function deleteCurrentDoc() {
+      if (!currentDocId) return;
+      if (!confirm('确定删除？此操作不可恢复。')) return;
+      try {
+        await fetch(`/api/admin/docs/${currentDocId}`, { method: 'DELETE', credentials: 'include' });
+        cancelEdit();
+        loadDocs();
+      } catch (e) { console.error(e); alert('删除失败'); }
+    }
+
+    function cancelEdit() {
+      document.getElementById('editor-panel').style.display = 'none';
+      if (quill) quill.setText('');  // clear content but keep instance
+      currentDocId = null;
+    }
+
+    // Init
+    loadProducts();
+  </script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

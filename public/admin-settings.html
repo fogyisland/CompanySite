@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 网站设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main settings-page">
+    <h1 class="page-title">网站设置</h1>
+
+    <div class="alert alert-success" id="message"></div>
+
+    <div class="settings-card">
+      <form id="settings-form">
+        <input type="hidden" id="siteTheme" name="siteTheme" value="default">
+        <div class="settings-group">
+          <h3 class="settings-heading">Logo 设置</h3>
+
+          <div class="field">
+            <label>上传 Logo</label>
+            <div class="logo-area">
+              <div class="logo-thumb" id="logo-preview">
+                <span class="empty-text">暂无Logo</span>
+              </div>
+              <div>
+                <button type="button" class="btn-primary" onclick="document.getElementById('logo-input').click()">选择图片</button>
+                <p class="field-hint">建议尺寸: 200x60 像素</p>
+              </div>
+            </div>
+            <input type="file" id="logo-input" accept="image/*" style="display:none;">
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-heading">基本信息</h3>
+
+          <div class="field">
+            <label for="companyName">企业名称</label>
+            <input type="text" id="companyName" name="companyName" placeholder="请输入企业名称">
+          </div>
+
+          <div class="field">
+            <label for="description">网站描述</label>
+            <div class="field-row">
+              <textarea id="description" name="description" rows="3" placeholder="简短描述您的网站"></textarea>
+              <button type="button" class="btn-accent" onclick="regenerateDescription()">AI优化</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="adminEmail">管理员邮箱</label>
+            <input type="email" id="adminEmail" name="adminEmail" placeholder="用于接收订单通知邮件">
+            <p class="field-hint">管理员将收到新订单和支付完成的通知邮件</p>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-heading">端口设置</h3>
+          <div class="field-row">
+            <div class="field">
+              <label for="httpPort">HTTP 端口</label>
+              <input type="number" id="httpPort" name="httpPort" placeholder="10000" min="1" max="65535">
+              <p class="field-hint">服务器 HTTP 监听端口</p>
+            </div>
+            <div class="field">
+              <label for="httpsPort">HTTPS 端口</label>
+              <input type="number" id="httpsPort" name="httpsPort" placeholder="10001" min="1" max="65535">
+              <p class="field-hint">服务器 HTTPS 监听端口</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-heading">主题设置</h3>
+          <div class="theme-grid" id="themePreview">
+            <div class="theme-card active" data-theme="default" onclick="selectTheme('default')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, #133c8a 0%, #0a2644 100%);"></div>
+              <span class="theme-label">系统默认</span>
+            </div>
+            <div class="theme-card" data-theme="minimal" onclick="selectTheme('minimal')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, #000000 0%, #333333 100%);"></div>
+              <span class="theme-label">硬核极简</span>
+            </div>
+            <div class="theme-card" data-theme="soft" onclick="selectTheme('soft')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);"></div>
+              <span class="theme-label">柔和科技</span>
+            </div>
+            <div class="theme-card" data-theme="glass" onclick="selectTheme('glass')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, rgba(139,92,246,0.6) 0%, rgba(255,255,255,0.3) 100%); backdrop-filter: blur(10px);"></div>
+              <span class="theme-label">玻璃��感</span>
+            </div>
+            <div class="theme-card" data-theme="bento" onclick="selectTheme('bento')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, #0071e3 0%, #00c7ff 100%);"></div>
+              <span class="theme-label">Bento风格</span>
+            </div>
+            <div class="theme-card" data-theme="dark" onclick="selectTheme('dark')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);"></div>
+              <span class="theme-label">深邃暗夜</span>
+            </div>
+            <div class="theme-card" data-theme="warm" onclick="selectTheme('warm')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);"></div>
+              <span class="theme-label">暖阳秋日</span>
+            </div>
+            <div class="theme-card" data-theme="cyber" onclick="selectTheme('cyber')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, #06ffa5 0%, #00d4ff 100%);"></div>
+              <span class="theme-label">赛博霓虹</span>
+            </div>
+            <div class="theme-card" data-theme="editorial" onclick="selectTheme('editorial')">
+              <div class="theme-swatch" style="background: linear-gradient(135deg, #1c1917 0%, #44403c 100%);"></div>
+              <span class="theme-label">杂志风格</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h3 class="settings-heading">外观（后台 UI 主题）</h3>
+          <p style="color: var(--admin-text-secondary); font-size: var(--admin-font-size-sm); margin-bottom: 14px;">
+            选择后台界面的视觉风格。明暗模式可独立控制。
+          </p>
+
+          <div class="field">
+            <label>主题风格</label>
+            <div class="theme-cards">
+              <div class="theme-card" data-theme="b" onclick="setAdminTheme('b')">
+                <div class="theme-thumb" style="background:#fff">
+                  <div class="theme-thumb-sidebar" style="background:#f6f8fa;border-right:1px solid #d0d7de"></div>
+                  <div class="theme-thumb-main" style="background:#fff"></div>
+                </div>
+                <div class="theme-card-name">GitHub 风</div>
+                <div class="theme-card-desc">信息密集 · 多列高效</div>
+              </div>
+              <div class="theme-card" data-theme="c" onclick="setAdminTheme('c')">
+                <div class="theme-thumb" style="background:#f6f9fc">
+                  <div class="theme-thumb-sidebar" style="background:#fff;border-right:1px solid #e3e8ee"></div>
+                  <div class="theme-thumb-main" style="background:#f6f9fc"></div>
+                </div>
+                <div class="theme-card-name">Stripe 风</div>
+                <div class="theme-card-desc">商务留白 · 决策仪表盘</div>
+              </div>
+              <div class="theme-card" data-theme="d" onclick="setAdminTheme('d')">
+                <div class="theme-thumb" style="background:#f0f2f5">
+                  <div class="theme-thumb-sidebar" style="background:#001529"></div>
+                  <div class="theme-thumb-main" style="background:#f0f2f5"></div>
+                </div>
+                <div class="theme-card-name">Ant Design Pro 风</div>
+                <div class="theme-card-desc">企业级 · 多模块管理</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>明暗模式</label>
+            <div class="dark-toggle">
+              <input type="checkbox" id="dark-mode-toggle" onchange="setAdminDarkMode(this.checked)">
+              <label for="dark-mode-toggle" style="cursor:pointer">启用暗黑模式</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions-bar">
+          <button type="submit" class="btn-primary">保存设置</button>
+        </div>
+      </form>
+    </div>
+    <div class="form-actions-back">
+      <a href="/admin-product" class="link-back">&larr; 返回</a>
+    </div>
+  </main></div>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          throw new Error('请求失败: ' + response.status);
+        }
+        const settings = await response.json();
+
+        document.getElementById('companyName').value = settings.companyName || '';
+        document.getElementById('description').value = settings.description || '';
+        document.getElementById('adminEmail').value = settings.adminEmail || '';
+        document.getElementById('httpPort').value = settings.httpPort || 10000;
+        document.getElementById('httpsPort').value = settings.httpsPort || 10001;
+        document.getElementById('siteTheme').value = settings.siteTheme || 'minimal';
+
+        if (settings.logo) {
+          document.getElementById('logo-preview').innerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo">';
+        }
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 网站设置';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const companyName = document.getElementById('companyName').value;
+      const description = document.getElementById('description').value;
+      const adminEmail = document.getElementById('adminEmail').value;
+      const httpPort = parseInt(document.getElementById('httpPort').value) || 10000;
+      const httpsPort = parseInt(document.getElementById('httpsPort').value) || 10001;
+      const siteTheme = document.getElementById('siteTheme') ? document.getElementById('siteTheme').value : 'default';
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ companyName, description, adminEmail, httpPort, httpsPort, siteTheme }),
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          const data = await response.json();
+          showMessage(data.error || '保存失败', 'error');
+          return;
+        }
+        const data = await response.json();
+        showMessage('设置保存成功', 'success');
+      } catch (error) {
+        console.error('Save error:', error);
+        showMessage('保存失败', 'error');
+      }
+    });
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'alert alert-' + type;
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 5000);
+    }
+
+    function selectTheme(theme) {
+      document.querySelectorAll('.theme-card').forEach(card => {
+        card.classList.remove('active');
+        if (card.dataset.theme === theme) {
+          card.classList.add('active');
+        }
+      });
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('siteTheme').value = theme;
+    }
+
+    }
+
+    document.getElementById('logo-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      try {
+        const response = await fetch('/api/upload-logo', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          const data = await response.json();
+          showMessage(data.error || '上传失败', 'error');
+          return;
+        }
+        const data = await response.json();
+        document.getElementById('logo-preview').innerHTML =
+          '<img src="' + data.logo + '?t=' + Date.now() + '" alt="Logo">';
+        showMessage('Logo上传成功', 'success');
+      } catch (error) {
+        console.error('Upload error:', error);
+        showMessage('上传失败', 'error');
+      }
+    });
+
+    async function regenerateDescription() {
+      const descriptionEl = document.getElementById('description');
+      const currentText = descriptionEl.value;
+
+      try {
+        const response = await fetch('/api/ai/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ text: currentText, type: 'website_description' })
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          const data = await response.json();
+          showMessage(data.error || 'AI生成失败', 'error');
+          return;
+        }
+        const data = await response.json();
+        if (data.success) {
+          descriptionEl.value = data.text;
+          showMessage('AI优化成功', 'success');
+        } else {
+          showMessage(data.error || 'AI生成失败', 'error');
+        }
+      } catch (error) {
+        console.error('AI error:', error);
+        showMessage('AI生成失败', 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+    });
+
+    // Sync theme/dark mode UI to current state after settings load
+    function syncAppearanceUI() {
+      const theme = document.documentElement.getAttribute('data-theme') || 'b';
+      document.querySelectorAll('.theme-card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.theme === theme);
+      });
+      const darkMode = document.documentElement.getAttribute('data-mode') === 'dark';
+      const toggle = document.getElementById('dark-mode-toggle');
+      if (toggle) toggle.checked = darkMode;
+    }
+    // Wait for admin-theme.js to set data-theme/data-mode
+    setTimeout(syncAppearanceUI, 300);
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

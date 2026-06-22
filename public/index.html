@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 专业软件解决方案</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/index.css">
+  <link rel="stylesheet" href="/css/pages/product-card.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="header-logo-icon">BM</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions" id="header-actions">
+        <button class="header-cart" onclick="renderCartModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h19.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+          </svg>
+          <span id="cart-badge" class="cart-badge" style="display:none;">0</span>
+        </button>
+        <a href="/user-login" class="header-login" id="header-login">登录</a>
+        <a href="#" class="header-logout" id="header-logout" style="display:none;" onclick="headerLogout()">退出</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-content">
+        <h1>专业软件解决方案</h1>
+        <p>博铭科技专注于企业级软件研发，为您提供稳定、安全、高效的产品解决方案。一次购买，终身使用，无订阅负担。</p>
+        <div class="hero-badges">
+          <div class="hero-badge"><span class="hero-badge-icon">✓</span> 按次授权</div>
+          <div class="hero-badge"><span class="hero-badge-icon">✓</span> 免费更新</div>
+          <div class="hero-badge"><span class="hero-badge-icon">✓</span> 技术支持</div>
+        </div>
+        <div class="hero-buttons">
+          <a href="#products" class="hero-btn-primary">浏览产品</a>
+          <a href="/contact" class="hero-btn-secondary">联系我们</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-carousel">
+          <button class="hero-carousel-arrow prev" onclick="changeSlide(-1)">‹</button>
+          <div class="hero-carousel-track">
+            <div class="hero-carousel-slides" id="hero-carousel-slides">
+              <!-- Products loaded dynamically -->
+            </div>
+          </div>
+          <button class="hero-carousel-arrow next" onclick="changeSlide(1)">›</button>
+          <div class="hero-carousel-dots" id="hero-carousel-dots"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Products -->
+  <section class="products" id="products">
+    <div class="products-inner">
+      <div class="section-header">
+        <h2>企业级产品</h2>
+        <p>稳定可靠，高效安全的企业软件解决方案</p>
+      </div>
+      <div class="products-grid" id="products-grid">
+        <!-- Products loaded dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="features-inner">
+      <div class="section-header">
+        <h2>核心优势</h2>
+        <p>为什么选择博铭科技</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">💰</div>
+          <h4>透明定价</h4>
+          <p>一次付费，永久使用。无订阅费，无隐藏费用。</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🛡️</div>
+          <h4>安全可靠</h4>
+          <p>企业级安全标准，保护您的数据安全。</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔄</div>
+          <h4>持续更新</h4>
+          <p>持续迭代更新，不断优化用户体验。</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">💬</div>
+          <h4>专属客服</h4>
+          <p>7×24小时技术支持，随时为您解答。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="cta-inner">
+      <h2>立即开始，提升您的工作效率</h2>
+      <p>浏览我们的产品，找到适合您的解决方案</p>
+      <a href="/contact" class="cta-btn">联系我们</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3 id="footer-brand-name">博铭科技</h3>
+          <p>专注企业级软件解决方案，为您的业务保驾护航。我们致力于为企业和个人用户提供高质量的软件产品。</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <ul>
+            <li><a href="#products">全部产品</a></li>
+            <li><a href="/about">关于我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <ul>
+            <li><a href="/support">技术支持</a></li>
+            <li><a href="/faq">常见问题</a></li>
+            <li><a href="/contact">联系我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>法律</h4>
+          <ul>
+            <li><a href="/privacy">隐私政策</a></li>
+            <li><a href="/terms">服务条款</a></li>
+            <li><a href="/license">软件许可</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <span id="footer-year"></span> <span id="footer-company-bottom">博铭科技</span>. 保留所有权利。</span>
+        <div class="footer-contact">
+          <a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a>
+          <a href="#" class="footer-email-subscribe" onclick="toggleEmailSubscribe(event)">订阅更新</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/cart.js"></script>
+  <script>
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+    let currentSlide = 0;
+    let slideInterval;
+    let heroProducts = [];
+
+    // Load hero products
+    async function loadHeroProducts() {
+      try {
+        const response = await fetch('/api/products');
+        let products = await response.json();
+
+        const slides = document.getElementById('hero-carousel-slides');
+        const dots = document.getElementById('hero-carousel-dots');
+        if (!slides || !products || products.length === 0) return;
+
+        // 将"实用工具"分类的产品移到右边（最后显示）
+        products = products.sort((a, b) => {
+          if (a.category === '实用工具' && b.category !== '实用工具') return 1;
+          if (a.category !== '实用工具' && b.category === '实用工具') return -1;
+          return 0;
+        });
+
+        heroProducts = products;
+        currentSlide = 0;
+
+        slides.innerHTML = products.map(product => {
+          const hasImage = product.image;
+          const isDarkBg = product.imageDarkBg === true;
+          const tiers = product.pricingTiers || product.pricing_tiers;
+          const hasTiers = tiers && tiers.length > 0;
+
+          let priceListHtml = '';
+          if (hasTiers) {
+            priceListHtml = tiers.slice(0, 3).map((tier, index) =>
+              `<div class="hero-card-price-item ${index === 0 ? 'active' : ''}" data-tier="${index}">
+                <span class="hero-card-price-label">${tier.label}</span>
+                <span class="hero-card-price-value">¥${tier.price}</span>
+              </div>`
+            ).join('');
+          } else {
+            priceListHtml = `<div class="hero-card-price-item">
+              <span class="hero-card-price-label">标准版</span>
+              <span class="hero-card-price-value">¥${product.price}</span>
+            </div>`;
+          }
+
+          return `
+            <div class="hero-carousel-slide">
+              <a href="/product/${product.id}" class="hero-card" ${hasImage ? 'style="background: linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.35)), url(\'' + product.image + '\'); background-size: cover; background-position: center;"' : ''}>
+                <div class="hero-card-inner">
+                  <div class="hero-card-left">
+                    <span class="hero-card-badge">限时优惠</span>
+                    <h3>${product.name}</h3>
+                    ${product.features && product.features.length > 0 ? `<div class="hero-card-features">• ${product.features.slice(0,3).join(' • ')}</div>` : ''}
+                  </div>
+                  <div class="hero-card-right">
+                    <div class="hero-card-price-list">
+                      ${priceListHtml}
+                    </div>
+                  </div>
+                </div>
+              </a>
+            </div>
+          `;
+        }).join('');
+
+        dots.innerHTML = products.map((_, i) => `
+          <div class="hero-carousel-dot ${i === 0 ? 'active' : ''}" onclick="goToSlide(${i})"></div>
+        `).join('');
+
+        // 添加价格项点击事件
+        document.querySelectorAll('.hero-card-price-item').forEach(item => {
+          item.addEventListener('click', function() {
+            this.parentElement.querySelectorAll('.hero-card-price-item').forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+          });
+        });
+
+        startAutoPlay();
+      } catch (error) {
+        console.error('Error loading hero products:', error);
+      }
+    }
+
+    // 渲染价格（支持多价格方案）
+    function renderPrice(product) {
+      // 检查是否启用多价格方案
+      const tiers = product.pricingTiers || product.pricing_tiers;
+      if (tiers && tiers.length > 0) {
+        // 显示价格列表
+        return tiers.map(tier =>
+          `<span class="price-tier">${tier.label} ¥${tier.price}</span>`
+        ).join('');
+      }
+      // 显示固定价格
+      return `¥${product.price}`;
+    }
+
+    function goToSlide(index) {
+      const slides = document.getElementById('hero-carousel-slides');
+      const dots = document.getElementById('hero-carousel-dots');
+      if (!slides || heroProducts.length === 0) return;
+
+      currentSlide = index;
+      if (currentSlide >= heroProducts.length) currentSlide = 0;
+      if (currentSlide < 0) currentSlide = heroProducts.length - 1;
+
+      slides.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+      if (dots) {
+        dots.querySelectorAll('.hero-carousel-dot').forEach((dot, i) => {
+          dot.classList.toggle('active', i === currentSlide);
+        });
+      }
+    }
+
+    function changeSlide(direction) {
+      stopAutoPlay();
+      goToSlide(currentSlide + direction);
+      startAutoPlay();
+    }
+
+    function startAutoPlay() {
+      stopAutoPlay();
+      slideInterval = setInterval(() => goToSlide(currentSlide + 1), 4000);
+    }
+
+    function stopAutoPlay() {
+      if (slideInterval) clearInterval(slideInterval);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadHeroProducts();
+      loadProducts();
+      updateCartBadge();
+      loadSettings();
+    });
+
+    // Newsletter subscription
+    const newsletterForm = document.getElementById('newsletter-form');
+    if (newsletterForm) {
+    newsletterForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('newsletter-email').value;
+      const messageEl = document.getElementById('newsletter-message');
+
+      try {
+        const response = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          messageEl.textContent = data.message;
+          messageEl.className = 'newsletter-message success';
+          document.getElementById('newsletter-email').value = '';
+        } else {
+          messageEl.textContent = data.error;
+          messageEl.className = 'newsletter-message error';
+        }
+      } catch (error) {
+        messageEl.textContent = '订阅失败，请稍后重试';
+        messageEl.className = 'newsletter-message error';
+      }
+    });
+    }
+
+    // Email subscription modal
+    function toggleEmailSubscribe(e) {
+      e.preventDefault();
+      const modal = document.getElementById('subscribe-modal');
+      if (modal) {
+        modal.classList.add('active');
+      }
+    }
+
+    function closeSubscribeModal() {
+      const modal = document.getElementById('subscribe-modal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // Handle modal subscription form
+    const subscribeFormModal = document.getElementById('subscribe-form-modal');
+    if (subscribeFormModal) {
+    subscribeFormModal.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('subscribe-email-modal').value;
+      const messageEl = document.getElementById('subscribe-message-modal');
+
+      try {
+        const response = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          messageEl.textContent = data.message;
+          messageEl.style.color = '#22c55e';
+          document.getElementById('subscribe-email-modal').value = '';
+          setTimeout(() => closeSubscribeModal(), 2000);
+        } else {
+          messageEl.textContent = data.error || '订阅失败';
+          messageEl.style.color = '#ef4444';
+        }
+      } catch (error) {
+        messageEl.textContent = '订阅失败，请稍后重试';
+        messageEl.style.color = '#ef4444';
+      }
+    });
+    }
+
+    // Close subscribe modal when clicking outside
+    document.addEventListener('DOMContentLoaded', function() {
+      const subscribeModal = document.getElementById('subscribe-modal');
+      if (subscribeModal) {
+        subscribeModal.addEventListener('click', function(e) {
+          if (e.target === subscribeModal) {
+            closeSubscribeModal();
+          }
+        });
+      }
+    });
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        // 更新Logo
+        if (settings.logo) {
+          const logoIcon = document.getElementById('header-logo-icon');
+          if (logoIcon) {
+            logoIcon.innerHTML = '<img src="' + settings.logo + '" alt="Logo" style="width:40px;height:40px;border-radius:6px;">';
+          }
+        }
+
+        // 更新公司名称
+        if (settings.companyName) {
+          const logoText = document.getElementById('header-logo-text');
+          if (logoText) {
+            logoText.textContent = settings.companyName;
+          }
+        }
+
+        // 应用主题
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    // 加载产品列表
+    async function loadProducts() {
+      try {
+        const response = await fetch('/api/products');
+        let products = await response.json();
+        const grid = document.getElementById('products-grid');
+        if (!grid || !products) return;
+
+        // 将"实用工具"分类的产品移到右边（最后显示）
+        products = products.sort((a, b) => {
+          if (a.category === '实用工具' && b.category !== '实用工具') return 1;
+          if (a.category !== '实用工具' && b.category === '实用工具') return -1;
+          return 0;
+        });
+
+        // 存储产品数据供选择方案使用
+        window.currentProducts = products;
+
+        grid.innerHTML = products.map((product, pIdx) => {
+          const hasImage = product.image;
+          let features = [];
+          try {
+            features = typeof product.features === 'string' ? JSON.parse(product.features) : (product.features || []);
+          } catch (e) { features = []; }
+
+          const pricingTiers = product.pricingTiers || product.pricing_tiers;
+          const hasPricingTiers = pricingTiers && pricingTiers.length > 0;
+
+          const featuresHtml = features.length > 0
+            ? `<div class="product-card-features">• ${features.slice(0, 3).join(' • ')}</div>`
+            : '';
+
+          const imageHtml = hasImage
+            ? `<div class="product-card-bg" style="background-image: url('${product.image}'); background-color: #f1f5f9;"></div>`
+            : `<div class="product-card-bg" style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);"></div>`;
+
+          let pricingHtml = '';
+          if (hasPricingTiers) {
+            pricingHtml = pricingTiers.map((tier, tIdx) =>
+              `<div class="price-tier-item ${tIdx === 0 ? 'active' : ''}" data-product="${pIdx}" data-tier="${tIdx}" onclick="selectTier(${pIdx}, ${tIdx})">
+                <span class="price-tier-label">${tier.label}</span>
+                <span class="price-tier-price">¥${tier.price}</span>
+              </div>`
+            ).join('');
+          } else {
+            pricingHtml = `<div class="price-tier-item active">
+              <span class="price-tier-label">标准版</span>
+              <span class="price-tier-price">¥${product.price}</span>
+            </div>`;
+          }
+
+          return `
+            <div class="product-card" data-product-index="${pIdx}">
+              ${imageHtml}
+              <div class="product-card-content">
+                <h3 class="product-card-title"><a href="/product/${product.id}">${product.name}</a></h3>
+                <div class="product-card-category">${product.category || '软件'}</div>
+                ${featuresHtml}
+                <div class="product-card-pricing">${pricingHtml}</div>
+                <div class="product-card-footer">
+                  <div class="product-card-price">¥${hasPricingTiers ? pricingTiers[0].price : product.price}</div>
+                  <button class="product-card-btn" onclick='addToCartSelected(${pIdx})'>加入购物车</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading products:', error);
+      }
+    }
+
+    // 添加产品到购物车（处理多价格方案）
+    function addToCartWithTier(productStr) {
+      const product = JSON.parse(productStr);
+      const pricingTiers = product.pricingTiers || product.pricing_tiers;
+
+      if (pricingTiers && pricingTiers.length > 0) {
+        // 有多价格方案，默认使用第一个方案
+        addToCart(product, 0, pricingTiers[0].label);
+      } else {
+        // 单价格
+        addToCart(product, -1, '永久授权');
+      }
+    }
+
+    // 记录每个产品被选中的价格方案
+    window.selectedTiers = {};
+
+    // 选择价格方案
+    function selectTier(productIndex, tierIndex) {
+      window.selectedTiers[productIndex] = tierIndex;
+
+      // 更新UI
+      const card = document.querySelector(`.product-card[data-product-index="${productIndex}"]`);
+      if (!card) return;
+
+      // 更新选项样式
+      card.querySelectorAll('.price-tier-item').forEach((item, idx) => {
+        item.classList.toggle('active', idx === tierIndex);
+      });
+
+      // 更新显示的价格
+      const product = window.currentProducts[productIndex];
+      if (!product) return;
+      const pricingTiers = product.pricingTiers || product.pricing_tiers;
+      const price = pricingTiers && pricingTiers[tierIndex] ? pricingTiers[tierIndex].price : product.price;
+      card.querySelector('.product-card-price').textContent = '¥' + price;
+    }
+
+    // 添加选中方案到购物车
+    function addToCartSelected(productIndex) {
+      const product = window.currentProducts[productIndex];
+      if (!product) return;
+
+      const pricingTiers = product.pricingTiers || product.pricing_tiers;
+      const tierIndex = window.selectedTiers[productIndex] || 0;
+
+      if (pricingTiers && pricingTiers.length > 0) {
+        addToCart(product, tierIndex, pricingTiers[tierIndex].label);
+      } else {
+        addToCart(product, -1, '标准版');
+      }
+    }
+  </script>
+  <script src="/js/header-auth.js" defer></script>
+
+  <!-- Cart Modal -->
+  <div class="modal" id="cart-modal">
+    <div class="cart-modal-content">
+      <div class="cart-modal-header">
+        <h3>购物车</h3>
+        <button class="cart-modal-close" onclick="closeCartModal()">&times;</button>
+      </div>
+      <div id="cart-content" class="cart-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Email Subscribe Modal -->
+  <div class="modal" id="subscribe-modal">
+    <div class="cart-modal-content" style="max-width: 400px;">
+      <div class="cart-modal-header">
+        <h3>订阅更新</h3>
+        <button class="cart-modal-close" onclick="closeSubscribeModal()">&times;</button>
+      </div>
+      <div class="cart-modal-body">
+        <p style="margin-bottom: 20px; color: var(--text-secondary);">订阅我们的邮件列表，第一时间获取产品更新和优惠信息</p>
+        <form id="subscribe-form-modal">
+          <div style="margin-bottom: 15px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="subscribe-agree" required style="width: 18px; height: 18px; cursor: pointer;">
+              <span style="font-size: 14px; color: var(--text-secondary);">我已阅读并同意《<a href="/terms" target="_blank" style="color: var(--primary);">服务条款</a>》和《<a href="/privacy" target="_blank" style="color: var(--primary);">隐私政策</a>》</span>
+            </label>
+          </div>
+          <input type="email" id="subscribe-email-modal" placeholder="请输入您的邮箱地址" required style="width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; margin-bottom: 15px; box-sizing: border-box;">
+          <div id="subscribe-message-modal" style="margin-bottom: 15px; font-size: 14px;"></div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">订阅</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script src="/js/public-theme.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<h2>Form 下拉框动态切换 + Admin 列表显示</h2>
+<p class="subtitle">勾选课程型 → 下拉框只显示 2 个课程分类；不勾 → 显示 5 个软件分类 + 企业产品</p>
+
+<h3>方案 A：勾 isCourse 前（下拉框显示 6 个软件分类）</h3>
+<div class="mockup">
+  <div class="mockup-header">软件型产品 form - 分类下拉框</div>
+  <div class="mockup-body" style="background:#f9fafb;padding:20px;border-radius:8px;">
+    <div style="max-width:480px;background:white;padding:16px;border-radius:6px;border:1px solid #e5e7eb;">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#1f2937;">分类 <span style="color:#ef4444;">*</span></label>
+        <select style="width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;background:white;">
+          <option>开发工具</option>
+          <option>设计软件</option>
+          <option>安全软件</option>
+          <option>效率工具</option>
+          <option selected>实用工具</option>
+          <option style="font-weight:600;color:#1d4ed8;">企业产品（新增）</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+          <input type="checkbox"> 课程型产品（无价格，仅链接 + 介绍）
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:32px;">方案 B：勾 isCourse 后（下拉框切换到 2 个课程分类）</h3>
+<div class="mockup">
+  <div class="mockup-header">课程型产品 form - 分类下拉框</div>
+  <div class="mockup-body" style="background:#f9fafb;padding:20px;border-radius:8px;">
+    <div style="max-width:480px;background:white;padding:16px;border-radius:6px;border:1px solid #e5e7eb;">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#1f2937;">分类 <span style="color:#ef4444;">*</span></label>
+        <select style="width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;background:white;">
+          <option selected style="font-weight:600;color:#059669;">外站课程（新增）</option>
+          <option style="font-weight:600;color:#ea580c;">企业内训（新增）</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+          <input type="checkbox" checked> 课程型产品（无价格，仅链接 + 介绍）
+        </label>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;font-size:12px;color:#166534;">
+        ✓ 勾选课程型后，下拉框已动态切换为 2 个课程分类
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:32px;">方案 C：Admin 后台产品列表</h3>
+<div class="mockup">
+  <div class="mockup-header">admin-product.html - 产品列表新增分类列</div>
+  <div class="mockup-body" style="background:#f9fafb;padding:16px;border-radius:8px;overflow-x:auto;">
+    <table style="width:100%;background:white;border-collapse:collapse;font-size:13px;border-radius:6px;overflow:hidden;">
+      <thead style="background:#f3f4f6;">
+        <tr>
+          <th style="padding:10px;text-align:left;border-bottom:1px solid #e5e7eb;">ID</th>
+          <th style="padding:10px;text-align:left;border-bottom:1px solid #e5e7eb;">名称</th>
+          <th style="padding:10px;text-align:left;border-bottom:1px solid #e5e7eb;">分类</th>
+          <th style="padding:10px;text-align:left;border-bottom:1px solid #e5e7eb;">类型</th>
+          <th style="padding:10px;text-align:left;border-bottom:1px solid #e5e7eb;">价格</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">1</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">小铭邮件管理</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">
+            <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:500;background:linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%);color:white;">企业产品</span>
+          </td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">软件</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">¥100</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">2</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">AI 大模型实战课</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">
+            <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:500;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;">外站课程</span>
+          </td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">课程</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">
+            <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:500;background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;">课程型</span>
+            <div style="color:#64748b;font-size:11px;margin-top:2px;">2 个链接</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">3</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">员工安全意识培训</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">
+            <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:500;background:linear-gradient(135deg,#f97316 0%,#ea580c 100%);color:white;">企业内训</span>
+          </td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">课程</td>
+          <td style="padding:10px;border-bottom:1px solid #f3f4f6;">
+            <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:500;background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;">课程型</span>
+            <div style="color:#64748b;font-size:11px;margin-top:2px;">1 个链接</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:10px;">4</td>
+          <td style="padding:10px;">设计软件 X</td>
+          <td style="padding:10px;">
+            <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:500;background:#e5e5e5;color:#333;">设计软件</span>
+          </td>
+          <td style="padding:10px;">软件</td>
+          <td style="padding:10px;">¥199</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p style="margin-top:24px;color:#64748b;font-size:13px;">📌 课程型产品的"分类"列显示彩色 badge，"类型"列显示"软件"/"课程"文字</p>

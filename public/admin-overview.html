@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 系统概览</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1704">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1704">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+    <h1 style="font-size: 24px; margin-bottom: 30px;">系统概览</h1>
+
+    <div class="stats-grid">
+      <div class="stat-card highlight">
+        <div class="icon">👥</div>
+        <div class="number" id="total-users">0</div>
+        <div class="label">总注册用户</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">📅</div>
+        <div class="number" id="daily-users">0</div>
+        <div class="label">今日注册</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">🔐</div>
+        <div class="number" id="daily-logins">0</div>
+        <div class="label">今日登录</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">⚙️</div>
+        <div class="number" id="daily-operations">0</div>
+        <div class="label">今日操作</div>
+      </div>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <div class="stat-card">
+        <div class="icon">📲</div>
+        <div class="number" id="total-installations">0</div>
+        <div class="label">总安装数</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">✅</div>
+        <div class="number" id="total-activations">0</div>
+        <div class="label">总激活数</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="icon">📦</div>
+        <div class="number" id="telemetry-total-software">0</div>
+        <div class="label">总软件数</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">💻</div>
+        <div class="number" id="telemetry-total-clients">0</div>
+        <div class="label">总客户端</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">🌐</div>
+        <div class="number" id="telemetry-total-ips">0</div>
+        <div class="label">总 IP 数</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">📊</div>
+        <div class="number" id="telemetry-total-records">0</div>
+        <div class="label">遥测总量</div>
+      </div>
+      <div class="stat-card highlight">
+        <div class="icon">📈</div>
+        <div class="number" id="telemetry-today-records">0</div>
+        <div class="label">当日遥测</div>
+      </div>
+    </div>
+
+    <div class="overview-grid">
+      <div class="overview-section">
+        <div class="section-header">
+          <h3>最近订单</h3>
+          <a href="/admin-orders" class="section-link">查看全部</a>
+        </div>
+        <div class="item-list" id="recent-orders">
+          <div class="empty-state">加载中...</div>
+        </div>
+      </div>
+
+      <div class="overview-section">
+        <div class="section-header">
+          <h3>最近注册</h3>
+          <a href="/admin-installations" class="section-link">查看全部</a>
+        </div>
+        <div class="item-list" id="recent-installations">
+          <div class="empty-state">加载中...</div>
+        </div>
+      </div>
+
+      <div class="overview-section">
+        <div class="section-header">
+          <h3>最近激活</h3>
+          <a href="/admin-activations" class="section-link">查看全部</a>
+        </div>
+        <div class="item-list" id="recent-activations">
+          <div class="empty-state">加载中...</div>
+        </div>
+      </div>
+    </div>
+  </main></div>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          throw new Error('请求失败: ' + response.status);
+        }
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 系统概览';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+
+        // 应用主题
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    // 加载统计数据
+    async function loadStats() {
+      try {
+        const response = await fetch('/api/logs/stats', { credentials: 'include' });
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          throw new Error('请求失败: ' + response.status);
+        }
+        const stats = await response.json();
+
+        document.getElementById('total-users').textContent = stats.totalUsers || 0;
+        document.getElementById('daily-users').textContent = stats.dailyUsers || 0;
+        document.getElementById('daily-logins').textContent = stats.dailyLogins || 0;
+        document.getElementById('daily-operations').textContent = stats.dailyOperations || 0;
+        document.getElementById('total-installations').textContent = stats.totalInstallations || 0;
+        document.getElementById('total-activations').textContent = stats.totalActivations || 0;
+
+        // Telemetry stats（独立端点，独立 try/catch，遥测故障不影响主统计）
+        try {
+          const tRes = await fetch('/api/telemetry/stats', { credentials: 'include' });
+          if (!tRes.ok) throw new Error('请求失败: ' + tRes.status);
+          const tStats = await tRes.json();
+          document.getElementById('telemetry-total-software').textContent = tStats.totalSoftware || 0;
+          document.getElementById('telemetry-total-clients').textContent  = tStats.totalClients  || 0;
+          document.getElementById('telemetry-total-ips').textContent      = tStats.totalIps      || 0;
+          document.getElementById('telemetry-total-records').textContent  = tStats.total         || 0;
+          document.getElementById('telemetry-today-records').textContent  = tStats.todayRecords  || 0;
+        } catch (tErr) {
+          console.error('Error loading telemetry stats:', tErr);
+        }
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
+    }
+
+    // 加载最近订单
+    async function loadRecentOrders() {
+      try {
+        const response = await fetch('/api/orders/all', { credentials: 'include' });
+        const orders = await response.json();
+
+        const container = document.getElementById('recent-orders');
+
+        if (!orders || orders.length === 0) {
+          container.innerHTML = '<div class="empty-state">暂无订单</div>';
+          return;
+        }
+
+        // 取最新5条
+        const recent = orders.slice(0, 5);
+        container.innerHTML = recent.map(order => {
+          const statusClass = order.status === 'paid' ? 'paid' : order.status === 'pending' ? 'pending' : order.status === 'failed' || order.status === 'expired' ? 'failed' : 'pending';
+          const statusText = order.status === 'paid' ? '已支付' : order.status === 'pending' ? '待支付' : order.status === 'expired' ? '已过期' : '未支付';
+          return `
+            <div class="item">
+              <div class="item-header">
+                <span class="item-title">${escapeHtml(order.userName || '游客')}</span>
+                <span class="status-tag ${statusClass}">${statusText}</span>
+              </div>
+              <div class="item-meta">订单号: ${escapeHtml(String(order.id))}</div>
+              <div class="item-footer">
+                <span>¥${escapeHtml(String(order.totalAmount || 0))}</span>
+                <span>${escapeHtml(new Date(order.createdAt || order.created_at).toLocaleDateString())}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading recent orders:', error);
+        document.getElementById('recent-orders').innerHTML = '<div class="empty-state">加载失败</div>';
+      }
+    }
+
+    // 加载最近注册
+    async function loadRecentInstallations() {
+      try {
+        const response = await fetch('/api/installs', { credentials: 'include' });
+        const installations = await response.json();
+
+        const container = document.getElementById('recent-installations');
+
+        if (!installations || installations.length === 0) {
+          container.innerHTML = '<div class="empty-state">暂无注册</div>';
+          return;
+        }
+
+        // 取最新5条
+        const recent = installations.slice(0, 5);
+        container.innerHTML = recent.map(inst => {
+          return `
+            <div class="item">
+              <div class="item-header">
+                <span class="item-title">${escapeHtml(inst.softwareName || inst.software_name || '未知软件')}</span>
+              </div>
+              <div class="item-meta">${escapeHtml(inst.userName || inst.user_name || '未知用户')}</div>
+              <div class="item-footer">
+                <span>${escapeHtml(inst.macAddress || inst.mac_address || '-')}</span>
+                <span>${escapeHtml(new Date(inst.createdAt || inst.created_at || Date.now()).toLocaleDateString())}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading recent installations:', error);
+        document.getElementById('recent-installations').innerHTML = '<div class="empty-state">加载失败</div>';
+      }
+    }
+
+    // 加载最近激活
+    async function loadRecentActivations() {
+      try {
+        const response = await fetch('/api/activations', { credentials: 'include' });
+        const activations = await response.json();
+
+        const container = document.getElementById('recent-activations');
+
+        if (!activations || activations.length === 0) {
+          container.innerHTML = '<div class="empty-state">暂无激活</div>';
+          return;
+        }
+
+        // 取最新5条
+        const recent = activations.slice(0, 5);
+        container.innerHTML = recent.map(act => {
+          const keyDisplay = act.activationKey || act.activation_key || '-';
+          const maskedKey = keyDisplay.length > 8 ? keyDisplay.substring(0, 4) + '***' + keyDisplay.substring(keyDisplay.length - 4) : keyDisplay;
+          return `
+            <div class="item">
+              <div class="item-header">
+                <span class="item-title">${escapeHtml(act.softwareName || act.software_name || '未知软件')}</span>
+              </div>
+              <div class="item-meta">${escapeHtml(act.userName || act.user_name || '未知用户')}</div>
+              <div class="item-footer">
+                <span>${escapeHtml(maskedKey)}</span>
+                <span>${escapeHtml(new Date(act.createdAt || act.created_at || Date.now()).toLocaleDateString())}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading recent activations:', error);
+        document.getElementById('recent-activations').innerHTML = '<div class="empty-state">加载失败</div>';
+      }
+    }
+
+    // 当前页高亮由 /js/admin-sidebar.js 的 CURRENT_PATH 自动处理，无需此处再写
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadStats();
+      loadRecentOrders();
+      loadRecentInstallations();
+      loadRecentActivations();
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

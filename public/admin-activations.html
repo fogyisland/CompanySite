@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 激活管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1300">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+      <div class="page-header">
+        <h1>激活管理</h1>
+      </div>
+
+      <div class="message" id="message"></div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="number" id="total-activations">0</div>
+          <div class="label">总激活数</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="active-count">0</div>
+          <div class="label">有效激活</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="expiring-count">0</div>
+          <div class="label">即将过期</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="expired-count">0</div>
+          <div class="label">已过期</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="搜索MAC地址、软件名称或邮箱...">
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>MAC地址</th>
+              <th>软件</th>
+              <th>用户邮箱</th>
+              <th>状态</th>
+              <th>剩余天数</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="activations-tbody">
+            <tr><td colspan="7" class="empty-state">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="detail-modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <h3 id="modal-title">激活详情</h3>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script>
+    let activations = [];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 激活管理';
+        }
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadActivations() {
+      try {
+        const response = await fetch('/api/activations', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        activations = await response.json();
+        renderStats();
+        renderTable();
+      } catch (error) {
+        console.error('Error loading activations:', error);
+        document.getElementById('activations-tbody').innerHTML =
+          '<tr><td colspan="7" class="empty-state" style="color:#ef4444;">加载失败</td></tr>';
+      }
+    }
+
+    function renderStats() {
+      const total = activations.length;
+      const active = activations.filter(a => new Date(a.expireDate) > new Date()).length;
+      const expiring = activations.filter(a => {
+        const days = Math.ceil((new Date(a.expireDate) - new Date()) / (1000 * 60 * 60 * 24));
+        return days > 0 && days <= 7;
+      }).length;
+      const expired = activations.filter(a => new Date(a.expireDate) <= new Date()).length;
+      document.getElementById('total-activations').textContent = total;
+      document.getElementById('active-count').textContent = active;
+      document.getElementById('expiring-count').textContent = expiring;
+      document.getElementById('expired-count').textContent = expired;
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('activations-tbody');
+      const items = data || activations;
+      if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无激活记录</td></tr>';
+        return;
+      }
+      tbody.innerHTML = items.map(act => {
+        const expireDate = new Date(act.expireDate);
+        const now = new Date();
+        const days = Math.ceil((expireDate - now) / (1000 * 60 * 60 * 24));
+        let statusClass = 'badge-success';
+        let statusText = '有效';
+        let daysText = days + '天';
+        if (days < 0) {
+          statusClass = 'badge-danger';
+          statusText = '已过期';
+          daysText = '已过期';
+        } else if (days <= 7) {
+          statusClass = 'badge-warning';
+          statusText = '即将过期';
+        }
+        return `
+          <tr>
+            <td>${escapeHtml(act.id)}</td>
+            <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${escapeHtml(act.macAddress)}</code></td>
+            <td>${escapeHtml(act.softwareName)}</td>
+            <td>${escapeHtml(act.userEmail || '-')}</td>
+            <td><span class="badge ${statusClass}">${statusText}</span></td>
+            <td>${daysText}</td>
+            <td class="table-actions">
+              <button class="btn-edit" onclick="showDetail(${escapeHtml(act.id)})">详情</button>
+              <button class="btn-delete" onclick="deleteActivation(${escapeHtml(act.id)})">删除</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterActivations() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      if (!search) {
+        renderTable(activations);
+        return;
+      }
+      const filtered = activations.filter(a =>
+        (a.macAddress && a.macAddress.toLowerCase().includes(search)) ||
+        (a.softwareName && a.softwareName.toLowerCase().includes(search)) ||
+        (a.userEmail && a.userEmail.toLowerCase().includes(search))
+      );
+      renderTable(filtered);
+    }
+
+    function showDetail(id) {
+      const act = activations.find(a => a.id === id);
+      if (!act) return;
+      const expireDate = new Date(act.expireDate);
+      const days = Math.ceil((expireDate - new Date()) / (1000 * 60 * 60 * 24));
+      document.getElementById('modal-title').textContent = '激活详情 #' + act.id;
+      document.getElementById('modal-content').innerHTML = `
+        <div class="form-group">
+          <label>MAC地址</label>
+          <input type="text" value="${escapeHtml(act.macAddress)}" readonly>
+        </div>
+        <div class="form-group">
+          <label>软件名称</label>
+          <input type="text" value="${escapeHtml(act.softwareName)}" readonly>
+        </div>
+        <div class="form-group">
+          <label>用户邮箱</label>
+          <input type="text" value="${escapeHtml(act.userEmail || '-')}" readonly>
+        </div>
+        <div class="form-group">
+          <label>过期日期</label>
+          <input type="text" value="${expireDate.toLocaleString('zh-CN')}" readonly>
+        </div>
+        <div class="form-group">
+          <label>剩余天数</label>
+          <input type="text" value="${days > 0 ? days + '天' : '已过期'}" readonly>
+        </div>
+      `;
+      document.getElementById('detail-modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('active');
+    }
+
+    async function deleteActivation(id) {
+      if (!confirm('确定要删除此激活记录吗？')) return;
+      try {
+        const response = await fetch(`/api/activations/${id}`, { method: 'DELETE', credentials: 'include' });
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          showMessage('删除失败', 'error');
+          return;
+        }
+        showMessage('删除成功', 'success');
+        loadActivations();
+      } catch (error) {
+        showMessage('删除失败', 'error');
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => { msg.className = 'message'; }, 3000);
+    }
+
+    function toggleSidebarSubmenu(link) {
+      const submenu = link.nextElementSibling;
+      if (submenu && submenu.classList.contains('sidebar-submenu')) {
+        submenu.classList.toggle('open');
+        link.classList.toggle('open');
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.getElementById('search-input').addEventListener('input', filterActivations);
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadActivations();
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

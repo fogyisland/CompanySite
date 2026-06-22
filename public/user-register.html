@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 用户注册</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(255,255,255,0.08) 0%, transparent 40%);
+      pointer-events: none;
+    }
+    .login-container {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 48px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.35);
+      position: relative;
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .login-logo .logo {
+      justify-content: center;
+    }
+    .login-logo h2 {
+      margin-top: 16px;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .login-form {
+      margin-top: 32px;
+    }
+    .form-group {
+      margin-bottom: 24px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 500;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 15px 16px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
+      font-size: 15px;
+      transition: all 0.2s ease;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.12);
+    }
+    .login-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: var(--white);
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 16px rgba(19, 60, 138, 0.35);
+    }
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(19, 60, 138, 0.45);
+    }
+    .error-message {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      color: #991b1b;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 14px;
+      border: 1px solid #fecaca;
+      display: none;
+    }
+    .error-message.show {
+      display: block;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 24px;
+    }
+    .back-link a {
+      color: var(--text-light);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .back-link a:hover {
+      color: var(--primary);
+    }
+    .login-link {
+      text-align: center;
+      margin-top: 20px;
+      color: var(--text-light);
+      font-size: 14px;
+    }
+    .login-link a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .login-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-logo">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="login-logo-icon">SV</div>
+        <span class="logo-text" id="login-logo-text">博铭科技</span>
+      </a>
+      <h2>用户注册</h2>
+    </div>
+
+    <div class="error-message" id="error-message"></div>
+
+    <form class="login-form" id="register-form">
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" name="username" required placeholder="请输入用户名">
+      </div>
+      <div class="form-group">
+        <label for="realName">姓名</label>
+        <input type="text" id="realName" name="realName" placeholder="请输入真实姓名">
+      </div>
+      <div class="form-group">
+        <label for="company">公司名称</label>
+        <input type="text" id="company" name="company" placeholder="请输入公司名称">
+      </div>
+      <div class="form-group">
+        <label for="phone">电话（可选）</label>
+        <input type="tel" id="phone" name="phone" placeholder="请输入联系电话">
+      </div>
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" name="password" required placeholder="请输入密码">
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">确认密码</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="请再次输入密码">
+      </div>
+      <div class="form-group">
+        <label for="email">邮箱（可选）</label>
+        <input type="email" id="email" name="email" placeholder="请输入邮箱">
+      </div>
+      <button type="submit" class="login-btn">注 册</button>
+    </form>
+
+    <div class="login-link">
+      已有账号？<a href="/user-login">立即登录</a>
+    </div>
+
+    <div class="back-link">
+      <a href="/">&larr; 返回网站</a>
+    </div>
+  </div>
+
+  <script>
+    async function loadLoginSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('login-logo-text').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 用户注册';
+        }
+
+        if (settings.logo) {
+          document.getElementById('login-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '" alt="Logo" id="login-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value.trim();
+      const realName = document.getElementById('realName').value.trim();
+      const company = document.getElementById('company').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const email = document.getElementById('email').value.trim();
+      const errorMessage = document.getElementById('error-message');
+
+      if (!realName && !company) {
+        errorMessage.textContent = '请填写姓名或公司名称（至少填写一项）';
+        errorMessage.classList.add('show');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        errorMessage.textContent = '两次输入的密码不一致';
+        errorMessage.classList.add('show');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/user/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, email, realName, company, phone })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('注册成功！请登录。');
+          window.location.href = '/user-login';
+        } else {
+          errorMessage.textContent = data.error || '注册失败';
+          errorMessage.classList.add('show');
+        }
+      } catch (error) {
+        errorMessage.textContent = '网络错误，请稍后重试';
+        errorMessage.classList.add('show');
+      }
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLoginSettings();
+    });
+  </script>
+  <script src="/js/public-theme.js" defer></script>
+</body>
+</html>

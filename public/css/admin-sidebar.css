@@ -1,0 +1,310 @@
+/* public/css/admin-sidebar.css
+ * 提取自 public/js/admin-sidebar.js (2026-06-21) — 之前由 JS 注入 <style> 改为静态 <link>，避免 mount() 注入造成的"重建"感。
+ * 加载顺序：必须放在 admin-theme.css 之后，确保 .sb-* 类胜出。
+ */
+.admin-sidebar {
+  --sidebar-width-current: var(--admin-sidebar-width, 240px);
+  width: var(--sidebar-width-current);
+  min-width: var(--sidebar-width-current);
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  background: var(--admin-bg-card, #fff);
+  border-right: 1px solid var(--admin-border-light, #eaeef2);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+  transition: width 0.18s ease, min-width 0.18s ease;
+}
+.admin-sidebar * { box-sizing: border-box; }
+.admin-sidebar .sb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--admin-border-light, #eaeef2);
+  flex-shrink: 0;
+}
+.admin-sidebar .sb-logo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none; color: var(--admin-text-primary, #24292f);
+  font-weight: 600; font-size: 14px;
+  overflow: hidden;
+}
+.admin-sidebar .sb-logo-icon {
+  width: 28px; height: 28px;
+  background: var(--admin-text-secondary, #57606a);
+  color: #fff;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+  flex-shrink: 0;
+}
+.admin-sidebar .sb-logo-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-sidebar .sb-collapse-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--admin-text-muted, #8c959f);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.admin-sidebar .sb-collapse-btn:hover {
+  background: var(--admin-bg-hover, #f1f5f9);
+  color: var(--admin-text-primary, #24292f);
+}
+.admin-sidebar .sb-collapse-btn svg { width: 16px; height: 16px; }
+.admin-sidebar .sb-search {
+  padding: 10px 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--admin-border-light, #eaeef2);
+}
+.admin-sidebar .sb-search-wrap {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 8px;
+  height: 30px;
+  background: var(--admin-bg-page, #f6f9fc);
+  border: 1px solid var(--admin-border, #d0d7de);
+  border-radius: 6px;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.admin-sidebar .sb-search-wrap:focus-within {
+  border-color: var(--admin-primary, #0969da);
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+}
+.admin-sidebar .sb-search-wrap svg { width: 14px; height: 14px; color: var(--admin-text-muted, #8c959f); flex-shrink: 0; }
+.admin-sidebar .sb-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--admin-text-primary, #24292f);
+  font-size: 13px;
+  font-family: inherit;
+}
+.admin-sidebar .sb-search-input::placeholder { color: var(--admin-text-muted, #8c959f); }
+.admin-sidebar .sb-search-kbd {
+  font-size: 10px;
+  padding: 1px 5px;
+  border: 1px solid var(--admin-border, #d0d7de);
+  border-radius: 3px;
+  color: var(--admin-text-muted, #8c959f);
+  background: var(--admin-bg-card, #fff);
+  font-family: monospace;
+}
+.admin-sidebar .sb-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+.admin-sidebar .sb-group {
+  padding: 0;
+}
+.admin-sidebar .sb-group-label {
+  padding: 14px 14px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-text-muted, #8c959f);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.admin-sidebar .sb-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: block;  /* 覆盖 style.css 全局 nav ul { display: flex } */
+}
+.admin-sidebar .sb-submenu {
+  display: block;
+}
+.admin-sidebar .sb-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: 1px 8px;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  color: var(--admin-text-secondary, #57606a);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.admin-sidebar .sb-link:hover {
+  background: var(--admin-bg-hover, #f1f5f9);
+  color: var(--admin-text-primary, #24292f);
+}
+.admin-sidebar .sb-link:focus-visible {
+  outline: 2px solid var(--admin-primary, #0969da);
+  outline-offset: 2px;
+}
+/* 抑制全局 nav a::after 下划线伪元素 */
+.admin-sidebar .sb-link::after { display: none; }
+.admin-sidebar .sb-link svg { width: 16px; height: 16px; flex-shrink: 0; }
+.admin-sidebar .sb-link .sb-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.admin-sidebar .sb-link .sb-chevron {
+  margin-left: auto;
+  color: var(--admin-text-muted, #8c959f);
+  transition: transform 0.18s ease;
+}
+.admin-sidebar .sb-link.open .sb-chevron { transform: rotate(90deg); }
+.admin-sidebar .sb-link.active {
+  background: var(--admin-primary-bg, #ddf4ff);
+  color: var(--admin-text-primary, #24292f);
+  border-left-color: var(--admin-primary, #0969da);
+  font-weight: 600;
+}
+.admin-sidebar .sb-submenu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.18s ease;
+  display: block;
+}
+.admin-sidebar .sb-submenu.open { max-height: 500px; }
+.admin-sidebar .sb-submenu .sb-link {
+  padding: 6px 12px 6px 38px;
+  margin: 1px 8px 1px 8px;
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.admin-sidebar .sb-footer {
+  border-top: 1px solid var(--admin-border-light, #eaeef2);
+  padding: 10px 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-sidebar .sb-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--admin-primary, #0969da);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 12px;
+  flex-shrink: 0;
+}
+/* 用户信息 skeleton（避免 "加载中…" → email 的文字 flash） */
+.admin-sidebar .sb-skeleton {
+  background: linear-gradient(90deg, var(--admin-bg-page, #f6f9fc) 0%, var(--admin-bg-hover, #f1f5f9) 50%, var(--admin-bg-page, #f6f9fc) 100%);
+  background-size: 200% 100%;
+  animation: sb-skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+  color: transparent !important;
+  user-select: none;
+}
+@keyframes sb-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.admin-sidebar .sb-user {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-sidebar .sb-user-email {
+  font-size: 12px;
+  color: var(--admin-text-primary, #24292f);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-sidebar .sb-user-actions {
+  font-size: 11px;
+}
+.admin-sidebar .sb-user-actions a {
+  color: var(--admin-text-muted, #8c959f);
+  text-decoration: none;
+  margin-right: 8px;
+}
+.admin-sidebar .sb-user-actions a:hover { color: var(--admin-primary, #0969da); }
+.admin-sidebar .sb-logout-btn {
+  background: transparent;
+  border: none;
+  color: var(--admin-text-muted, #8c959f);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.admin-sidebar .sb-logout-btn:hover {
+  background: var(--admin-bg-hover, #f1f5f9);
+  color: var(--admin-primary, #0969da);
+}
+.admin-sidebar .sb-logout-btn svg { width: 16px; height: 16px; }
+.admin-sidebar .sb-hidden { display: none !important; }
+
+/* 折叠态 */
+body.sidebar-collapsed .admin-sidebar {
+  --sidebar-width-current: var(--admin-sidebar-width-collapsed, 56px);
+}
+body.sidebar-collapsed .admin-sidebar .sb-logo-text,
+body.sidebar-collapsed .admin-sidebar .sb-search,
+body.sidebar-collapsed .admin-sidebar .sb-group-label,
+body.sidebar-collapsed .admin-sidebar .sb-link .sb-label,
+body.sidebar-collapsed .admin-sidebar .sb-link .sb-chevron,
+body.sidebar-collapsed .admin-sidebar .sb-user,
+body.sidebar-collapsed .admin-sidebar .sb-user-actions {
+  display: none;
+}
+body.sidebar-collapsed .admin-sidebar .sb-collapse-btn svg { transform: rotate(180deg); }
+body.sidebar-collapsed .admin-sidebar .sb-header { justify-content: center; padding: 16px 8px; }
+body.sidebar-collapsed .admin-sidebar .sb-link {
+  justify-content: center;
+  padding: 8px 0;
+  margin: 1px 6px;
+}
+body.sidebar-collapsed .admin-sidebar .sb-submenu { display: none; }
+body.sidebar-collapsed .admin-sidebar .sb-footer {
+  flex-direction: column;
+  padding: 10px 6px;
+  gap: 6px;
+}
+
+/* 折叠态 submenu popover（hover parent） */
+body.sidebar-collapsed .admin-sidebar .sb-group > .sb-link.has-popover-open::after {
+  content: attr(data-popover);
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 0;
+  min-width: 180px;
+  background: var(--admin-bg-card, #fff);
+  border: 1px solid var(--admin-border, #d0d7de);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  padding: 6px 0;
+  z-index: 1001;
+  color: var(--admin-text-primary, #24292f);
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+body.sidebar-collapsed .admin-sidebar .sb-group > .sb-link.has-popover-open .sb-popover-list {
+  list-style: none;
+  padding: 0; margin: 0;
+}
+body.sidebar-collapsed .admin-sidebar .sb-group > .sb-link.has-popover-open .sb-popover-list a {
+  display: block;
+  padding: 6px 14px;
+  color: var(--admin-text-secondary, #57606a);
+  text-decoration: none;
+}
+body.sidebar-collapsed .admin-sidebar .sb-group > .sb-link.has-popover-open .sb-popover-list a:hover {
+  background: var(--admin-bg-hover, #f1f5f9);
+  color: var(--admin-text-primary, #24292f);
+}

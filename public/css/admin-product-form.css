@@ -1,0 +1,364 @@
+/* ============================================
+   Product Form Partial Styles
+   16:9 widescreen, subscription-only pricing
+   ============================================ */
+
+.product-form-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 32px 40px;
+}
+/* 卡片背景（壳页面用 .form-card 时被 .product-form-shell 覆盖；独立使用 .product-form-shell 时也需要） */
+.product-form-shell.form-card-like {
+  background: var(--white);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+}
+
+/* 通用字段（替代原 .form-group，统一命名以避免冲突） */
+.product-form .form-field { margin-bottom: 24px; }
+.product-form .form-field label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text);
+}
+.product-form .form-field input,
+.product-form .form-field select,
+.product-form .form-field textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  background: var(--white);
+}
+.product-form .form-field input:focus,
+.product-form .form-field select:focus,
+.product-form .form-field textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+.product-form .form-field .form-hint {
+  color: var(--text-light);
+  font-size: 12px;
+  margin-top: 4px;
+  display: block;
+}
+/* 关键：用 [hidden] 而不是 :disabled —— 整块消失 */
+.product-form .form-field[hidden] { display: none; }
+
+/* 16:9 双列布局 */
+.product-form .form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px;
+}
+@media (max-width: 1200px) {
+  .product-form .form-row { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* 复选框行 */
+.product-form .checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.product-form .checkbox-field input[type="checkbox"] {
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* 订阅方案区 */
+.product-form .subscription-section {
+  margin-top: 24px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(139,92,246,0.04) 100%);
+  border: 1px solid rgba(59,130,246,0.1);
+  border-radius: 14px;
+}
+.product-form .subscription-section[hidden] { display: none; }
+.product-form .subscription-title {
+  margin-bottom: 20px;
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+.product-form .subscription-tier-row {
+  display: grid;
+  grid-template-columns: 180px 1fr 80px;
+  gap: 16px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+.product-form .subscription-tier-row label {
+  margin-bottom: 0;
+  font-weight: 500;
+}
+.product-form .subscription-tier-row .tier-meta {
+  color: var(--text-light);
+  font-weight: 400;
+  font-size: 13px;
+}
+.product-form .subscription-tier-row input {
+  padding: 12px 14px;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+.product-form .subscription-tier-row input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+.product-form .subscription-tier-row .tier-suffix {
+  color: var(--text-light);
+  font-size: 13px;
+  text-align: right;
+}
+
+/* 迁移提示 */
+.product-form .tier-migration-notice {
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.04) 100%);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 10px;
+  color: #92400e;
+  font-size: 14px;
+}
+.product-form .tier-migration-notice[hidden] { display: none; }
+
+/* Section / Actions */
+.product-form .form-section {
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.product-form .form-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.product-form .section-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.product-form .form-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  align-items: center;
+}
+.product-form .btn-back {
+  background: rgba(0,0,0,0.04);
+  color: var(--text);
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 14px 24px;
+  border-radius: 10px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.product-form .btn-back:hover {
+  background: rgba(0,0,0,0.08);
+  transform: translateX(-2px);
+}
+.product-form .form-actions .btn-primary {
+  margin-left: auto;
+}
+
+/* 富文本编辑器（从原 inline CSS 抽取，仅保留产品 form 用的） */
+.product-form .rich-editor {
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.product-form .rich-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px;
+  background: var(--secondary);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.product-form .rich-toolbar button {
+  padding: 8px 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: var(--white);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.product-form .rich-toolbar button:hover {
+  background: rgba(59,130,246,0.08);
+  border-color: rgba(59,130,246,0.3);
+}
+.product-form .rich-toolbar button.active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border-color: transparent;
+}
+.product-form .rich-content {
+  min-height: 200px;
+  padding: 16px;
+  outline: none;
+  font-size: 15px;
+  line-height: 1.7;
+  background: var(--white);
+}
+.product-form .rich-content:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-light);
+}
+.product-form .rich-content p { margin: 0 0 12px 0; }
+.product-form .rich-content ul, .product-form .rich-content ol { margin: 0 0 12px 0; padding-left: 28px; }
+.product-form .rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+.product-form .image-upload-btn { position: relative; display: inline-block; }
+.product-form .image-upload-btn input[type="file"] {
+  position: absolute;
+  top: 0; left: 0;
+  opacity: 0;
+  width: 100%; height: 100%;
+  cursor: pointer;
+}
+.product-form .rich-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+/* 软件/图片上传区 */
+.product-form .software-upload-section {
+  border: 2px dashed rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 36px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(139,92,246,0.02) 100%);
+  transition: all 0.25s ease;
+}
+.product-form .software-upload-section:hover {
+  border-color: rgba(59,130,246,0.4);
+  background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(139,92,246,0.04) 100%);
+}
+.product-form .software-upload-section.has-file {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.08) 100%);
+}
+.product-form .software-info {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: var(--white);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.product-form .software-info .file-name {
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 350px;
+}
+.product-form .software-info .file-size {
+  color: var(--text-light);
+  font-size: 13px;
+  margin-left: 14px;
+}
+.product-form .btn-remove-file {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  margin-left: 14px;
+  box-shadow: 0 2px 6px rgba(239,68,68,0.3);
+  transition: all 0.2s ease;
+}
+.product-form .btn-remove-file:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(239,68,68,0.4);
+}
+
+/* 课程链接区 */
+.product-form .course-links-section {
+  margin-top: 24px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(139,92,246,0.04) 0%, rgba(59,130,246,0.04) 100%);
+  border: 1px solid rgba(139,92,246,0.15);
+  border-radius: 14px;
+}
+.product-form .course-links-section[hidden] { display: none; }
+.product-form .course-links-section .section-subtitle {
+  margin-bottom: 16px;
+  color: #7c3aed;
+  font-size: 16px;
+  font-weight: 600;
+}
+.product-form .course-link-row {
+  display: grid;
+  grid-template-columns: 180px 200px 1fr 40px;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+.product-form .course-link-row select,
+.product-form .course-link-row input {
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--white);
+}
+.product-form .course-link-row input[type="url"] { width: 100%; }
+.product-form .course-link-row .course-link-platform-custom { display: none; }
+.product-form .course-link-row .course-link-platform-custom:not([hidden]) { display: block; }
+.product-form .course-link-row .btn-remove-course-link {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  box-shadow: 0 2px 6px rgba(239,68,68,0.3);
+  transition: all 0.2s ease;
+}
+.product-form .course-link-row .btn-remove-course-link:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(239,68,68,0.4);
+}

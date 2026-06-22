@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 帮助中心</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <style>
+    .help-container {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .help-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .help-header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+    .help-header p {
+      color: var(--text-light);
+      font-size: 17px;
+    }
+    .help-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+    .help-card {
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
+      padding: 36px 28px;
+      text-align: center;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .help-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 40px rgba(19, 60, 138, 0.1);
+      border-color: transparent;
+    }
+    .help-card-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: var(--white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      margin: 0 auto 20px;
+      box-shadow: 0 8px 20px rgba(19, 60, 138, 0.25);
+    }
+    .help-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .help-card p {
+      color: var(--text-light);
+      font-size: 14px;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+    .help-card a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .help-card a:hover {
+      text-decoration: underline;
+    }
+    .faq-section {
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .faq-section h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 32px;
+      text-align: center;
+      color: var(--text);
+    }
+    .faq-item {
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+    }
+    .faq-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+    .faq-question {
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .faq-answer {
+      color: var(--text-light);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    .contact-box {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: var(--white);
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      margin-top: 40px;
+    }
+    .contact-box h3 {
+      font-size: 24px;
+      margin-bottom: 15px;
+    }
+    .contact-box p {
+      margin-bottom: 20px;
+      opacity: 0.9;
+    }
+    .contact-box a {
+      display: inline-block;
+      padding: 12px 30px;
+      background: var(--white);
+      color: var(--primary);
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .contact-box a:hover {
+      background: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions" id="header-actions">
+        <button class="header-cart" onclick="renderCartModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h19.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+          </svg>
+          <span id="cart-badge" class="cart-badge" style="display:none;">0</span>
+        </button>
+        <a href="/user-login" class="header-login" id="header-login">登录</a>
+        <a href="#" class="header-logout" id="header-logout" style="display:none;" onclick="headerLogout()">退出</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="help-container">
+    <div class="help-header">
+      <h1>帮助中心</h1>
+      <p>为您提供全面的产品使用指导和技术支持</p>
+    </div>
+
+    <div class="help-grid">
+      <div class="help-card">
+        <div class="help-card-icon">📥</div>
+        <h3>下载软件</h3>
+        <p>了解如何下载和安装您购买的软件产品</p>
+        <a href="/docs#download">查看指南 &rarr;</a>
+      </div>
+      <div class="help-card">
+        <div class="help-card-icon">🔑</div>
+        <h3>账户管理</h3>
+        <p>管理您的账户信息、密码和订阅</p>
+        <a href="/docs#account">查看指南 &rarr;</a>
+      </div>
+      <div class="help-card">
+        <div class="help-card-icon">💳</div>
+        <h3>支付问题</h3>
+        <p>支付方式、发票开具和退款申请</p>
+        <a href="/docs#payment">查看指南 &rarr;</a>
+      </div>
+      <div class="help-card">
+        <div class="help-card-icon">🔧</div>
+        <h3>技术支持</h3>
+        <p>遇到问题？我们的技术支持团队随时为您服务</p>
+        <a href="/docs#support">查看指南 &rarr;</a>
+      </div>
+    </div>
+
+    <div class="faq-section">
+      <h2>常见问题</h2>
+
+      <div class="faq-item">
+        <div class="faq-question">如何购买软件？</div>
+        <div class="faq-answer">选择您需要的产品，点击"立即购买"按钮。在结算页面完成支付后，您将收到下载链接和授权密钥。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">购买后如何获取软件？</div>
+        <div class="faq-answer">支付成功后，系统会自动显示下载链接。同时，我们会将下载链接和授权密钥发送到您的注册邮箱。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">软件支持哪些操作系统？</div>
+        <div class="faq-answer">我们的软件支持Windows、Mac和Linux系统。具体支持情况请查看产品详情页的"平台"信息。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">可以申请退款吗？</div>
+        <div class="faq-answer">我们提供30天退款保障。如需退款，请在购买后30天内联系我们的客服团队，提供您的订单信息。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">如何获得软件更新？</div>
+        <div class="faq-answer">在同一版本周期内，您可以免费获得所有更新。下载新版软件后，使用您的授权密钥即可激活。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">一个许可证可以用于多台设备吗？</div>
+        <div class="faq-answer">我们的软件采用单用户许可证授权。通常情况下，一个许可证只能在一台设备上使用。如需多设备使用，请购买多个许可证。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">忘记密码怎么办？</div>
+        <div class="faq-answer">您可以通过登录页面的"忘记密码"功能重置密码。系统会将重置链接发送到您的注册邮箱。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">如何联系技术支持？</div>
+        <div class="faq-answer">您可以通过以下方式联系我们：发送邮件至 raymond.xu@booming.one。</div>
+      </div>
+    </div>
+
+    <div class="contact-box">
+      <h3>需要更多帮助？</h3>
+      <p>我们的技术支持团队随时为您解答疑问</p>
+      <a href="mailto:raymond.xu@booming.one">联系客服</a>
+    </div>
+  </main>
+
+  <footer class="footer" id="support">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3 id="footer-brand-name">博铭科技</h3>
+          <p>专注企业级软件解决方案，为您的业务保驾护航。我们致力于为企业和个人用户提供高质量的软件产品。</p>
+        </div>
+        <div class="footer-col">
+          <h4>产品</h4>
+          <ul>
+            <li><a href="/#products">全部产品</a></li>
+            <li><a href="/about">关于我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>支持</h4>
+          <ul>
+            <li><a href="/support">技术支持</a></li>
+            <li><a href="/faq">常见问题</a></li>
+            <li><a href="/contact">联系我们</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>法律</h4>
+          <ul>
+            <li><a href="/privacy">隐私政策</a></li>
+            <li><a href="/terms">服务条款</a></li>
+            <li><a href="/license">软件许可</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <span id="footer-year"></span> <span id="footer-company-bottom">博铭科技</span>. 保留所有权利。</span>
+        <div class="footer-contact">
+          <a href="mailto:raymond.xu@booming.one">raymond.xu@booming.one</a>
+          <a href="#" class="footer-email-subscribe" onclick="toggleEmailSubscribe(event)">订阅更新</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = settings.companyName;
+          document.getElementById('footer-brand-name').textContent = settings.companyName;
+          document.getElementById('footer-company-bottom').textContent = settings.companyName;
+          document.title = settings.companyName + ' - 帮助中心';
+        }
+
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      updateCartBadge();
+    });
+  </script>
+  <script src="/js/header-auth.js" defer></script>
+  <script src="/js/public-theme.js" defer></script>
+</body>
+</html>

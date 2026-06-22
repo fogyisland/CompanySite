@@ -1,0 +1,3 @@
+{"type":"click","text":"B\n    \n      GitHub 风 — 信息密集\n      侧栏 232px、表格高密度、表单紧凑。多列、单页信息量大。给\"天天看 200 行订单\"的人。\n      主色 #0969da   字号 12-13px   行高 32px","choice":"theme-b","id":null,"timestamp":1781876579630}
+{"type":"click","text":"C\n    \n      Stripe 风 — 商务留白\n      侧栏 240px、内容宽留白、卡片化、统计数字大。给\"看仪表盘决策\"的人。\n      主色 #635bff   字号 14-15px   行高 48px","choice":"theme-c","id":null,"timestamp":1781876580490}
+{"type":"click","text":"D\n    \n      Ant Design Pro 风 — 企业级\n      侧栏深色 208px + 顶部面包屑 + 标签页 + 多级菜单。表单表格表单感强。给\"管 N 个模块\"的人。\n      主色 #1677ff   字号 13-14px   行高 40px","choice":"theme-d","id":null,"timestamp":1781876581279}

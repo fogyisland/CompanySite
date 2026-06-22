@@ -1,0 +1,63 @@
+<h2>产品分类 Badge 颜色方案对比</h2>
+<p class="subtitle">3 种分类用 3 种颜色区分，badge 显示在产品卡片 / 轮播图 / admin 列表左上角</p>
+
+<h3>3 个分类值</h3>
+<div class="options" data-multiselect>
+  <div class="option" data-choice="enterprise_product" onclick="toggleSelect(this)">
+    <div class="letter" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">1</div>
+    <div class="content">
+      <h3>企业产品</h3>
+      <p>软件型产品新增分类（仅 is_course=0 可见）</p>
+      <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:12px;font-weight:500;background:linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);color:white;margin-top:8px;">企业产品</span>
+    </div>
+  </div>
+  <div class="option" data-choice="external_course" onclick="toggleSelect(this)">
+    <div class="letter" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">2</div>
+    <div class="content">
+      <h3>外站课程</h3>
+      <p>课程型产品分类（仅 is_course=1 可见）</p>
+      <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:12px;font-weight:500;background:linear-gradient(135deg, #10b981 0%, #059669 100%);color:white;margin-top:8px;">外站课程</span>
+    </div>
+  </div>
+  <div class="option" data-choice="enterprise_internal" onclick="toggleSelect(this)">
+    <div class="letter" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">3</div>
+    <div class="content">
+      <h3>企业内训</h3>
+      <p>课程型产品分类（仅 is_course=1 可见）</p>
+      <span style="display:inline-block;padding:3px 10px;border-radius:10px;font-size:12px;font-weight:500;background:linear-gradient(135deg, #f97316 0%, #ea580c 100%);color:white;margin-top:8px;">企业内训</span>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 32px;">在产品卡片上的效果预览</h3>
+<p class="subtitle">3 张产品卡片对比，每张左上角显示对应分类 badge</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">软件产品 + 企业产品 badge</div>
+    <div class="mockup-body" style="position:relative;padding:0;overflow:hidden;border-radius:8px;border:1px solid #e5e7eb;">
+      <div style="background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%);height:140px;position:relative;">
+        <span style="position:absolute;top:12px;left:12px;padding:4px 12px;border-radius:10px;font-size:12px;font-weight:500;background:linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%);color:white;box-shadow:0 2px 4px rgba(0,0,0,0.1);">企业产品</span>
+      </div>
+      <div style="padding:12px 16px;background:white;">
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px;">小铭邮件管理百宝箱</div>
+        <div style="color:#64748b;font-size:12px;">¥100 起</div>
+      </div>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">课程产品 + 外站课程 badge</div>
+    <div class="mockup-body" style="position:relative;padding:0;overflow:hidden;border-radius:8px;border:1px solid #e5e7eb;">
+      <div style="background:linear-gradient(135deg,#d1fae5 0%,#a7f3d0 100%);height:140px;position:relative;">
+        <span style="position:absolute;top:12px;left:12px;padding:4px 12px;border-radius:10px;font-size:12px;font-weight:500;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:white;box-shadow:0 2px 4px rgba(0,0,0,0.1);">外站课程</span>
+        <span style="position:absolute;top:12px;right:12px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:500;background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;">课程型</span>
+      </div>
+      <div style="padding:12px 16px;background:white;">
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px;">AI 大模型实战课</div>
+        <div style="color:#64748b;font-size:12px;">2 个链接</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:24px;color:#64748b;font-size:13px;">📌 课程型产品可能同时显示 "课程型" + "外站课程" 两个 badge（紫色 + 绿色），左对齐</p>

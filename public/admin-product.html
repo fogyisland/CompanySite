@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 产品管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260622-1430">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+  <link rel="stylesheet" href="/css/admin-product-form.css?v=20260622-1000">
+  <link rel="stylesheet" href="/css/admin-product-modal.css?v=20260622-1000">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main">
+      <div class="page-header">
+        <h1>产品管理</h1>
+        <div class="actions">
+          <a href="/" class="btn btn-secondary">查看网站</a>
+          <button class="btn btn-primary" id="add-product-btn">+ 添加产品</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="number" id="total-products">0</div>
+          <div class="label">全部产品</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="featured-products">0</div>
+          <div class="label">精选产品</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="total-value">¥0</div>
+          <div class="label">产品总值</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="categories">0</div>
+          <div class="label">产品分类</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>名称</th>
+              <th>简写</th>
+              <th>分类</th>
+              <th>价格方案</th>
+              <th>版本</th>
+              <th>平台</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="products-table">
+            <tr><td colspan="8" class="empty-state">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div id="productModal" class="product-modal-backdrop" hidden>
+    <div class="product-modal">
+      <button type="button" class="product-modal-close" id="product-modal-close">&times;</button>
+      <div id="productFormMount" class="product-form-shell">
+        <p style="text-align: center; color: var(--text-light); padding: 40px;">加载中...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    let products = [];
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+        }
+        const settings = await response.json();
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 产品管理';
+        }
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadProducts() {
+      try {
+        const response = await fetch('/api/products', { credentials: 'include' });
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+        }
+        products = await response.json();
+        renderTable();
+        updateStats();
+      } catch (error) {
+        console.error('Error loading products:', error);
+        document.getElementById('products-table').innerHTML =
+          '<tr><td colspan="8" class="empty-state" style="color:#ef4444;">加载失败</td></tr>';
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('products-table');
+      if (!products || products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无产品</td></tr>';
+        return;
+      }
+      tbody.innerHTML = products.map(product => {
+        const savedTiers = product.pricingTiers || product.pricing_tiers;
+        const hasTiers = savedTiers && savedTiers.length > 0;
+        let priceDisplay;
+        if (product.isCourse === true || product.isCourse === 1) {
+          const linkCount = (product.courseLinks || []).length;
+          priceDisplay = `<span class="badge badge-purple">课程型</span><br><small style="color:#64748b;">${linkCount} 个链接</small>`;
+        } else if (hasTiers) {
+          const tierPrices = savedTiers.map(t => t.label + ':¥' + t.price).join(' / ');
+          priceDisplay = `<span class="badge badge-info">多方案</span><br><small style="color:#64748b;">${tierPrices}</small>`;
+        } else {
+          priceDisplay = '¥' + product.price;
+        }
+        return `
+          <tr>
+            <td>${escapeHtml(product.id)}</td>
+            <td><strong>${escapeHtml(product.name)}</strong></td>
+            <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${escapeHtml(product.shortName || '-')}</code></td>
+            <td><span class="badge badge-neutral">${escapeHtml(product.category)}</span></td>
+            <td>${priceDisplay}</td>
+            <td>${escapeHtml(product.version)}</td>
+            <td>${escapeHtml(product.platform)}</td>
+            <td class="table-actions">
+              <button class="btn-edit" data-edit-id="${escapeHtml(product.id)}">编辑</button>
+              <button class="btn-delete" onclick="deleteProduct(${escapeHtml(product.id)})">删除</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateStats() {
+      const total = products.length;
+      const featured = products.filter(p => p.featured).length;
+      const totalValue = products.reduce((sum, p) => sum + p.price, 0);
+      const categories = [...new Set(products.map(p => p.category))].length;
+      document.getElementById('total-products').textContent = total;
+      document.getElementById('featured-products').textContent = featured;
+      document.getElementById('total-value').textContent = '¥' + totalValue;
+      document.getElementById('categories').textContent = categories;
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('确定要删除此产品吗？')) return;
+      try {
+        const response = await fetch(`/api/products/${id}`, { method: 'DELETE', credentials: 'include' });
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          alert('删除产品失败');
+          return;
+        }
+        alert('产品删除成功');
+        loadProducts();
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        alert('删除产品时出错');
+      }
+    }
+
+    function toggleSidebarSubmenu(link) {
+      const submenu = link.nextElementSibling;
+      if (submenu && submenu.classList.contains('sidebar-submenu')) {
+        submenu.classList.toggle('open');
+        link.classList.toggle('open');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadProducts();
+
+      // === Modal: 加载并打开产品表单 ===
+      let productFormInstance = null;
+
+      function loadScriptOnce(src) {
+        return new Promise(function(resolve, reject) {
+          if (document.querySelector('script[src="' + src + '"]')) { resolve(); return; }
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = resolve;
+          s.onerror = function() { reject(new Error('Failed to load ' + src)); };
+          document.head.appendChild(s);
+        });
+      }
+
+      async function openProductModal(mode, productId) {
+        productId = productId || null;
+        const modal = document.getElementById('productModal');
+        const mount = document.getElementById('productFormMount');
+
+        // 先显示 modal（让用户立刻看到反馈）
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+
+        try {
+          // 每次打开都重新 fetch HTML 并重新挂载 partial，
+          // 这样避免上次打开的字段值残留在表单里
+          if (productFormInstance) {
+            productFormInstance.destroy();
+            productFormInstance = null;
+          }
+
+          const html = await fetch('/admin-product-form.html').then(function(r) { return r.text(); });
+          mount.innerHTML = html;
+
+          // JS script 只在首次加载时挂到 head
+          if (!window.ProductForm) {
+            await loadScriptOnce('/js/admin-product-form.js?v=20260622-1000');
+          }
+
+          productFormInstance = window.ProductForm.init(mount, {
+            mode: mode,
+            productId: productId,
+            onSaved: function() {
+              closeProductModal();
+              loadProducts();
+            },
+            onCancel: closeProductModal
+          });
+        } catch (err) {
+          console.error('Modal open error:', err);
+          alert('表单加载失败');
+          closeProductModal();
+        }
+      }
+
+      function closeProductModal() {
+        const modal = document.getElementById('productModal');
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        if (productFormInstance) {
+          productFormInstance.destroy();
+          productFormInstance = null;
+        }
+      }
+
+      // 事件绑定
+      document.getElementById('add-product-btn').addEventListener('click', function() {
+        openProductModal('create');
+      });
+      document.getElementById('product-modal-close').addEventListener('click', closeProductModal);
+      document.getElementById('productModal').addEventListener('click', function(e) {
+        // 点击 backdrop 关闭（点击 modal 内容不关）
+        if (e.target === this) closeProductModal();
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !document.getElementById('productModal').hidden) {
+          closeProductModal();
+        }
+      });
+      // 编辑按钮（用事件委托，renderTable 字符串拼接里只有 data-edit-id）
+      document.getElementById('products-table').addEventListener('click', function(e) {
+        const btn = e.target.closest('button[data-edit-id]');
+        if (!btn) return;
+        openProductModal('edit', parseInt(btn.dataset.editId, 10));
+      });
+
+      // Highlight current page in sidebar
+      const currentPath = window.location.pathname;
+      document.querySelectorAll('.sidebar-nav a').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentPath) {
+          link.classList.add('active');
+          const submenu = link.closest('.sidebar-submenu');
+          if (submenu) {
+            submenu.classList.add('open');
+            const parentLink = submenu.previousElementSibling;
+            if (parentLink) parentLink.classList.add('open');
+          }
+        }
+      });
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>

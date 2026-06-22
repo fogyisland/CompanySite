@@ -1,0 +1,219 @@
+<!-- 产品表单 partial - 由 ProductForm.init() 挂载激活 -->
+<form id="product-form" class="product-form">
+  <input type="hidden" id="product-id">
+
+  <!-- 迁移提示（默认隐藏） -->
+  <div id="tier-migration-notice" class="tier-migration-notice" hidden>
+    <strong>数据迁移提示：</strong>
+    <span id="tier-migration-text"></span>
+  </div>
+
+  <div class="form-section">
+    <h3 class="section-title">基本信息</h3>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label for="name">产品名称 *</label>
+        <input type="text" id="name" name="name" required placeholder="例如：CodeFlow Pro">
+      </div>
+
+      <div class="form-field">
+        <label for="shortName">产品简写名称</label>
+        <input type="text" id="shortName" name="shortName" placeholder="例如：xiaomingMailPrivate">
+        <small class="form-hint">客户端注册时使用此名称</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label for="category">分类 *</label>
+        <select id="category" name="category" required>
+          <option value="开发工具">开发工具</option>
+          <option value="设计软件">设计软件</option>
+          <option value="安全软件">安全软件</option>
+          <option value="效率工具">效率工具</option>
+          <option value="实用工具">实用工具</option>
+        </select>
+      </div>
+
+      <div class="form-field" id="priceField">
+        <label for="price">基础价格 (¥) *</label>
+        <input type="number" id="price" name="price" min="0" step="0.01" required placeholder="79">
+        <small class="form-hint">订阅方案启用后此价格不参与购买</small>
+      </div>
+    </div>
+
+    <div class="checkbox-field course-field">
+      <input type="checkbox" id="isCourse" name="isCourse">
+      <label for="isCourse">课程型产品（无价格，仅链接 + 介绍）</label>
+    </div>
+
+    <div class="course-links-section" id="courseLinksSection" hidden>
+      <h4 class="section-subtitle">课程链接</h4>
+      <div id="course-links-list">
+        <!-- 动态渲染行 -->
+      </div>
+      <button type="button" class="btn btn-outline" id="add-course-link-btn">
+        + 添加链接
+      </button>
+    </div>
+
+    <div class="checkbox-field">
+      <input type="checkbox" id="usePricingTiers" name="usePricingTiers">
+      <label for="usePricingTiers">启用订阅方案（月付 / 年付）</label>
+    </div>
+
+    <div class="subscription-section" id="subscriptionSection" hidden>
+      <h4 class="subscription-title">订阅方案</h4>
+      <div class="subscription-tier-row">
+        <label>月付 <span class="tier-meta">(1 个月)</span></label>
+        <input type="number" id="tier-monthly-price" min="0" step="0.01" placeholder="29">
+        <span class="tier-suffix">¥/月</span>
+      </div>
+      <div class="subscription-tier-row">
+        <label>年付 <span class="tier-meta">(12 个月)</span></label>
+        <input type="number" id="tier-yearly-price" min="0" step="0.01" placeholder="299">
+        <span class="tier-suffix">¥/年</span>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="description">产品描述（支持富文本）</label>
+      <div class="rich-editor">
+        <div class="rich-toolbar">
+          <button type="button" data-cmd="bold"><b>B</b></button>
+          <button type="button" data-cmd="italic"><i>I</i></button>
+          <button type="button" data-cmd="underline"><u>U</u></button>
+          <button type="button" data-cmd="strikeThrough"><s>S</s></button>
+          <button type="button" data-cmd="insertUnorderedList">• 列表</button>
+          <button type="button" data-cmd="insertOrderedList">1. 列表</button>
+          <button type="button" data-cmd-format="h3">标题</button>
+          <button type="button" data-cmd-format="p">段落</button>
+          <div class="image-upload-btn">
+            <button type="button" id="rich-image-btn">插入图片</button>
+            <input type="file" accept="image/*" id="rich-image-file" style="display:none;">
+          </div>
+        </div>
+        <div id="description" class="rich-content" contenteditable="true"
+             data-placeholder="详细描述产品的功能和特点..."></div>
+      </div>
+      <div class="rich-actions">
+        <button type="button" class="btn btn-success" id="ai-optimize-btn">AI优化描述</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h3 class="section-title">产品信息</h3>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label for="version">版本号</label>
+        <input type="text" id="version" name="version" placeholder="1.0.0">
+      </div>
+      <div class="form-field">
+        <label for="platform">支持平台</label>
+        <input type="text" id="platform" name="platform" placeholder="Windows / Mac / Linux">
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="icon">图标类型</label>
+      <select id="icon" name="icon">
+        <option value="code">代码 (Code)</option>
+        <option value="palette">设计 (Palette)</option>
+        <option value="shield">安全 (Shield)</option>
+        <option value="check">任务 (Check)</option>
+        <option value="cloud">云端 (Cloud)</option>
+        <option value="image">图像 (Image)</option>
+        <option value="software">软件 (Software)</option>
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label>功能特点（每行一个）</label>
+      <textarea id="features-input" rows="4" placeholder="输入功能特点，每行一个"></textarea>
+      <button type="button" class="btn btn-primary" id="parse-features-btn"
+              style="margin-top: 8px;">解析功能列表</button>
+    </div>
+
+    <div class="form-field">
+      <label>下载方式</label>
+      <div class="checkbox-field">
+        <input type="checkbox" id="useExternalLink" name="useExternalLink">
+        <label for="useExternalLink">使用外部下载链接</label>
+      </div>
+    </div>
+
+    <div class="form-field" id="externalLinkSection" hidden>
+      <label for="externalLink">外部下载链接</label>
+      <input type="url" id="externalLink" name="externalLink"
+             placeholder="https://example.com/download/software.exe">
+    </div>
+
+    <div class="form-field" id="softwareUploadSection">
+      <label>软件文件上传</label>
+      <div class="software-upload-section" id="software-upload-section">
+        <input type="file" id="software-file" style="display:none;"
+               accept=".exe,.zip,.rar,.7z,.msi,.dmg,.pkg,.deb,.rpm,.appimage,.jar,.war,.pdf">
+        <div id="software-upload-placeholder">
+          <p style="margin-bottom: 10px; color: var(--text-light);">点击按钮选择软件安装包文件</p>
+          <button type="button" class="btn btn-outline" id="software-file-btn">选择文件</button>
+          <p style="margin-top: 10px; font-size: 12px; color: var(--text-light);">
+            支持格式: exe, zip, rar, 7z, msi, dmg, deb, rpm, jar, pdf 等</p>
+        </div>
+        <div id="software-info" hidden>
+          <div class="software-info">
+            <div>
+              <div class="file-name" id="software-file-name"></div>
+              <div class="file-size" id="software-file-size"></div>
+            </div>
+            <button type="button" class="btn-remove-file" id="remove-software-btn">删除</button>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="downloadUrl" name="downloadUrl" value="">
+    </div>
+
+    <div class="form-field">
+      <label>产品图片上传</label>
+      <div class="software-upload-section" id="product-image-upload-section">
+        <input type="file" id="product-image-file" style="display:none;" accept="image/*">
+        <div id="product-image-upload-placeholder">
+          <p style="margin-bottom: 10px; color: var(--text-light);">
+            点击按钮选择产品图片（显示在产品详情页）</p>
+          <button type="button" class="btn btn-outline" id="product-image-btn">选择图片</button>
+          <p style="margin-top: 10px; font-size: 12px; color: var(--text-light);">
+            支持格式: jpg, png, gif, webp 等</p>
+        </div>
+        <div id="product-image-preview" hidden>
+          <div class="software-info">
+            <div>
+              <img id="product-image-display" src="" style="max-width: 200px; max-height: 150px;">
+            </div>
+            <button type="button" class="btn-remove-file" id="remove-product-image-btn">删除</button>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="productImage" name="productImage" value="">
+      <div style="margin-top: 8px;">
+        <label class="checkbox-field">
+          <input type="checkbox" id="imageDarkBg" name="imageDarkBg" style="width: auto; margin-right: 6px;">
+          图片背景为深色（使用白色文字）
+        </label>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label class="checkbox-field">
+        <input type="checkbox" id="featured" name="featured" style="width: auto; margin-right: 8px;">
+        设为精选产品
+      </label>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="/admin-product" class="btn-back" id="cancel-btn">&larr; 返回列表</a>
+    <button type="submit" class="btn btn-primary" id="submit-btn">保存产品</button>
+  </div>
+</form>

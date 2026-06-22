@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - 数据库设置</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260621-1939">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1939">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260621-1625">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main settings-page">
+      <h1 class="page-title">数据库设置</h1>
+      <p class="page-desc">管理数据库连接配置和数据备份</p>
+
+      <div class="settings-tabs">
+        <button type="button" class="settings-tab active" data-tab="connection">数据库连接配置</button>
+        <button type="button" class="settings-tab" data-tab="backup">数据备份与恢复</button>
+      </div>
+
+      <div class="settings-panel" id="panel-connection">
+        <div class="alert" id="message"></div>
+
+        <div class="settings-card">
+          <div class="settings-group">
+            <h3 class="settings-heading">MySQL 连接配置</h3>
+            <div class="field">
+              <label>主机地址</label>
+              <input type="text" id="mysql-host" readonly>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>端口</label>
+                <input type="text" id="mysql-port" readonly>
+              </div>
+              <div class="field">
+                <label>数据库名</label>
+                <input type="text" id="mysql-database" readonly>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>用户名</label>
+                <input type="text" id="mysql-user" readonly>
+              </div>
+              <div class="field">
+                <label>密码</label>
+                <input type="password" id="mysql-password" readonly placeholder="******">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions-back">
+          <a href="/admin-product" class="link-back">← 返回</a>
+        </div>
+      </div>
+
+      <div class="settings-panel" id="panel-backup" hidden>
+        <div id="backup-alert"></div>
+
+        <div class="backup-warning">
+          ⚠️ <strong>恢复操作</strong>会覆盖所有数据库内容且不可撤销。建议在恢复前先下载当前备份。
+        </div>
+
+        <div class="backup-section">
+          <h3>立即备份</h3>
+          <p style="color: var(--admin-text-secondary); margin: 0 0 12px; font-size: var(--admin-font-size-base);">
+            创建当前数据库的完整快照，保存到服务器并保留最近 3 份。
+          </p>
+          <button type="button" id="btn-create-backup" class="admin-btn-primary">立即备份</button>
+        </div>
+
+        <div class="backup-section">
+          <h3>备份列表</h3>
+          <div id="backup-list-container">
+            <div class="backup-empty">加载中...</div>
+          </div>
+        </div>
+
+        <div class="backup-section">
+          <h3>从本地 .sql 文件恢复</h3>
+          <p style="color: var(--admin-text-secondary); margin: 0 0 12px; font-size: var(--admin-font-size-base);">
+            上传本地 .sql 文件并立即恢复。文件最大 100 MB。
+          </p>
+          <input type="file" id="upload-sql-input" accept=".sql" style="margin-bottom: 12px;">
+          <br>
+          <button type="button" id="btn-upload-restore" class="admin-btn-primary" style="background: var(--admin-danger, #cf222e);">上传并恢复</button>
+        </div>
+      </div>
+
+      <div id="restore-modal" class="backup-modal-backdrop" hidden>
+        <div class="backup-modal">
+          <h3>确认恢复</h3>
+          <p>你即将恢复 <code id="restore-modal-filename"></code>。</p>
+          <p style="color: var(--admin-danger, #cf222e); font-weight: 600;">
+            这将覆盖当前所有数据库内容。系统会在恢复前自动创建一份 before-restore 备份。
+          </p>
+          <p>请输入 <code>RESTORE</code> 以确认：</p>
+          <input type="text" id="restore-modal-confirm" class="backup-modal-confirm-input" autocomplete="off">
+          <div class="backup-modal-actions">
+            <button type="button" id="restore-modal-cancel" class="admin-btn-secondary">取消</button>
+            <button type="button" id="restore-modal-confirm-btn" class="admin-btn-primary" style="background: var(--admin-danger, #cf222e);" disabled>确认恢复</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const settings = await response.json();
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+        }
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    async function loadDbConfig() {
+      try {
+        const response = await fetch('/api/db-config', { credentials: 'include' });
+        if (!response.ok && response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        const config = await response.json();
+        if (config && config.mysql) {
+          document.getElementById('mysql-host').value = config.mysql.host || '';
+          document.getElementById('mysql-port').value = config.mysql.port || '3306';
+          document.getElementById('mysql-user').value = config.mysql.user || '';
+          document.getElementById('mysql-password').value = config.mysql.password || '';
+          document.getElementById('mysql-database').value = config.mysql.database || '';
+        } else if (config) {
+          document.getElementById('mysql-host').value = config.host || '';
+          document.getElementById('mysql-port').value = config.port || '3306';
+          document.getElementById('mysql-user').value = config.user || '';
+          document.getElementById('mysql-password').value = config.password || '';
+          document.getElementById('mysql-database').value = config.database || '';
+        }
+      } catch (error) {
+        console.error('Error loading db config:', error);
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'alert alert-' + type;
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadDbConfig();
+    });
+  </script>
+  <script>
+    // Tab switching
+    document.querySelectorAll('.settings-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.tab;
+        document.querySelectorAll('.settings-tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.settings-panel').forEach(p => {
+          p.hidden = (p.id !== `panel-${target}`);
+        });
+      });
+    });
+  </script>
+  <script>
+    const $alert = document.getElementById('backup-alert');
+    function showAlert(msg, kind) {
+      $alert.className = 'backup-alert backup-alert-' + kind;
+      $alert.textContent = msg;
+      setTimeout(() => { $alert.textContent = ''; $alert.className = ''; }, 5000);
+    }
+
+    async function loadBackupList() {
+      const container = document.getElementById('backup-list-container');
+      container.innerHTML = '<div class="backup-empty">加载中...</div>';
+      try {
+        const res = await fetch('/api/admin/backup/list', { credentials: 'include' });
+        if (!res.ok) throw new Error('List failed: ' + res.status);
+        const data = await res.json();
+        if (data.backups.length === 0) {
+          container.innerHTML = '<div class="backup-empty">暂无备份</div>';
+          return;
+        }
+        container.innerHTML = `
+          <table class="backup-table">
+            <thead>
+              <tr><th>文件名</th><th>大小</th><th>创建时间</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+              ${data.backups.map(b => `
+                <tr>
+                  <td><code>${escapeHtml(b.filename)}</code></td>
+                  <td>${(b.size / 1024).toFixed(1)} KB</td>
+                  <td>${new Date(b.createdAt).toLocaleString('zh-CN')}</td>
+                  <td class="backup-row-actions">
+                    <button onclick="downloadBackup('${escapeHtml(b.filename)}')">下载</button>
+                    <button onclick="showRestoreModal('${escapeHtml(b.filename)}')">恢复</button>
+                    ${b.kind === 'manual' ? `<button class="danger" onclick="deleteBackup('${escapeHtml(b.filename)}')">删除</button>` : ''}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        container.innerHTML = '<div class="backup-empty">加载失败: ' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    function downloadBackup(filename) {
+      window.location.href = '/api/admin/backup/download/' + encodeURIComponent(filename);
+    }
+
+    async function deleteBackup(filename) {
+      if (!confirm('确认删除 ' + filename + ' ？')) return;
+      try {
+        const res = await fetch('/api/admin/backup/' + encodeURIComponent(filename), {
+          method: 'DELETE', credentials: 'include'
+        });
+        if (!res.ok) throw new Error((await res.json()).error || res.status);
+        showAlert('已删除', 'success');
+        loadBackupList();
+      } catch (e) {
+        showAlert('删除失败: ' + e.message, 'error');
+      }
+    }
+
+    // Restore modal (Task 6)
+    const $restoreModal = document.getElementById('restore-modal');
+    const $restoreFilename = document.getElementById('restore-modal-filename');
+    const $restoreConfirmInput = document.getElementById('restore-modal-confirm');
+    const $restoreConfirmBtn = document.getElementById('restore-modal-confirm-btn');
+    let pendingRestoreFilename = '';
+
+    function showRestoreModal(filename) {
+      pendingRestoreFilename = filename;
+      $restoreFilename.textContent = filename;
+      $restoreConfirmInput.value = '';
+      $restoreConfirmBtn.disabled = true;
+      $restoreModal.hidden = false;
+      $restoreConfirmInput.focus();
+    }
+
+    document.getElementById('restore-modal-cancel').addEventListener('click', () => {
+      $restoreModal.hidden = true;
+      pendingRestoreFilename = '';
+    });
+
+    $restoreConfirmInput.addEventListener('input', () => {
+      $restoreConfirmBtn.disabled = ($restoreConfirmInput.value.trim() !== 'RESTORE');
+    });
+
+    $restoreConfirmBtn.addEventListener('click', async () => {
+      if ($restoreConfirmInput.value.trim() !== 'RESTORE') return;
+      $restoreConfirmBtn.disabled = true;
+      $restoreConfirmBtn.textContent = '恢复中...';
+      try {
+        const res = await fetch('/api/admin/backup/restore', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: pendingRestoreFilename })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.status);
+        showAlert('恢复完成。before-restore 备份: ' + data.beforeRestoreBackup, 'success');
+        $restoreModal.hidden = true;
+        loadBackupList();
+      } catch (e) {
+        showAlert('恢复失败: ' + e.message + ' (before-restore 备份保留供手动回滚)', 'error');
+      } finally {
+        $restoreConfirmBtn.textContent = '确认恢复';
+      }
+    });
+
+    // Upload + restore
+    document.getElementById('btn-upload-restore').addEventListener('click', async () => {
+      const fileInput = document.getElementById('upload-sql-input');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showAlert('请先选择 .sql 文件', 'error');
+        return;
+      }
+      const file = fileInput.files[0];
+      if (file.size > 100 * 1024 * 1024) {
+        showAlert('文件超过 100 MB 限制', 'error');
+        return;
+      }
+      if (!confirm(`即将上传 ${file.name} (${(file.size/1024).toFixed(1)} KB) 并覆盖生产数据库。确认继续？`)) return;
+      const btn = document.getElementById('btn-upload-restore');
+      btn.disabled = true; btn.textContent = '上传中...';
+      try {
+        const fd = new FormData();
+        fd.append('sqlFile', file);
+        const upRes = await fetch('/api/admin/backup/upload', {
+          method: 'POST', credentials: 'include', body: fd
+        });
+        const upData = await upRes.json();
+        if (!upRes.ok) throw new Error(upData.error || upRes.status);
+        showRestoreModal(upData.filename);
+        btn.textContent = '上传并恢复';
+      } catch (e) {
+        showAlert('上传失败: ' + e.message, 'error');
+        btn.disabled = false; btn.textContent = '上传并恢复';
+      }
+    });
+
+    document.getElementById('btn-create-backup').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-create-backup');
+      btn.disabled = true; btn.textContent = '备份中...';
+      try {
+        const res = await fetch('/api/admin/backup/create', {
+          method: 'POST', credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.status);
+        showAlert('备份完成: ' + data.filename, 'success');
+        loadBackupList();
+      } catch (e) {
+        showAlert('备份失败: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = '立即备份';
+      }
+    });
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // Initial load
+    loadBackupList();
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260621-1625" defer></script>
+</body>
+</html>
