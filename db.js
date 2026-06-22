@@ -2045,6 +2045,82 @@ async function getPublishedProductDoc(productSlug, docSlug) {
   return rows.length ? rows[0] : null;
 }
 
+// === News 模块（公告/公司动态） ===
+async function getAllNews() {
+  const [rows] = await mysqlPool.query(
+    'SELECT * FROM news ORDER BY is_pinned DESC, published_at DESC, sort_order DESC, id DESC'
+  );
+  return rows;
+}
+
+async function getNews(id) {
+  const [rows] = await mysqlPool.query('SELECT * FROM news WHERE id = ?', [id]);
+  return rows[0] || null;
+}
+
+async function getNewsBySlug(slug) {
+  const [rows] = await mysqlPool.query('SELECT * FROM news WHERE slug = ?', [slug]);
+  return rows[0] || null;
+}
+
+async function getPublishedNews({ category, page = 1, pageSize = 12 } = {}) {
+  const offset = (page - 1) * pageSize;
+  let sql = 'SELECT id, title, slug, excerpt, cover_image, category, is_pinned, status, view_count, published_at, sort_order, created_at FROM news WHERE status = ?';
+  const params = ['published'];
+  if (category) {
+    sql += ' AND category = ?';
+    params.push(category);
+  }
+  sql += ' ORDER BY is_pinned DESC, published_at DESC, sort_order DESC, id DESC LIMIT ? OFFSET ?';
+  params.push(pageSize, offset);
+  const [rows] = await mysqlPool.query(sql, params);
+  return rows;
+}
+
+async function createNews(data) {
+  const { title, slug, excerpt, contentHtml, coverImage, category, isPinned = false, sortOrder = 0 } = data;
+  const [result] = await mysqlPool.query(
+    'INSERT INTO news (title, slug, excerpt, content_html, cover_image, category, is_pinned, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [title, slug, excerpt, contentHtml, coverImage, category, isPinned ? 1 : 0, sortOrder]
+  );
+  return { id: result.insertId };
+}
+
+async function updateNews(id, data) {
+  const { title, slug, excerpt, contentHtml, coverImage, category, isPinned, sortOrder } = data;
+  await mysqlPool.query(
+    'UPDATE news SET title = ?, slug = ?, excerpt = ?, content_html = ?, cover_image = ?, category = ?, is_pinned = ?, sort_order = ? WHERE id = ?',
+    [title, slug, excerpt, contentHtml, coverImage, category, isPinned ? 1 : 0, sortOrder, id]
+  );
+  return { ok: true };
+}
+
+async function deleteNews(id) {
+  await mysqlPool.query('DELETE FROM news WHERE id = ?', [id]);
+  return { ok: true };
+}
+
+async function publishNews(id) {
+  // 首次发布设置 published_at = NOW()；已发布则保持原值
+  await mysqlPool.query(
+    'UPDATE news SET status = ?, published_at = COALESCE(published_at, NOW()) WHERE id = ?',
+    ['published', id]
+  );
+  return { ok: true };
+}
+
+async function unpublishNews(id) {
+  // 撤稿：status=draft，**保留** published_at
+  await mysqlPool.query('UPDATE news SET status = ? WHERE id = ?', ['draft', id]);
+  return { ok: true };
+}
+
+async function incrementNewsView(id) {
+  // 原子自增
+  await mysqlPool.query('UPDATE news SET view_count = view_count + 1 WHERE id = ? AND status = ?', [id, 'published']);
+  return { ok: true };
+}
+
 module.exports = {
   initDatabase,
   getDbConfig,
@@ -2187,5 +2263,16 @@ module.exports = {
   publishProductDoc,
   unpublishProductDoc,
   listPublishedProductDocs,
-  getPublishedProductDoc
+  getPublishedProductDoc,
+  // News（公告/公司动态）
+  getAllNews,
+  getNews,
+  getNewsBySlug,
+  getPublishedNews,
+  createNews,
+  updateNews,
+  deleteNews,
+  publishNews,
+  unpublishNews,
+  incrementNewsView
 };
