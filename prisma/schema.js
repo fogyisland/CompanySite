@@ -265,5 +265,21 @@ module.exports = {
     "reminder_count": "int(11) DEFAULT 0",
     "created_at": "timestamp DEFAULT CURRENT_TIMESTAMP",
     "updated_at": "timestamp DEFAULT CURRENT_TIMESTAMP"
+  },
+  "news": {
+    "id": "int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY",
+    "title": "varchar(255) NOT NULL",
+    "slug": "varchar(255) NOT NULL UNIQUE",
+    "excerpt": "text",
+    "content_html": "mediumtext",
+    "cover_image": "varchar(500)",
+    "category": "varchar(50)",
+    "is_pinned": "tinyint(1) DEFAULT 0",
+    "status": "enum('draft','published') DEFAULT 'draft'",
+    "view_count": "int(11) DEFAULT 0",
+    "published_at": "timestamp",
+    "sort_order": "int(11) DEFAULT 0",
+    "created_at": "timestamp DEFAULT CURRENT_TIMESTAMP",
+    "updated_at": "timestamp DEFAULT CURRENT_TIMESTAMP"
   }
 };
