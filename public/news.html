@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭动态 - 博铭科技</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📢</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/news.css?v=20260622-2221">
+  <script src="/vendor/dompurify/3.0.6/purify.min.js" defer></script>
+  <style>
+    body { font-family: 'Noto Sans SC', -apple-system, sans-serif; background: var(--bg, #fafafa); color: var(--text, #1a1a1a); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo" id="header-logo">
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="/news.html" style="color: var(--primary, #0969da); font-weight: 500;">动态</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions" id="header-actions">
+        <button class="header-cart" onclick="renderCartModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h19.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+          </svg>
+          <span id="cart-badge" class="cart-badge" style="display:none;">0</span>
+        </button>
+        <a href="/user-login" class="header-login" id="header-login">登录</a>
+        <a href="#" class="header-logout" id="header-logout" style="display:none;" onclick="headerLogout()">退出</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="news-loading">加载中...</div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-container">
+      <p>&copy; 2026 博铭科技. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    let currentCategory = '';
+    let currentPage = 1;
+    const pageSize = 12;
+    let cachedList = [];
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    }
+
+    function formatDate(d) {
+      if (!d) return '';
+      const date = new Date(d);
+      return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
+    }
+
+    function getSlug() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('slug');
+    }
+
+    function renderHeader() {
+      // 复用 doc.html 的 header-actions 模式（cart 按钮 + login/logout）
+      const user = window.currentUser || null;
+      if (user) {
+        document.getElementById('header-login').style.display = 'none';
+        document.getElementById('header-logout').style.display = 'inline-block';
+      }
+    }
+
+    async function loadList() {
+      const main = document.getElementById('main-content');
+      main.innerHTML = '<div class="news-loading">加载中...</div>';
+      try {
+        const params = new URLSearchParams();
+        if (currentCategory) params.set('category', currentCategory);
+        params.set('page', currentPage);
+        params.set('pageSize', pageSize);
+        const res = await fetch('/api/news?' + params.toString());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const list = await res.json();
+        cachedList = list;
+        // 加载所有统计（按分类计数，简化：本次只显示当前页）
+        renderList();
+      } catch (e) {
+        main.innerHTML = '<div class="news-error">加载失败：' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    function renderList() {
+      const main = document.getElementById('main-content');
+      const pinned = cachedList.filter(n => n.is_pinned);
+      const normal = cachedList.filter(n => !n.is_pinned);
+      let html = '<div class="news-container">';
+      html += '<div class="news-header"><h1>📢 博铭动态</h1><p>产品更新 · 公司新闻 · 安全公告</p></div>';
+      // 分类 tab
+      const cats = ['产品更新', '公司新闻', '安全公告'];
+      html += '<div class="news-categories">';
+      html += '<button class="news-category-tab ' + (currentCategory === '' ? 'active' : '') + '" onclick="setCategory(\'\')">全部</button>';
+      cats.forEach(c => {
+        html += '<button class="news-category-tab ' + (currentCategory === c ? 'active' : '') + '" onclick="setCategory(\'' + c + '\')">' + escapeHtml(c) + '</button>';
+      });
+      html += '</div>';
+      if (cachedList.length === 0) {
+        html += '<div class="news-empty">暂无动态</div>';
+      } else {
+        // 置顶卡片
+        if (pinned.length > 0 && currentCategory === '') {
+          const p = pinned[0];
+          html += '<a href="?slug=' + encodeURIComponent(p.slug) + '" style="text-decoration: none; color: inherit;">';
+          html += '<div class="news-pinned-card">';
+          if (p.cover_image) html += '<div class="news-cover" style="background-image:url(' + escapeHtml(p.cover_image) + ')"></div>';
+          else html += '<div class="news-cover"></div>';
+          html += '<div class="news-body">';
+          html += '<div class="news-meta"><span class="news-pinned-badge">📌 置顶</span>' + (p.category ? escapeHtml(p.category) + ' · ' : '') + formatDate(p.published_at) + ' · 👁 ' + (p.view_count || 0) + ' 阅读</div>';
+          html += '<h2>' + escapeHtml(p.title) + '</h2>';
+          if (p.excerpt) html += '<div class="news-excerpt">' + escapeHtml(p.excerpt) + '</div>';
+          html += '</div></div></a>';
+        }
+        // 普通卡片
+        html += '<div class="news-grid">';
+        normal.forEach(n => {
+          html += '<a href="?slug=' + encodeURIComponent(n.slug) + '" style="text-decoration: none; color: inherit;">';
+          html += '<div class="news-card">';
+          if (n.cover_image) html += '<div class="news-cover" style="background-image:url(' + escapeHtml(n.cover_image) + ')"></div>';
+          else html += '<div class="news-cover"></div>';
+          html += '<div class="news-body">';
+          if (n.category) html += '<div class="news-category">' + escapeHtml(n.category) + '</div>';
+          html += '<h3>' + escapeHtml(n.title) + '</h3>';
+          if (n.excerpt) html += '<div class="news-excerpt">' + escapeHtml(n.excerpt) + '</div>';
+          html += '<div class="news-meta">' + formatDate(n.published_at) + ' · 👁 ' + (n.view_count || 0) + ' 阅读</div>';
+          html += '</div></div></a>';
+        });
+        html += '</div>';
+        // 分页（简化：仅显示当前页号 + 上下页）
+        html += '<div class="news-pagination">';
+        html += '<button onclick="changePage(' + (currentPage - 1) + ')"' + (currentPage <= 1 ? ' disabled' : '') + '>‹ 上一页</button>';
+        html += '<button class="active">' + currentPage + '</button>';
+        html += '<button onclick="changePage(' + (currentPage + 1) + ')"' + (cachedList.length < pageSize ? ' disabled' : '') + '>下一页 ›</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+      main.innerHTML = html;
+    }
+
+    function setCategory(c) {
+      currentCategory = c;
+      currentPage = 1;
+      loadList();
+    }
+
+    function changePage(p) {
+      if (p < 1) return;
+      currentPage = p;
+      loadList();
+      window.scrollTo(0, 0);
+    }
+
+    async function loadDetail(slug) {
+      const main = document.getElementById('main-content');
+      main.innerHTML = '<div class="news-loading">加载中...</div>';
+      try {
+        const res = await fetch('/api/news/' + encodeURIComponent(slug));
+        if (!res.ok) {
+          main.innerHTML = '<div class="news-error">动态不存在</div>';
+          return;
+        }
+        const n = await res.json();
+        // view_count +1（fire-and-forget，不阻塞渲染）
+        fetch('/api/news/' + n.id + '/view', { method: 'POST' }).catch(() => {});
+        let html = '<div class="news-detail-container">';
+        html += '<a href="/news.html" class="news-back-link">← 返回动态列表</a>';
+        if (n.cover_image) html += '<div class="news-detail-cover" style="background-image:url(' + escapeHtml(n.cover_image) + ')"></div>';
+        html += '<div class="news-detail-meta">' + (n.category ? escapeHtml(n.category) + ' · ' : '') + formatDate(n.published_at) + ' · 👁 ' + (n.view_count || 0) + ' 阅读</div>';
+        html += '<h1 class="news-detail-title">' + escapeHtml(n.title) + '</h1>';
+        const safeHtml = window.DOMPurify ? window.DOMPurify.sanitize(n.content_html || '', { USE_PROFILES: { html: true } }) : (n.content_html || '');
+        html += '<div class="news-detail-content">' + safeHtml + '</div>';
+        html += '</div>';
+        main.innerHTML = html;
+        document.title = n.title + ' - 博铭动态';
+      } catch (e) {
+        main.innerHTML = '<div class="news-error">加载失败：' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    // Init
+    renderHeader();
+    const slug = getSlug();
+    if (slug) {
+      loadDetail(slug);
+    } else {
+      loadList();
+    }
+  </script>
+</body>
+</html>
