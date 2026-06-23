@@ -22,6 +22,30 @@
     ).join('');
   }
 
+  // 课程型产品分类下拉框渲染（软件 vs 课程）
+  const SOFTWARE_CATEGORIES = ['开发工具', '设计软件', '安全软件', '效率工具', '实用工具', '企业产品', 'GitHub 仓库'];
+  const COURSE_CATEGORIES = ['外站课程', '企业内训'];
+
+  function updateCategoryOptions(root, isCourse) {
+    const select = $('#category', root);
+    if (!select) return;
+    const list = isCourse ? COURSE_CATEGORIES : SOFTWARE_CATEGORIES;
+    select.innerHTML = list.map(cat =>
+      '<option value="' + escHtml(cat) + '">' + escHtml(cat) + '</option>'
+    ).join('');
+  }
+
+  // 分类名 → badge CSS class（admin list 用）
+  function getCategoryBadgeClass(category) {
+    const map = {
+      '企业产品': 'badge-enterprise-product',
+      '外站课程': 'badge-external-course',
+      '企业内训': 'badge-enterprise-internal',
+      'GitHub 仓库': 'badge-github-repo'
+    };
+    return map[category] || 'badge-neutral';
+  }
+
   // === 工具 ===
   function $(sel, scope) { return (scope || document).querySelector(sel); }
   function $$(sel, scope) { return Array.prototype.slice.call((scope || document).querySelectorAll(sel)); }
@@ -560,6 +584,14 @@
     // 1. 绑定事件
     // 课程型切换
     state.listeners.push(bind(root, '#isCourse', 'change', function() {
+      const isCourse = $('#isCourse', root).checked;
+      // 切换下拉框选项前保留当前 category（如果在新选项列表里则保留）
+      const currentCategory = $('#category', root).value;
+      updateCategoryOptions(root, isCourse);
+      const validList = isCourse ? COURSE_CATEGORIES : SOFTWARE_CATEGORIES;
+      if (validList.indexOf(currentCategory) !== -1) {
+        $('#category', root).value = currentCategory;
+      }
       toggleCourse(root, state);
     }));
 
@@ -567,6 +599,7 @@
     state.listeners.push(bind(root, '#usePricingTiers', 'change', function() {
       if (this.checked && $('#isCourse', root).checked) {
         $('#isCourse', root).checked = false;
+        updateCategoryOptions(root, false);
         toggleCourse(root, state);
       }
       toggleSubscription(root);
@@ -576,6 +609,7 @@
     state.listeners.push(bind(root, '#useExternalLink', 'change', function() {
       if (this.checked && $('#isCourse', root).checked) {
         $('#isCourse', root).checked = false;
+        updateCategoryOptions(root, false);
         toggleCourse(root, state);
       }
       toggleExternalLink(root);
@@ -715,7 +749,12 @@
     // 2. 加载数据
     loadSettings();
     if (opts.mode === 'edit' && opts.productId) {
-      loadProduct(root, state, opts);
+      loadProduct(root, state, opts).then(function() {
+        updateCategoryOptions(root, !!state.currentProduct?.isCourse);
+      });
+    } else {
+      // 新建模式：默认软件型分类
+      updateCategoryOptions(root, false);
     }
 
     return {
