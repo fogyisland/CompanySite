@@ -7,8 +7,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
-  <link rel="stylesheet" href="/css/pages/admin.css?v=20260622-1700">
-  <link rel="stylesheet" href="/css/admin-theme.css?v=20260622-1700">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
   <link rel="stylesheet" href="/css/admin-product-form.css?v=20260622-1000">
   <link rel="stylesheet" href="/css/admin-product-modal.css?v=20260622-1000">
@@ -82,6 +82,17 @@
       return div.innerHTML;
     }
 
+    // 分类名 → badge CSS class
+    function getCategoryBadgeClass(category) {
+      const map = {
+        '企业产品': 'badge-enterprise-product',
+        '外站课程': 'badge-external-course',
+        '企业内训': 'badge-enterprise-internal',
+        'GitHub 仓库': 'badge-github-repo'
+      };
+      return map[category] || 'badge-neutral';
+    }
+
     let products = [];
 
     async function loadSettings() {
@@ -153,7 +164,7 @@
             <td>${escapeHtml(product.id)}</td>
             <td><strong>${escapeHtml(product.name)}</strong></td>
             <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${escapeHtml(product.shortName || '-')}</code></td>
-            <td><span class="badge badge-neutral">${escapeHtml(product.category)}</span></td>
+            <td><span class="badge ${getCategoryBadgeClass(product.category)}">${escapeHtml(product.category)}</span></td>
             <td>${priceDisplay}</td>
             <td>${escapeHtml(product.version)}</td>
             <td>${escapeHtml(product.platform)}</td>
