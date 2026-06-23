@@ -422,6 +422,69 @@ async function getAllProducts() {
   }));
 }
 
+async function getProductsPaginated({ isCourse, search, page, pageSize }) {
+  const conditions = [];
+  const params = [];
+
+  if (isCourse === true || isCourse === false) {
+    conditions.push('is_course = ?');
+    params.push(isCourse ? 1 : 0);
+  }
+
+  if (search && search.trim() !== '') {
+    conditions.push('(name LIKE ? OR short_name LIKE ?)');
+    const like = '%' + search.trim() + '%';
+    params.push(like, like);
+  }
+
+  const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+  // 总数 (不带 LIMIT/OFFSET)
+  const [countRows] = await mysqlPool.query(
+    'SELECT COUNT(*) AS total FROM products' + where,
+    params
+  );
+  const total = countRows[0].total;
+
+  // 数据 (带 LIMIT/OFFSET + 排序)
+  const offset = (page - 1) * pageSize;
+  const [rows] = await mysqlPool.query(
+    'SELECT * FROM products' + where + ' ORDER BY created_at DESC LIMIT ? OFFSET ?',
+    [...params, pageSize, offset]
+  );
+
+  const products = rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    shortName: row.short_name,
+    category: row.category,
+    price: row.price,
+    pricingTiers: row.pricing_tiers ? JSON.parse(row.pricing_tiers) : null,
+    description: row.description,
+    version: row.version,
+    platform: row.platform,
+    features: row.features ? JSON.parse(row.features) : [],
+    icon: row.icon,
+    featured: row.featured === 1,
+    downloadUrl: row.download_url,
+    externalLink: row.external_link === 1,
+    detailPage: row.detail_page,
+    image: row.image,
+    imageDarkBg: row.image_dark_bg === 1,
+    isCourse: row.is_course === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }));
+
+  return {
+    products,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize) || 1
+  };
+}
+
 async function getProduct(id) {
   const [rows] = await mysqlPool.query("SELECT * FROM products WHERE id = ?", [id]);
   if (rows.length === 0) return null;
@@ -2136,6 +2199,7 @@ module.exports = {
   verifyDataIntegrity,
   verifyLogin,
   getAllProducts,
+  getProductsPaginated,
   getProduct,
   getProductByShortName,
   createProduct,
