@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>产品中心 - 博铭科技</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/product-list.css?v=20260623-1830">
+  <style>
+    body { font-family: 'Noto Sans SC', -apple-system, sans-serif; background: var(--bg, #fafafa); color: var(--text, #1a1a1a); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <div class="logo-icon">SV</div>
+        <span class="logo-text">博铭科技</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="/">产品</a></li>
+          <li><a href="/product/" style="color: var(--primary, #0969da); font-weight: 500;">产品中心</a></li>
+          <li><a href="/#features">特点</a></li>
+          <li><a href="/support">支持</a></li>
+          <li><a href="/contact">联系</a></li>
+          <li><a href="/news.html">动态</a></li>
+          <li><a href="https://blog.booming.one" target="_blank">博客</a></li>
+          <li><a href="/about">关于</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <a href="/user-login" class="header-login">登录</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="product-list-container">
+      <div class="product-list-header">
+        <h1>产品中心</h1>
+        <p>查看全部产品 · 按类型筛选 · 快速搜索</p>
+      </div>
+
+      <div class="product-list-grid">
+        <!-- 主区域: 70% -->
+        <div class="product-list-main">
+          <!-- 工具栏 -->
+          <div class="product-list-toolbar">
+            <div class="product-list-toggle" id="toggle-group">
+              <button class="product-list-toggle-btn active" data-filter="all">全部</button>
+              <button class="product-list-toggle-btn" data-filter="software">软件型</button>
+              <button class="product-list-toggle-btn" data-filter="course">课程型</button>
+            </div>
+            <div class="product-list-search">
+              <input type="text" id="search-input" placeholder="搜索产品名..." />
+              <button class="product-list-search-clear" id="search-clear" style="display:none;">×</button>
+            </div>
+            <div class="product-list-count" id="result-count"></div>
+          </div>
+
+          <!-- 产品列表容器 (JS 填充) -->
+          <div id="product-list-rows"></div>
+
+          <!-- 分页 (JS 填充) -->
+          <div class="product-list-pagination" id="pagination"></div>
+        </div>
+
+        <!-- 侧栏: 30% -->
+        <aside class="product-list-sidebar">
+          <!-- 购买指南 (静态) -->
+          <div class="sidebar-card">
+            <h3>购买指南</h3>
+            <div class="sidebar-faq">
+              <div class="sidebar-faq-item">
+                <div class="sidebar-faq-q">如何选购产品?</div>
+                <div class="sidebar-faq-a">根据您的使用场景选择"软件型"(本团队工具)或"课程型"(外站培训)。软件型按月付/年付订阅;课程型按平台付费。</div>
+              </div>
+              <div class="sidebar-faq-item">
+                <div class="sidebar-faq-q">授权方式有哪些?</div>
+                <div class="sidebar-faq-a">软件型: 月付(1 个月)/ 年付(12 个月) 两种订阅;课程型: 各平台单独付费,详见课程详情。</div>
+              </div>
+              <div class="sidebar-faq-item">
+                <div class="sidebar-faq-q">可以退款吗?</div>
+                <div class="sidebar-faq-a">购买后 7 天内未使用可全额退款,请联系客服提交申请。</div>
+              </div>
+              <div class="sidebar-faq-item">
+                <div class="sidebar-faq-q">支持企业批量采购?</div>
+                <div class="sidebar-faq-a">支持,详情请通过"联系"页面提交企业需求,48 小时内回复方案。</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 常见问题 (动态, JS 填充前 5 条) -->
+          <div class="sidebar-card">
+            <h3>常见问题</h3>
+            <div class="sidebar-faq" id="sidebar-faq-dynamic">
+              <div class="sidebar-faq-loading">加载中...</div>
+            </div>
+            <a href="/faq.html" class="sidebar-card-link">查看全部 →</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-container">
+      <p>&copy; <span id="footer-year">2026</span> 博铭科技. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
