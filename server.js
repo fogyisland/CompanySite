@@ -2169,7 +2169,7 @@ app.get('/product/', (req, res) => {
 });
 
 // 获取产品列表（公开，支持分页 + 过滤）
-app.get('/api/products', async (req, res) => {
+app.get('/api/products', checkPublicEndpointRateLimit, async (req, res) => {
   try {
     const { isCourse, search } = req.query;
     const page = Math.max(1, parseInt(req.query.page) || 1);
