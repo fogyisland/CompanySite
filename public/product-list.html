@@ -114,6 +114,265 @@
 
   <script>
     document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+    // ============ Helpers ============
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[c]);
+    }
+
+    // 分类名 → badge CSS class (与 admin-product.html / index.html / admin-product-form.js 一致)
+    function getCategoryBadgeClass(category) {
+      const map = {
+        '企业产品': 'badge-enterprise-product',
+        '外站课程': 'badge-external-course',
+        '企业内训': 'badge-enterprise-internal',
+        'GitHub 仓库': 'badge-github-repo'
+      };
+      return map[category] || 'product-card-category-badge';
+    }
+
+    // ============ State ============
+
+    let currentFilter = 'all';      // 'all' | 'software' | 'course'
+    let currentSearch = '';
+    let currentPage = 1;
+    let searchDebounceTimer = null;
+
+    // ============ API ============
+
+    async function loadList() {
+      const container = document.getElementById('product-list-rows');
+      container.innerHTML = '<div class="product-list-loading">加载中...</div>';
+
+      try {
+        const params = new URLSearchParams();
+        if (currentFilter === 'software') params.set('isCourse', 'false');
+        else if (currentFilter === 'course') params.set('isCourse', 'true');
+        if (currentSearch) params.set('search', currentSearch);
+        params.set('page', currentPage);
+        params.set('pageSize', 20);
+
+        const res = await fetch('/api/products?' + params.toString());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        renderRows(data.products);
+        renderCount(data.total);
+        renderPagination(data);
+        syncUrl();
+      } catch (e) {
+        container.innerHTML = '<div class="product-list-error">加载失败：' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    async function loadSidebarFaq() {
+      try {
+        const res = await fetch('/api/faqs');
+        if (!res.ok) return;
+        const faqs = await res.json();
+        const top5 = faqs.slice(0, 5);
+        const container = document.getElementById('sidebar-faq-dynamic');
+        if (top5.length === 0) {
+          container.innerHTML = '<div class="sidebar-faq-loading">暂无 FAQ</div>';
+          return;
+        }
+        container.innerHTML = top5.map(f => `
+          <div class="sidebar-faq-item">
+            <div class="sidebar-faq-q">${escapeHtml(f.question)}</div>
+            <div class="sidebar-faq-a">${escapeHtml(f.answer)}</div>
+          </div>
+        `).join('');
+        // 绑定折叠
+        container.querySelectorAll('.sidebar-faq-q').forEach(q => {
+          q.addEventListener('click', () => {
+            q.parentElement.classList.toggle('open');
+          });
+        });
+      } catch (e) {
+        console.error('loadSidebarFaq error:', e);
+      }
+    }
+
+    // ============ Render ============
+
+    function renderRows(products) {
+      const container = document.getElementById('product-list-rows');
+      if (products.length === 0) {
+        const msg = currentSearch
+          ? `<div class="product-list-empty">未找到匹配产品<br><button class="clear-search-btn" onclick="clearSearch()">清除搜索</button></div>`
+          : '<div class="product-list-empty">暂无产品</div>';
+        container.innerHTML = msg;
+        return;
+      }
+
+      container.innerHTML = products.map(p => {
+        const thumbStyle = p.image
+          ? `background-image: url('${escapeHtml(p.image)}');`
+          : '';
+        const badgeClass = getCategoryBadgeClass(p.category);
+        const badgeText = escapeHtml(p.category || '软件');
+
+        // 价格区: 软件型显示 tier; 课程型显示平台数
+        let pricingHtml = '';
+        if (p.isCourse) {
+          // 课程型: 显示平台数
+          const platforms = (p.platform || '').split(/[,，、]/).filter(Boolean);
+          const count = platforms.length;
+          pricingHtml = `<div class="product-list-row-platform">${count} 个平台 · ${escapeHtml(p.platform || '')}</div>`;
+        } else if (p.pricingTiers && p.pricingTiers.length > 0) {
+          pricingHtml = `<div class="product-list-row-pricing">${p.pricingTiers.map(t =>
+            `<span><span class="price-tier-amount">¥${t.price}</span> / ${escapeHtml(t.label)}</span>`
+          ).join('')}</div>`;
+        } else {
+          pricingHtml = `<div class="product-list-row-pricing"><span class="price-tier-amount">¥${p.price}</span></div>`;
+        }
+
+        const btnText = p.isCourse ? '查看课程 →' : '查看详情 →';
+        const btnLink = p.isCourse ? `/product/${p.id}` : `/product/${p.id}`;
+
+        return `
+          <div class="product-list-row">
+            <div class="product-list-row-thumb" style="${thumbStyle}"></div>
+            <div class="product-list-row-body">
+              <div class="product-list-row-title">
+                <h3>${escapeHtml(p.name)}</h3>
+                <span class="product-card-category-badge ${badgeClass}">${badgeText}</span>
+                ${p.isCourse ? '<span class="product-card-category-badge badge-purple">课程型</span>' : ''}
+              </div>
+              ${pricingHtml}
+              <div class="product-list-row-desc">${escapeHtml(p.description || '')}</div>
+              <div class="product-list-row-action">
+                <a href="${btnLink}" class="product-list-row-btn">${btnText}</a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderCount(total) {
+      document.getElementById('result-count').textContent = '共 ' + total + ' 个产品';
+    }
+
+    function renderPagination(data) {
+      const container = document.getElementById('pagination');
+      const { page, totalPages } = data;
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const buttons = [];
+
+      // 上一页
+      buttons.push(`<button onclick="goToPage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>‹</button>`);
+
+      // 页码 (≤7 全显, >7 折叠)
+      const pages = buildPageList(page, totalPages);
+      pages.forEach(p => {
+        if (p === '...') {
+          buttons.push('<span class="ellipsis">...</span>');
+        } else {
+          buttons.push(`<button class="${p === page ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`);
+        }
+      });
+
+      // 下一页
+      buttons.push(`<button onclick="goToPage(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>›</button>`);
+
+      container.innerHTML = buttons.join('');
+    }
+
+    function buildPageList(current, total) {
+      if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+      }
+      const pages = [1];
+      if (current > 3) pages.push('...');
+      const start = Math.max(2, current - 1);
+      const end = Math.min(total - 1, current + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (current < total - 2) pages.push('...');
+      pages.push(total);
+      return pages;
+    }
+
+    function syncUrl() {
+      const params = new URLSearchParams();
+      if (currentPage > 1) params.set('page', currentPage);
+      const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    // ============ Event Handlers ============
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      currentPage = 1;
+      document.querySelectorAll('.product-list-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+      });
+      loadList();
+    }
+
+    function onSearchInput(e) {
+      const val = e.target.value;
+      document.getElementById('search-clear').style.display = val ? 'block' : 'none';
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        currentSearch = val.trim();
+        currentPage = 1;
+        loadList();
+      }, 300);
+    }
+
+    function clearSearch() {
+      document.getElementById('search-input').value = '';
+      document.getElementById('search-clear').style.display = 'none';
+      currentSearch = '';
+      currentPage = 1;
+      loadList();
+    }
+
+    function goToPage(p) {
+      if (p < 1) return;
+      currentPage = p;
+      loadList();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ============ Init ============
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // 从 URL 读 ?page=
+      const params = new URLSearchParams(window.location.search);
+      const pageParam = parseInt(params.get('page'));
+      if (pageParam && pageParam > 0) currentPage = pageParam;
+
+      // 绑定 toggle
+      document.querySelectorAll('.product-list-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => setFilter(btn.dataset.filter));
+      });
+
+      // 绑定搜索
+      const searchInput = document.getElementById('search-input');
+      searchInput.addEventListener('input', onSearchInput);
+      document.getElementById('search-clear').addEventListener('click', clearSearch);
+
+      // 加载数据
+      loadList();
+      loadSidebarFaq();
+
+      // 绑定静态 FAQ (购买指南)
+      document.querySelectorAll('.sidebar-card .sidebar-faq-q').forEach(q => {
+        q.addEventListener('click', () => {
+          q.parentElement.classList.toggle('open');
+        });
+      });
+    });
   </script>
 </body>
 </html>
