@@ -2163,10 +2163,29 @@ app.delete('/api/installs/:id', requireAuth, async (req, res) => {
 
 // ============ API路由 - 产品 ============
 
-// 获取所有产品
+// 公开：产品列表页
+app.get('/product/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'product-list.html'));
+});
+
+// 获取产品列表（公开，支持分页 + 过滤）
 app.get('/api/products', async (req, res) => {
-  const products = await db.getAllProducts();
-  res.json(products);
+  try {
+    const { isCourse, search } = req.query;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize) || 20));
+    const isCourseFilter = isCourse === 'true' ? true : isCourse === 'false' ? false : null;
+    const result = await db.getProductsPaginated({
+      isCourse: isCourseFilter,
+      search: search || '',
+      page,
+      pageSize
+    });
+    res.json(result);
+  } catch (e) {
+    console.error('GET /api/products error:', e);
+    res.status(500).json({ error: '服务器错误' });
+  }
 });
 
 // 获取单个产品

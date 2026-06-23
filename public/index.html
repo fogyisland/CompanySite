@@ -195,7 +195,8 @@
     async function loadHeroProducts() {
       try {
         const response = await fetch('/api/products');
-        let products = await response.json();
+        const data = await response.json();
+        let products = Array.isArray(data) ? data : (data.products || []);
 
         const slides = document.getElementById('hero-carousel-slides');
         const dots = document.getElementById('hero-carousel-dots');
@@ -448,7 +449,8 @@
     async function loadProducts() {
       try {
         const response = await fetch('/api/products');
-        let products = await response.json();
+        const data = await response.json();
+        let products = Array.isArray(data) ? data : (data.products || []);
         const grid = document.getElementById('products-grid');
         if (!grid || !products) return;
 
