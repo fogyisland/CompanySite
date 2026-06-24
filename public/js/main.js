@@ -159,7 +159,8 @@ function renderProducts(products) {
 async function loadProducts() {
   try {
     const response = await fetch('/api/products');
-    const products = await response.json();
+    const data = await response.json();
+    const products = Array.isArray(data) ? data : (data.products || []);
     renderProducts(products);
   } catch (error) {
     console.error('Error loading products:', error);
