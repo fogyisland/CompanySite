@@ -11,6 +11,8 @@ logs/
 # Environment
 .env
 .env.*
+# 例外: .env.example 是密钥模板(占位值),需要入库
+!.env.example
 
 # IDE
 .vscode/

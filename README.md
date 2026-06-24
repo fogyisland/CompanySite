@@ -280,6 +280,13 @@
 # 安装依赖
 npm install
 
+# 配置 .env（必须，fail-closed 启动检查）
+cp .env.example .env
+# 编辑 .env 填入真实值,至少需要:
+#   SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64'))")
+#   CRON_TOKEN=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+#   DB_HOST / DB_USER / DB_PASSWORD / DB_NAME
+
 # 配置数据库
 # 编辑 data/db-config.json
 
@@ -287,8 +294,16 @@ npm install
 node server.js
 
 # 访问网站
-http://localhost:3000
+http://localhost:15000
 ```
+
+## Secrets Management
+
+- **`.env` 是 git 忽略的**，密钥绝不入库。模板用 `.env.example`（已追踪）引导。
+- **`SESSION_SECRET` / `CRON_TOKEN` 启动时 fail-closed** — 未设置或命中已知占位黑名单（`server.js:748-762`）时 `process.exit(1)`。
+- **密钥轮换**流程见 [`docs/secrets-rotation.md`](docs/secrets-rotation.md)（含 4 个变量的紧急轮换步骤 + 90 天节奏 + 故障排查）。
+- **不在命令行暴露 DB 密码** — mysqldump / mysql 客户端调用走 `--defaults-file` 临时文件（`server.js:43-70`），mode 0600 + 立即 unlink。
+- **生产建议**：用 secret manager（AWS SSM / HashiCorp Vault / Azure Key Vault），或至少 `icacls .env /inheritance:r /grant:r "%USERNAME%:(R,W)"`。
 
 ## 目录结构
 
