@@ -412,9 +412,15 @@ async function verifyLogin(username, password) {
   if (rows.length === 0) return null;
   const match = await bcrypt.compare(password, rows[0].password);
   if (!match) return null;
-  // 丢弃 password 字段，只返回安全字段（id, username, is_admin, email, email_verified）
-  const { password: _pw, ...safeUser } = rows[0];
-  return safeUser;
+  // 修复 I3: 改用白名单显式 return,避免 destructure spread 模式意外暴露新增列(如未来加 password_reset_token)
+  const u = rows[0];
+  return {
+    id: u.id,
+    username: u.username,
+    is_admin: u.is_admin,
+    email: u.email,
+    email_verified: u.email_verified
+  };
 }
 
 // ============ 产品操作 ============
@@ -1751,7 +1757,7 @@ async function getTableCount(tableName) {
     if (!allowedTables.includes(tableName)) {
       return 0;
     }
-    const [rows] = await mysqlPool.query("SELECT COUNT(*) as c FROM `" + tableName + "`");
+    const [rows] = await mysqlPool.query("SELECT COUNT(*) as c FROM ??", [tableName]);
     return rows[0].c || 0;
   } catch (e) {
     return 0;

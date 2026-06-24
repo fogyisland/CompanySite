@@ -1636,6 +1636,8 @@ app.post('/api/admin/orders/:id/approve-payment', requireAuth, async (req, res) 
     });
 
     // 发邮件给用户
+    // 注: order.* 来自 db.getOrder() 直接 row map,DB 列名保持 snake_case(user_id / created_at 等)
+    //     getOrder() 已在 db.js 内做一次映射,对外暴露 camelCase;此处是内部 helper 链,无需二次转换
     const userRows = await db.query("SELECT email FROM users WHERE id = ?", [order.user_id]);
     if (userRows.length > 0 && userRows[0].email) {
       const codeList = generatedCodes.map(c => `  ${c.productShortName}: ${c.code}`).join('\n');
@@ -2793,11 +2795,13 @@ app.post('/api/admin/news/:id/unpublish', requireAuth, async (req, res) => {
 app.post('/api/upload-doc-image', requireAuth, docImageUpload.single('file'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: '未上传文件' });
-    const normalizedDest = req.file.destination.replace(/\\/g, '/');
-    const relPath = `/uploads/doc-images${normalizedDest.split('uploads/doc-images')[1]}/${req.file.filename}`;
+    // 修复 I9: 用 path.relative(publicDir, file.path) 构造相对路径,避免 split('uploads/doc-images') 字符串扫描脆弱性
+    //         (旧实现可能在 windows 路径或多层 uploads 目录时匹配错位)
+    const publicDir = path.join(__dirname, 'public');
+    const relPath = '/' + path.relative(publicDir, req.file.path).split(path.sep).join('/');
     const username = req.session.userName || req.session.username || 'admin';
     writeOperationLog('DOC_IMAGE_UPLOAD', username, `${req.file.filename} (${req.file.size} bytes)`);
-    res.json({ location: relPath.replace(/\\/g, '/') });
+    res.json({ location: relPath });
   } catch (e) {
     console.error('Upload doc image error:', e);
     res.status(500).json({ error: '上传失败' });
@@ -4195,7 +4199,7 @@ app.post('/api/db-target-verify', requireAuth, async (req, res) => {
       try {
         let count = 0;
         if (connection) {
-          const [countResult] = await connection.query(`SELECT COUNT(*) as c FROM \`${table}\``);
+          const [countResult] = await connection.query("SELECT COUNT(*) as c FROM ??", [table]);
           count = countResult[0].c;
         } else {
           count = await db.getTableCount(table);
