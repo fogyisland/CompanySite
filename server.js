@@ -1578,23 +1578,33 @@ app.post('/api/admin/orders/:id/approve-payment', requireAuth, async (req, res) 
       return res.status(400).json({ error: '订单已支付' });
     }
 
-    // 条件更新订单状态为 paid（防并发双重处理）
-    const updateResult = await db.query(
-      "UPDATE orders SET status='paid', paid_at=NOW() WHERE id = ? AND status NOT IN ('paid','completed')",
-      [orderId]
-    );
-    if (!updateResult.affectedRows) {
-      return res.status(400).json({ error: '订单已支付或状态不允许' });
-    }
-
-    // 为每个 order_item 生成激活码
+    // 修复 I14: 用事务包裹"更新订单状态 + 写入激活码"两步,防中途失败导致部分激活
     const items = await db.getOrderItems(orderId);
-    const generatedCodes = [];
-    for (const item of items) {
-      const code = generateActivationCodes(1)[0];
-      await db.createOrderItemCode({ orderItemId: item.id, code });
-      generatedCodes.push({ productShortName: item.productShortName, code });
-    }
+    const generatedCodes = await db.withTransaction(async (conn) => {
+      const [updateResult] = await conn.query(
+        "UPDATE orders SET status='paid', paid_at=NOW() WHERE id = ? AND status NOT IN ('paid','completed')",
+        [orderId]
+      );
+      if (!updateResult.affectedRows) {
+        throw new Error('ORDER_ALREADY_PROCESSED');
+      }
+      const codes = [];
+      for (const item of items) {
+        const code = generateActivationCodes(1)[0];
+        await conn.query(
+          "INSERT INTO order_item_codes (order_item_id, code, is_activated) VALUES (?, ?, 0)",
+          [item.id, code]
+        );
+        codes.push({ productShortName: item.productShortName, code });
+      }
+      return codes;
+    }).catch(err => {
+      if (err.message === 'ORDER_ALREADY_PROCESSED') {
+        // 上层会处理这个状态
+        throw err;
+      }
+      throw err;
+    });
 
     // 发邮件给用户
     const userRows = await db.query("SELECT email FROM users WHERE id = ?", [order.user_id]);
@@ -1611,6 +1621,9 @@ app.post('/api/admin/orders/:id/approve-payment', requireAuth, async (req, res) 
 
     res.json({ success: true, codes: generatedCodes });
   } catch (e) {
+    if (e.message === 'ORDER_ALREADY_PROCESSED') {
+      return res.status(400).json({ error: '订单已支付或状态不允许' });
+    }
     console.error('Approve payment error:', e);
     res.status(500).json({ error: '确认收款失败' });
   }
@@ -4080,10 +4093,12 @@ app.post('/api/db-test', requireAuth, async (req, res) => {
 app.post('/api/db-target-info', requireAuth, async (req, res) => {
   const config = req.body;
   try {
+    // 修复 I6: 单一连接,循环复用,避免每个表都做 TCP 握手 + auth
+    const mysql = require('mysql2/promise');
+    let connection = null;
     let tables = [];
     if (config.type === 'mysql') {
-      const mysql = require('mysql2/promise');
-      const connection = await mysql.createConnection({
+      connection = await mysql.createConnection({
         host: config.mysql.host,
         port: config.mysql.port,
         user: config.mysql.user,
@@ -4092,28 +4107,17 @@ app.post('/api/db-target-info', requireAuth, async (req, res) => {
       });
       const [rows] = await connection.query('SHOW TABLES');
       tables = rows.map(row => Object.values(row)[0]);
-      await connection.end();
     } else {
       tables = db.getAllTables();
     }
 
-    // 使用 for...of 替代 map 以支持 await
     const tableInfo = [];
     for (const tableName of tables) {
       let count = 0;
       try {
-        if (config.type === 'mysql') {
-          const mysql = require('mysql2/promise');
-          const connection = await mysql.createConnection({
-            host: config.mysql.host,
-            port: config.mysql.port,
-            user: config.mysql.user,
-            password: config.mysql.password,
-            database: config.mysql.database
-          });
+        if (connection) {
           const [countResult] = await connection.query(`SELECT COUNT(*) as c FROM \`${tableName}\``);
           count = countResult[0].c;
-          await connection.end();
         } else {
           count = await db.getTableCount(tableName);
         }
@@ -4122,6 +4126,7 @@ app.post('/api/db-target-info', requireAuth, async (req, res) => {
       }
       tableInfo.push({ name: tableName, count });
     }
+    if (connection) await connection.end();
 
     res.json({ success: true, type: config.type, tables: tableInfo });
   } catch (error) {
@@ -4136,21 +4141,25 @@ app.post('/api/db-target-verify', requireAuth, async (req, res) => {
     const results = [];
     const tables = config.type === 'mysql' ? ['admin', 'products', 'settings', 'users', 'orders', 'faqs', 'support_tickets', 'activations', 'installations'] : db.getAllTables();
 
+    // 修复 I6: 单一连接,循环复用
+    const mysql = require('mysql2/promise');
+    let connection = null;
+    if (config.type === 'mysql') {
+      connection = await mysql.createConnection({
+        host: config.mysql.host,
+        port: config.mysql.port,
+        user: config.mysql.user,
+        password: config.mysql.password,
+        database: config.mysql.database
+      });
+    }
+
     for (const table of tables) {
       try {
         let count = 0;
-        if (config.type === 'mysql') {
-          const mysql = require('mysql2/promise');
-          const connection = await mysql.createConnection({
-            host: config.mysql.host,
-            port: config.mysql.port,
-            user: config.mysql.user,
-            password: config.mysql.password,
-            database: config.mysql.database
-          });
+        if (connection) {
           const [countResult] = await connection.query(`SELECT COUNT(*) as c FROM \`${table}\``);
           count = countResult[0].c;
-          await connection.end();
         } else {
           count = await db.getTableCount(table);
         }
@@ -4159,6 +4168,7 @@ app.post('/api/db-target-verify', requireAuth, async (req, res) => {
         results.push({ table, count: 0, status: 'error', error: e.message });
       }
     }
+    if (connection) await connection.end();
 
     res.json({ success: true, results });
   } catch (error) {

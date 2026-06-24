@@ -43,6 +43,28 @@ function updateDbConfig(newConfig) {
   return newConfig;
 }
 
+// Transaction helper: runs `fn(conn)` inside a single MySQL connection with
+// begin/commit/rollback. The connection is released back to the pool even on
+// throw. Use this when a code path does multi-statement writes that must be
+// all-or-nothing (e.g., approve-payment: update order status + insert
+// activation codes). Without this, a partial failure leaves the order paid
+// but with missing codes (I14).
+async function withTransaction(fn) {
+  if (!mysqlPool) throw new Error('MySQL pool not initialized');
+  const conn = await mysqlPool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const result = await fn(conn);
+    await conn.commit();
+    return result;
+  } catch (err) {
+    try { await conn.rollback(); } catch (_) { /* ignore rollback errors */ }
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 async function initDatabase() {
   const config = getDbConfig();
   if (config.type === 'mysql' && config.mysql && config.mysql.host) {
@@ -2192,6 +2214,7 @@ async function incrementNewsView(id) {
 module.exports = {
   initDatabase,
   getDbConfig,
+  withTransaction,
   updateDbConfig,
   query,
   dbQuery,
