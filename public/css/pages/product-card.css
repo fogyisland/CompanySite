@@ -323,3 +323,26 @@
   background: linear-gradient(135deg, #24292e 0%, #0d1117 100%);
   color: white;
 }
+/* 产品区底部"查看更多"按钮 */
+.products-section-footer {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.view-more-btn {
+  display: inline-block;
+  padding: 10px 28px;
+  background: var(--white, #fff);
+  color: var(--primary, #0969da);
+  border: 1px solid var(--primary, #0969da);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.view-more-btn:hover {
+  background: var(--primary, #0969da);
+  color: #fff;
+}
