@@ -431,88 +431,244 @@
       }
     }
 
-    // 渲染产品详情
+    // 渲染产品详情 (XSS-safe: DOM API + data-* for event delegation)
     function renderProduct(product) {
       document.title = product.name + ' - 博铭科技';
 
-      const features = product.features || [];
-      const featuresHtml = features.length > 0
-        ? `<div class="features-section">
-            <h3>功能特点</h3>
-            <div class="features-list">
-              ${features.map(f => `<div class="feature-item"><span>✓</span> ${escapeHtml(f)}</div>`).join('')}
-            </div>
-           </div>`
-        : '';
+      const container = document.getElementById('product-content');
+      container.replaceChildren();
 
-      const pricingTiers = product.pricingTiers;
-      let pricingHtml = '';
-      if (pricingTiers && pricingTiers.length > 0) {
-        pricingHtml = `<div class="pricing-section">
-          <h3>授权方案</h3>
-          <p class="pricing-desc">选择适合您的授权时长，到期后可续费续期</p>
-          <div class="pricing-cards">
-            ${pricingTiers.map(tier => `
-              <div class="pricing-card" onclick="selectTier(${product.id}, ${tier.duration}, '${tier.label}', ${tier.price})">
-                <div class="pricing-card-header">
-                  <span class="pricing-duration">${escapeHtml(tier.label)}</span>
-                  <span class="pricing-badge">${tier.duration >= 12 ? '最划算' : ''}</span>
-                </div>
-                <div class="pricing-card-price">¥${tier.price}</div>
-                <div class="pricing-card-unit">${tier.duration}个月授权</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>`;
+      // Back link
+      const back = document.createElement('a');
+      back.setAttribute('href', '/');
+      back.className = 'back-link';
+      back.innerHTML = '&larr; 返回首页';
+      container.appendChild(back);
+
+      // Product header
+      const header = document.createElement('div');
+      header.className = 'product-header';
+      if (product.image && isSafeUrl(product.image)) {
+        const img = document.createElement('img');
+        img.setAttribute('src', product.image);
+        img.setAttribute('alt', product.name || '');
+        img.className = 'product-image';
+        header.appendChild(img);
+      } else {
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'product-icon';
+        iconDiv.textContent = product.icon || '📦';
+        header.appendChild(iconDiv);
       }
 
-      const content = product.detailContent || product.description || '';
-      const contentHtml = content
-        ? `<div class="product-content">
-            <h3>产品详情</h3>
-            ${content}
-          </div>`
-        : '';
+      const info = document.createElement('div');
+      info.className = 'product-info';
+      const h1 = document.createElement('h1');
+      h1.textContent = product.name || '';
+      info.appendChild(h1);
 
-      document.getElementById('product-content').innerHTML = `
-        <a href="/" class="back-link">&larr; 返回首页</a>
-        <div class="product-header">
-          ${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" class="product-image">` : `<div class="product-icon">${product.icon || '📦'}</div>`}
-          <div class="product-info">
-            <h1>${escapeHtml(product.name)}</h1>
-            <div class="product-meta">
-              ${product.category ? `<span>${escapeHtml(product.category)}</span>` : ''}
-              ${product.version ? `<span>v${escapeHtml(product.version)}</span>` : ''}
-              ${product.platform ? `<span>${escapeHtml(product.platform)}</span>` : ''}
-            </div>
-            ${(product.isCourse === true || product.isCourse === 1) ? `
-              <div class="course-links-list" id="course-links-container">
-                ${(Array.isArray(product.courseLinks) ? product.courseLinks : [])
-                  .filter(link => isSafeUrl(link.url))
-                  .map(link => `
-                    <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="course-link-card">
-                      <span class="platform-name">${escapeHtml(getPlatformLabel(link.platform))}</span>
-                      <span class="visit-icon">访问 →</span>
-                    </a>
-                  `).join('')}
-              </div>
-            ` : `
-              <div class="product-price">
-                ¥${(product.pricingTiers && product.pricingTiers.length > 0) ? Math.min(...product.pricingTiers.map(t => t.price)) : product.price}
-                <small>/ 起</small>
-              </div>
-              <div class="product-actions">
-                <button class="btn btn-primary" onclick="addProductToCart(${product.id})">立即购买</button>
-              </div>
-            `}
-          </div>
-        </div>
+      const meta = document.createElement('div');
+      meta.className = 'product-meta';
+      if (product.category) {
+        const s = document.createElement('span');
+        s.textContent = product.category;
+        meta.appendChild(s);
+      }
+      if (product.version) {
+        const s = document.createElement('span');
+        s.textContent = 'v' + product.version;
+        meta.appendChild(s);
+      }
+      if (product.platform) {
+        const s = document.createElement('span');
+        s.textContent = product.platform;
+        meta.appendChild(s);
+      }
+      info.appendChild(meta);
 
-        ${featuresHtml}
-        ${pricingHtml}
-        ${contentHtml}
-      `;
+      if (product.isCourse === true || product.isCourse === 1) {
+        const list = document.createElement('div');
+        list.className = 'course-links-list';
+        list.id = 'course-links-container';
+        (Array.isArray(product.courseLinks) ? product.courseLinks : [])
+          .filter(link => isSafeUrl(link.url))
+          .forEach(link => {
+            const a = document.createElement('a');
+            a.setAttribute('href', link.url);
+            a.setAttribute('target', '_blank');
+            a.setAttribute('rel', 'noopener noreferrer');
+            a.className = 'course-link-card';
+            const platform = document.createElement('span');
+            platform.className = 'platform-name';
+            platform.textContent = getPlatformLabel(link.platform) || '';
+            a.appendChild(platform);
+            const visit = document.createElement('span');
+            visit.className = 'visit-icon';
+            visit.textContent = '访问 →';
+            a.appendChild(visit);
+            list.appendChild(a);
+          });
+        info.appendChild(list);
+      } else {
+        const priceDiv = document.createElement('div');
+        priceDiv.className = 'product-price';
+        const minPrice = (product.pricingTiers && product.pricingTiers.length > 0)
+          ? Math.min(...product.pricingTiers.map(t => Number(t.price) || 0))
+          : (Number(product.price) || 0);
+        priceDiv.appendChild(document.createTextNode(`¥${minPrice}`));
+        const small = document.createElement('small');
+        small.textContent = '/ 起';
+        priceDiv.appendChild(small);
+        info.appendChild(priceDiv);
+
+        const actions = document.createElement('div');
+        actions.className = 'product-actions';
+        const buyBtn = document.createElement('button');
+        buyBtn.className = 'btn btn-primary';
+        buyBtn.textContent = '立即购买';
+        buyBtn.addEventListener('click', () => addProductToCart(Number(product.id)));
+        actions.appendChild(buyBtn);
+        info.appendChild(actions);
+      }
+      header.appendChild(info);
+      container.appendChild(header);
+
+      // Features
+      const features = product.features || [];
+      if (features.length > 0) {
+        const fs = document.createElement('div');
+        fs.className = 'features-section';
+        const fh = document.createElement('h3');
+        fh.textContent = '功能特点';
+        fs.appendChild(fh);
+        const fl = document.createElement('div');
+        fl.className = 'features-list';
+        features.forEach(f => {
+          const fi = document.createElement('div');
+          fi.className = 'feature-item';
+          const check = document.createElement('span');
+          check.textContent = '✓';
+          fi.appendChild(check);
+          fi.appendChild(document.createTextNode(' ' + String(f)));
+          fl.appendChild(fi);
+        });
+        fs.appendChild(fl);
+        container.appendChild(fs);
+      }
+
+      // Pricing tiers (data-* + event delegation, no inline onclick)
+      const pricingTiers = product.pricingTiers;
+      if (pricingTiers && pricingTiers.length > 0) {
+        const ps = document.createElement('div');
+        ps.className = 'pricing-section';
+        const ph = document.createElement('h3');
+        ph.textContent = '授权方案';
+        ps.appendChild(ph);
+        const pd = document.createElement('p');
+        pd.className = 'pricing-desc';
+        pd.textContent = '选择适合您的授权时长，到期后可续费续期';
+        ps.appendChild(pd);
+        const pc = document.createElement('div');
+        pc.className = 'pricing-cards';
+        pc.id = 'pricing-cards';
+        pricingTiers.forEach((tier, idx) => {
+          const card = document.createElement('div');
+          card.className = 'pricing-card';
+          card.setAttribute('data-product-id', String(product.id));
+          card.setAttribute('data-tier-index', String(idx));
+          card.setAttribute('data-tier-duration', String(tier.duration));
+          card.setAttribute('data-tier-label', String(tier.label || ''));
+          card.setAttribute('data-tier-price', String(tier.price));
+          const ch = document.createElement('div');
+          ch.className = 'pricing-card-header';
+          const dur = document.createElement('span');
+          dur.className = 'pricing-duration';
+          dur.textContent = String(tier.label || '');
+          ch.appendChild(dur);
+          const badge = document.createElement('span');
+          badge.className = 'pricing-badge';
+          badge.textContent = tier.duration >= 12 ? '最划算' : '';
+          ch.appendChild(badge);
+          card.appendChild(ch);
+          const priceEl = document.createElement('div');
+          priceEl.className = 'pricing-card-price';
+          priceEl.textContent = `¥${tier.price}`;
+          card.appendChild(priceEl);
+          const unit = document.createElement('div');
+          unit.className = 'pricing-card-unit';
+          unit.textContent = `${tier.duration}个月授权`;
+          card.appendChild(unit);
+          pc.appendChild(card);
+        });
+        ps.appendChild(pc);
+        container.appendChild(ps);
+      }
+
+      // Content (sanitized HTML — only allow safe tags)
+      const rawContent = product.detailContent || product.description || '';
+      if (rawContent) {
+        const pc2 = document.createElement('div');
+        pc2.className = 'product-content';
+        const ch2 = document.createElement('h3');
+        ch2.textContent = '产品详情';
+        pc2.appendChild(ch2);
+        // Sanitize HTML to prevent stored XSS via admin description
+        const safe = sanitizeHtml(rawContent);
+        const body = document.createElement('div');
+        body.innerHTML = safe;
+        pc2.appendChild(body);
+        container.appendChild(pc2);
+      }
     }
+
+    // Allowlist sanitizer: strip everything except safe structural tags
+    // (defense in depth — even if admin pastes raw HTML with <script>, we drop it)
+    function sanitizeHtml(html) {
+      const ALLOWED = new Set(['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'code', 'pre', 'blockquote', 'span', 'div']);
+      const tmp = document.createElement('div');
+      tmp.innerHTML = String(html);
+      const walk = (node) => {
+        const children = Array.from(node.childNodes);
+        for (const child of children) {
+          if (child.nodeType === 1) { // element
+            if (!ALLOWED.has(child.tagName.toLowerCase())) {
+              child.remove();
+              continue;
+            }
+            // strip all attrs except href on <a> and src/alt on <img>; force safe protocols
+            const attrs = Array.from(child.attributes);
+            for (const attr of attrs) {
+              const name = attr.name.toLowerCase();
+              if (child.tagName === 'A' && name === 'href') {
+                if (!isSafeUrl(attr.value)) child.removeAttribute(attr.name);
+              } else if (child.tagName === 'IMG' && (name === 'src' || name === 'alt')) {
+                if (name === 'src' && !isSafeUrl(attr.value)) child.removeAttribute(attr.name);
+              } else {
+                child.removeAttribute(attr.name);
+              }
+            }
+            walk(child);
+          } else if (child.nodeType === 8) {
+            // strip comments
+            child.remove();
+          }
+        }
+      };
+      walk(tmp);
+      return tmp.innerHTML;
+    }
+
+    // Event delegation for pricing cards (replaces inline onclick)
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest('.pricing-card[data-product-id]');
+      if (!card) return;
+      const productId = parseInt(card.getAttribute('data-product-id'), 10);
+      const duration = parseInt(card.getAttribute('data-tier-duration') || '0', 10);
+      const label = card.getAttribute('data-tier-label') || '';
+      const price = parseFloat(card.getAttribute('data-tier-price') || '0');
+      if (!Number.isInteger(productId) || productId <= 0) return;
+      selectTier(productId, duration, label, price);
+    });
 
     function selectTier(productId, duration, label, price) {
       addToCartWithTierIndex(productId, duration, label, price);
