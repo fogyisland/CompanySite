@@ -1429,7 +1429,6 @@ app.post('/api/orders', requireUserAuth, async (req, res) => {
     String(now.getHours()).padStart(2, '0') +
     String(now.getMinutes()).padStart(2, '0') +
     String(now.getSeconds()).padStart(2, '0');
-  const randomPart = Math.random().toString(36).substring(2, 9).toUpperCase();
   const orderNumber = 'BL' + dateStr + crypto.randomBytes(4).toString('hex').toUpperCase();
 
   const order = await db.createOrder({
@@ -1863,7 +1862,7 @@ app.post('/api/orders/:id/generate-activation-codes', requireAuth, async (req, r
     res.json({ success: true, activationCodes: activationCodes });
   } catch (error) {
     console.error('generate-activation-codes error:', error);
-    res.status(500).json({ error: '服务器错误: ' + error.message });
+    res.status(500).json({ error: '服务器错误' });
   }
 });
 
@@ -2218,7 +2217,12 @@ app.get('/api/products', checkPublicEndpointRateLimit, async (req, res) => {
 
 // 获取单个产品
 app.get('/api/products/:id', async (req, res) => {
-  const product = await db.getProduct(req.params.id);
+  // parseInt + 范围校验,避免字符串 ID 走 SQL 隐式转换(性能 + 类型安全)
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '无效的产品 ID' });
+  }
+  const product = await db.getProduct(id);
   if (!product) {
     return res.status(404).json({ error: 'Product not found' });
   }
@@ -2416,11 +2420,14 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
     // 删除产品
     await db.deleteProduct(req.params.id);
 
-    // 删除详情页文件
+    // 删除详情页文件(路径白名单:必须在 public/products/ 下,防 path traversal)
     if (product.detailPage) {
-      const detailFilePath = path.join(__dirname, 'public', product.detailPage);
-      if (fs.existsSync(detailFilePath)) {
+      const detailFilePath = path.resolve(__dirname, 'public', product.detailPage);
+      const productsDir = path.resolve(__dirname, 'public', 'products') + path.sep;
+      if (detailFilePath.startsWith(productsDir) && fs.existsSync(detailFilePath)) {
         fs.unlinkSync(detailFilePath);
+      } else {
+        console.warn(`Refusing to unlink detail page outside public/products/: ${product.detailPage}`);
       }
     }
 
@@ -3583,7 +3590,11 @@ async function sendOrderPaidEmail(order, user, items, activationCodes) {
     });
 
     const companyName = settings.companyName || '博铭科技';
-    const baseUrl = settings.ssl?.domain ? 'https://' + settings.ssl.domain : 'http://localhost:3000';
+    // baseUrl fallback 链:settings.ssl.domain > settings.httpPort > 当前 HTTP_PORT
+    // 之前硬编码 localhost:3000 在 httpPort=15000 的环境里会让邮件下载链接失效
+    const baseUrl = settings.ssl?.domain
+      ? 'https://' + settings.ssl.domain
+      : ('http://localhost:' + (settings.httpPort || 15000));
 
     // 构建商品列表和下载链接
     let productListHtml = '';
@@ -4352,15 +4363,9 @@ app.post('/api/db-import', requireAuth, async (req, res) => {
   }
 });
 
-// 迁移到MySQL
+// 迁移到MySQL — 此端点为遗留 stub,迁移已通过 prisma/diff.js 替代
 app.post('/api/db-migrate', requireAuth, async (req, res) => {
-  try {
-    // TODO: 实现实际的MySQL迁移
-    // 目前只是返回成功消息
-    res.json({ success: true, message: '迁移成功' });
-  } catch (error) {
-    res.status(500).json({ error: '迁移失败: ' + error.message });
-  }
+  res.status(501).json({ error: '此端点已弃用,请使用 prisma/diff.js --apply' });
 });
 
 // ============ API路由 - FAQ ============
@@ -4768,8 +4773,17 @@ async function startServer() {
     const HTTP_PORT = settings?.httpPort || 15000;
 
     // 启动 HTTP 服务器
-    app.listen(HTTP_PORT, '0.0.0.0', () => {
+    const server = app.listen(HTTP_PORT, '0.0.0.0', () => {
       console.log(`HTTP Server running at http://0.0.0.0:${HTTP_PORT}`);
+    });
+    // 显式处理 listen 错误(EADDRINUSE 等不会进入 try/catch,会触发 'error' 事件)
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`FATAL: port ${HTTP_PORT} is already in use. Refusing to start.`);
+      } else {
+        console.error('FATAL: server listen error:', err);
+      }
+      process.exit(1);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
 const DATA_DIR = path.join(__dirname, 'data');
@@ -1194,8 +1195,9 @@ async function getActivationsByMacAndSoftware(macAddress, softwareName) {
 }
 
 async function createActivation(activation) {
-  // 生成激活码
-  const activationKey = activation.activationKey || 'AK' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 6).toUpperCase();
+  // 生成激活码 — 用 crypto.randomBytes 替代 Math.random(后者 PRNG 可预测,不适合做密钥)
+  const activationKey = activation.activationKey
+    || 'AK' + crypto.randomBytes(8).toString('hex').toUpperCase();
 
   // 计算激活日期
   const activateDate = activation.activateDate || new Date().toISOString().split('T')[0];
