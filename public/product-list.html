@@ -210,7 +210,7 @@
 
       container.innerHTML = products.map(p => {
         const thumbStyle = p.image
-          ? `background-image: url('${escapeHtml(p.image)}');`
+          ? `background-image: url("${encodeURI(p.image)}");`
           : '';
         const badgeClass = getCategoryBadgeClass(p.category);
         const badgeText = escapeHtml(p.category || '软件');
@@ -224,14 +224,14 @@
           pricingHtml = `<div class="product-list-row-platform">${count} 个平台 · ${escapeHtml(p.platform || '')}</div>`;
         } else if (p.pricingTiers && p.pricingTiers.length > 0) {
           pricingHtml = `<div class="product-list-row-pricing">${p.pricingTiers.map(t =>
-            `<span><span class="price-tier-amount">¥${t.price}</span> / ${escapeHtml(t.label)}</span>`
+            `<span><span class="price-tier-amount">¥${escapeHtml(String(t.price ?? ''))}</span> / ${escapeHtml(t.label)}</span>`
           ).join('')}</div>`;
         } else {
           pricingHtml = `<div class="product-list-row-pricing"><span class="price-tier-amount">¥${p.price}</span></div>`;
         }
 
         const btnText = p.isCourse ? '查看课程 →' : '查看详情 →';
-        const btnLink = p.isCourse ? `/product/${p.id}` : `/product/${p.id}`;
+        const btnLink = '/product/' + encodeURIComponent(String(p.id));
 
         return `
           <div class="product-list-row">
@@ -268,7 +268,7 @@
       const buttons = [];
 
       // 上一页
-      buttons.push(`<button onclick="goToPage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>‹</button>`);
+      buttons.push(`<button class="pagination-prev" ${page <= 1 ? 'disabled' : ''}>‹</button>`);
 
       // 页码 (≤7 全显, >7 折叠)
       const pages = buildPageList(page, totalPages);
@@ -276,14 +276,33 @@
         if (p === '...') {
           buttons.push('<span class="ellipsis">...</span>');
         } else {
-          buttons.push(`<button class="${p === page ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`);
+          buttons.push(`<button class="${p === page ? 'active' : ''}" data-page="${p}">${p}</button>`);
         }
       });
 
       // 下一页
-      buttons.push(`<button onclick="goToPage(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>›</button>`);
+      buttons.push(`<button class="pagination-next" ${page >= totalPages ? 'disabled' : ''}>›</button>`);
 
       container.innerHTML = buttons.join('');
+
+      // 绑定事件 (避免内联 onclick, 防御 XSS)
+      const prevBtn = container.querySelector('.pagination-prev');
+      const nextBtn = container.querySelector('.pagination-next');
+      if (prevBtn) prevBtn.addEventListener('click', () => {
+        if (page - 1 < 1) return;
+        goToPage(page - 1);
+      });
+      if (nextBtn) nextBtn.addEventListener('click', () => {
+        if (page + 1 > totalPages) return;
+        goToPage(page + 1);
+      });
+      container.querySelectorAll('button[data-page]').forEach(b => {
+        b.addEventListener('click', () => {
+          const p = parseInt(b.dataset.page);
+          if (p < 1 || p > totalPages) return;
+          goToPage(p);
+        });
+      });
     }
 
     function buildPageList(current, total) {
