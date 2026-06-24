@@ -106,7 +106,9 @@
     async function loadProducts() {
       const res = await fetch('/api/products', { credentials: 'include' });
       if (!res.ok) { alert('加载产品失败'); return; }
-      const products = await res.json();
+      const data = await res.json();
+      // 兼容 /api/products 两种返回格式: 旧版 array, 新版 {products, total, page, pageSize, totalPages}
+      const products = Array.isArray(data) ? data : (data.products || []);
       const sel = document.getElementById('product-select');
       // 注意：API 返回字段是 shortName（camelCase），不是 short_name
       sel.innerHTML = products.map(p => `<option value="${p.id}" data-slug="${escapeHtml(p.shortName || p.short_name || '')}">${escapeHtml(p.name)}</option>`).join('');

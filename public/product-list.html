@@ -227,7 +227,7 @@
             `<span><span class="price-tier-amount">¥${escapeHtml(String(t.price ?? ''))}</span> / ${escapeHtml(t.label)}</span>`
           ).join('')}</div>`;
         } else {
-          pricingHtml = `<div class="product-list-row-pricing"><span class="price-tier-amount">¥${p.price}</span></div>`;
+          pricingHtml = `<div class="product-list-row-pricing"><span class="price-tier-amount">¥${escapeHtml(String(p.price ?? ''))}</span></div>`;
         }
 
         const btnText = p.isCourse ? '查看课程 →' : '查看详情 →';
