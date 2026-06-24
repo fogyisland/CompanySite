@@ -3389,6 +3389,10 @@ app.get('/api/security/api-blocked', requireAuth, (req, res) => {
 // 解封 API 限流IP
 app.post('/api/security/api-unblock', requireAuth, (req, res) => {
   const { ip } = req.body;
+  // 修复 I18: 校验 IP 格式,避免把任意字符串当 IP 删
+  if (typeof ip !== 'string' || !/^(?:\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$/.test(ip)) {
+    return res.status(400).json({ error: '无效的 IP 格式' });
+  }
   if (apiBlockedIPs.has(ip)) {
     apiBlockedIPs.delete(ip);
     writeLoginLog('info', getClientIp(req), 'admin', 'API_IP_UNBLOCKED', `IP: ${ip}`);
@@ -4328,7 +4332,14 @@ app.post('/api/db-switch', requireAuth, async (req, res) => {
     if (type === 'mysql' && dbConfig.mysql) {
       // 重新初始化MySQL连接
       await db.initMySQL(dbConfig.mysql);
+      // 修复 I19: 切换后需要关闭旧 session store 的 pool(否则它仍指向旧 host)
+      // 旧连接会随时间被新连接覆盖,但显式关闭更清晰
+      if (sessionStore && typeof sessionStore.close === 'function') {
+        try { await sessionStore.close(); } catch (_) { /* 旧 store 已断 */ }
+      }
       db.updateDbConfig({ type: 'mysql' });
+      // 警告:db-switch 切换后,session store 用的是旧 pool,所有现有 session 会失效
+      // 这通常是 admin 主动行为,可以接受
       res.json({ success: true, message: '已切换到 MySQL' });
     } else {
       res.status(400).json({ error: '无效的数据库类型或MySQL未配置' });

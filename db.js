@@ -1453,40 +1453,10 @@ const getFaqById = getFaq;
 const addFaq = createFaq;
 
 // ============ 订阅者操作 ============
-
-async function getAllSubscribers() {
-  const [rows] = await mysqlPool.query("SELECT * FROM subscribers ORDER BY id DESC");
-  return rows.map(row => ({ id: row.id, email: row.email, subscribed: row.subscribed === 1, createdAt: row.created_at }));
-}
-
-async function getSubscriber(id) {
-  const [rows] = await mysqlPool.query("SELECT * FROM subscribers WHERE id = ?", [id]);
-  if (rows.length === 0) return null;
-  const row = rows[0];
-  return { id: row.id, email: row.email, subscribed: row.subscribed === 1, createdAt: row.created_at };
-}
-
-async function getSubscriberByEmail(email) {
-  const [rows] = await mysqlPool.query("SELECT * FROM subscribers WHERE email = ?", [email]);
-  if (rows.length === 0) return null;
-  const row = rows[0];
-  return { id: row.id, email: row.email, subscribed: row.subscribed === 1, createdAt: row.created_at };
-}
-
-async function createSubscriber(subscriber) {
-  const [result] = await mysqlPool.query("INSERT INTO subscribers (email, subscribed) VALUES (?, ?)", [subscriber.email, subscriber.subscribed !== false ? 1 : 0]);
-  return result.insertId;
-}
-
-async function updateSubscriber(id, subscriber) {
-  await mysqlPool.query("UPDATE subscribers SET email=?, subscribed=? WHERE id=?", [subscriber.email, subscriber.subscribed ? 1 : 0, id]);
-  return getSubscriber(id);
-}
-
-async function deleteSubscriber(id) {
-  await mysqlPool.query("DELETE FROM subscribers WHERE id = ?", [id]);
-  return { success: true };
-}
+// 注: getAllSubscribers/getSubscriber/getSubscriberByEmail/createSubscriber/
+//     updateSubscriber/deleteSubscriber 全部为死代码(无 server.js 调用方),
+//     server.js /api/subscribers 端点直接用 db.dbQuery + 原生 SQL。
+//     全部移除。订阅者表仍由 /api/subscribers + 邮件注册流程使用。
 
 // ============ 工单操作 ============
 
@@ -2313,12 +2283,6 @@ module.exports = {
   createFaq,
   updateFaq,
   deleteFaq,
-  getAllSubscribers,
-  getSubscriber,
-  getSubscriberByEmail,
-  createSubscriber,
-  updateSubscriber,
-  deleteSubscriber,
   getAllSupportTickets,
   getSupportTicket,
   getSupportTicketById,
