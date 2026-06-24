@@ -729,6 +729,28 @@ app.use((req, res, next) => {
   next();
 });
 
+// Security headers (defense in depth — 即使 XSS 注入,浏览器也阻止执行)
+app.use((req, res, next) => {
+  // frame-ancestors 'none' — 防 clickjacking (X-Frame-Options 已被现代浏览器弃用)
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; " +
+    "img-src 'self' data: https:; " +
+    "script-src 'self' 'unsafe-inline'; " +  // 'unsafe-inline' 暂留(admin 页 + 部分公开页还有 inline script),后续重构
+    "style-src 'self' 'unsafe-inline'; " +   // admin 主题需要 inline style
+    "connect-src 'self'; " +
+    "font-src 'self' data:; " +
+    "object-src 'none'; " +                  // 禁 Flash / 旧插件
+    "base-uri 'self'; " +                    // 防止 <base> 标签劫持相对 URL
+    "frame-ancestors 'none'; " +             // 防 clickjacking
+    "form-action 'self'; " +                 // 防止 form 提交到外站
+    "upgrade-insecure-requests"              // 自动升级 http:// → https://
+  );
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+});
+
 // CSRF 防御 - 检查 state-changing 请求的 Origin 头
 const STATE_CHANGING_METHODS = ['POST', 'PUT', 'DELETE', 'PATCH'];
 app.use((req, res, next) => {
