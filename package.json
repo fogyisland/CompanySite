@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:15000": "node server.js",
     "dev": "node server.js",
     "update-vendor": "node scripts/update-vendor.js",
     "postinstall": "node scripts/update-vendor.js"
