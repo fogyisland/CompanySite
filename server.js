@@ -219,6 +219,35 @@ setInterval(() => {
   pruneRateMap(publicEndpointRateLimit, v => v.resetTime && v.resetTime < Date.now() - 60000);
 }, RATE_MAP_CLEAN_INTERVAL).unref(); // .unref() 让定时器不阻止进程退出
 
+// 修复 I12: 每日清理 7+ 天的 data/emails/email-*.json(邮件内容存档)
+//         邮件发送详情已持久化到 logs/email-*.log,这里只清内容快照避免磁盘膨胀
+const EMAIL_CONTENT_DIR = path.join(__dirname, 'data', 'emails');
+const EMAIL_CONTENT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 天
+const EMAIL_CLEAN_INTERVAL = 24 * 60 * 60 * 1000; // 24 小时
+async function cleanupOldEmailContents() {
+  if (!fs.existsSync(EMAIL_CONTENT_DIR)) return;
+  const now = Date.now();
+  let removed = 0;
+  try {
+    const files = await fs.promises.readdir(EMAIL_CONTENT_DIR);
+    for (const f of files) {
+      if (!f.startsWith('email-') || !f.endsWith('.json')) continue;
+      const fp = path.join(EMAIL_CONTENT_DIR, f);
+      const stat = await fs.promises.stat(fp);
+      if (now - stat.mtimeMs > EMAIL_CONTENT_TTL_MS) {
+        await fs.promises.unlink(fp).catch(() => {});
+        removed++;
+      }
+    }
+    if (removed > 0) console.log(`[cleanup] removed ${removed} stale email content files`);
+  } catch (e) {
+    console.error('[cleanup] email content cleanup failed:', e.message);
+  }
+}
+// 启动 1 小时后首次跑(让 MySQL 池先稳),之后每 24 小时
+setTimeout(cleanupOldEmailContents, 60 * 60 * 1000).unref();
+setInterval(cleanupOldEmailContents, EMAIL_CLEAN_INTERVAL).unref();
+
 // 获取客户端IP
 // 必须配合 app.set('trust proxy', false) — 否则攻击者可通过伪造 X-Forwarded-For 头绕过 IP 黑名单/限流
 function getClientIp(req) {
@@ -1764,6 +1793,7 @@ app.post('/api/paypal/webhook', async (req, res) => {
     }
 
     // 发邮件
+    // 注: order.* 来自 db.getOrder() 直接 row map,DB 列名保持 snake_case
     const userRows = await db.query("SELECT email FROM users WHERE id = ?", [order.user_id]);
     if (userRows.length > 0 && userRows[0].email) {
       const codeList = generatedCodes.map(c => `  ${c.productShortName}: ${c.code}`).join('\n');
