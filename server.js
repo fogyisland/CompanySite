@@ -13,6 +13,7 @@ process.on('uncaughtException', (err) => {
 const express = require('express');
 const session = require('express-session');
 const MySQLStoreFactory = require('express-mysql-session');
+const mysql = require('mysql2/promise');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -658,12 +659,22 @@ function getLogFilesByType(type) {
 // Session配置
 const sessionDbConfig = db.getDbConfig().mysql;
 const MySQLStore = MySQLStoreFactory(session);
-const sessionStore = new MySQLStore({
+// express-mysql-session@3.0.3 的 prepareOptionsForMySQL2 有白名单,不传递
+// enableKeepAlive / keepAliveInitialDelay。手动建 pool（带 keepAlive）再传
+// 进去作为第二个 connection 参数，避开白名单。修复后无 ECONNRESET。
+const sessionPool = mysql.createPool({
   host: sessionDbConfig.host,
   port: sessionDbConfig.port,
   user: sessionDbConfig.user,
   password: sessionDbConfig.password,
   database: sessionDbConfig.database,
+  waitForConnections: true,
+  connectionLimit: 5,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000
+});
+const sessionStore = new MySQLStore({
   createDatabaseTable: true,
   schema: {
     tableName: 'sessions',
@@ -672,7 +683,7 @@ const sessionStore = new MySQLStore({
   clearExpired: true,
   checkExpirationInterval: 15 * 60 * 1000,
   expiration: 30 * 24 * 60 * 60 * 1000
-});
+}, sessionPool);
 
 // 安全启动检查：强制生产使用非占位密钥
 const PLACEHOLDER_SECRETS = new Set([
