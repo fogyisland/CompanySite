@@ -190,6 +190,35 @@ const blockedIPs = new Map();    // { ip: { until, reason } }
 const apiRateLimitMap = new Map(); // { ip: { count, resetTime } }
 const apiBlockedIPs = new Map();    // { ip: { until, reason } }
 
+// 修复 M1: 内存 Map 大小上限 + 定期清理过期项,防长时间运行内存泄漏
+// LRU 简化:超限时按 insertion order 删最旧的(避免引入完整 LRU 库)
+const RATE_MAP_MAX = 50000;       // 5 万条上限(足够覆盖正常流量峰值)
+const RATE_MAP_CLEAN_INTERVAL = 10 * 60 * 1000; // 10 分钟扫一次过期项
+function pruneRateMap(map, isExpired) {
+  if (map.size > RATE_MAP_MAX) {
+    // 删到 80%(留 20% buffer)
+    const target = Math.floor(RATE_MAP_MAX * 0.8);
+    const toRemove = map.size - target;
+    let removed = 0;
+    for (const key of map.keys()) {
+      if (removed >= toRemove) break;
+      map.delete(key);
+      removed++;
+    }
+  }
+  // 顺便清过期项
+  for (const [key, val] of map.entries()) {
+    if (isExpired(val)) map.delete(key);
+  }
+}
+setInterval(() => {
+  pruneRateMap(loginAttempts, v => v.lockedUntil && v.lockedUntil < Date.now() - securityConfig.suspiciousDuration);
+  pruneRateMap(blockedIPs, v => v.until && v.until < Date.now());
+  pruneRateMap(apiRateLimitMap, v => v.resetTime && v.resetTime < Date.now() - 60000);
+  pruneRateMap(apiBlockedIPs, v => v.until && v.until < Date.now());
+  pruneRateMap(publicEndpointRateLimit, v => v.resetTime && v.resetTime < Date.now() - 60000);
+}, RATE_MAP_CLEAN_INTERVAL).unref(); // .unref() 让定时器不阻止进程退出
+
 // 获取客户端IP
 // 必须配合 app.set('trust proxy', false) — 否则攻击者可通过伪造 X-Forwarded-For 头绕过 IP 黑名单/限流
 function getClientIp(req) {
@@ -2029,8 +2058,12 @@ app.post('/api/activate', async (req, res) => {
 });
 
 // 获取所有激活记录（管理员）
+// 修复 I17: 旧实现全表 getAllActivations + 每条 N+1 findOrderByActivationCode。
+// 加 limit/offset 防 1000+ 记录时单请求 3000+ query。
 app.get('/api/activations', requireAuth, async (req, res) => {
-  const activations = await db.getAllActivations();
+  const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 100));
+  const offset = Math.max(0, parseInt(req.query.offset) || 0);
+  const activations = await db.getAllActivations({ limit, offset });
 
   // 丰富每条激活记录，关联订单信息计算过期日期
   const enrichedActivations = await Promise.all(activations.map(async (activation) => {

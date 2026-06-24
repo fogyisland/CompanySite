@@ -1156,8 +1156,14 @@ async function markReminderSent(id) {
 
 // ============ 激活操作 ============
 
-async function getAllActivations() {
-  const [rows] = await mysqlPool.query("SELECT * FROM activations ORDER BY id DESC");
+async function getAllActivations({ limit, offset } = {}) {
+  // 修复 I17: 支持分页,避免 1000+ 记录时 N+1 雪崩
+  const safeLimit = Math.min(500, Math.max(1, parseInt(limit) || 100));
+  const safeOffset = Math.max(0, parseInt(offset) || 0);
+  const [rows] = await mysqlPool.query(
+    "SELECT * FROM activations ORDER BY id DESC LIMIT ? OFFSET ?",
+    [safeLimit, safeOffset]
+  );
   return rows.map(row => ({
     id: row.id, userName: row.user_name, organization: row.organization, email: row.email,
     softwareName: row.software_name, macAddress: row.mac_address, installDate: row.install_date,
@@ -1956,34 +1962,35 @@ async function updateActivationStatus(id, status) {
 }
 
 // 通过激活码查找订单
+// 修复 I15: 旧实现 SELECT all 'paid' orders + JSON 解析每行 + N+1
+// 新实现:直接查 order_item_codes.code 唯一索引 + JOIN orders。
+// O(1) 查找,无需 JSON parse。
 async function findOrderByActivationCode(activationKey) {
-  // 使用参数化查询精确匹配 activation_codes JSON 数组中的激活码
-  let codes = [];
+  if (!activationKey || typeof activationKey !== 'string') return null;
   try {
-    const [allRows] = await mysqlPool.query("SELECT id, activation_codes FROM orders WHERE status = 'paid'");
-    for (const row of allRows) {
-      if (row.activation_codes) {
-        try {
-          const parsedCodes = JSON.parse(row.activation_codes);
-          if (Array.isArray(parsedCodes) && parsedCodes.includes(activationKey)) {
-            const [orderRows] = await mysqlPool.query("SELECT * FROM orders WHERE id = ?", [row.id]);
-            if (orderRows.length > 0) {
-              return {
-                id: orderRows[0].id, userId: orderRows[0].user_id,
-                items: orderRows[0].items ? JSON.parse(orderRows[0].items) : [],
-                totalAmount: orderRows[0].total_amount, status: orderRows[0].status,
-                verificationCode: orderRows[0].verification_code, activationCodes: orderRows[0].activation_codes,
-                orderNumber: orderRows[0].order_number, isActivated: orderRows[0].is_activated === 1,
-                isArchived: orderRows[0].is_archived === 1, createdAt: orderRows[0].created_at,
-                paidAt: orderRows[0].paid_at
-              };
-            }
-          }
-        } catch (e) {}
-      }
-    }
-  } catch (e) {}
-  return null;
+    const [rows] = await mysqlPool.query(
+      `SELECT o.* FROM order_item_codes c
+       JOIN order_items i ON c.order_item_id = i.id
+       JOIN orders o ON i.order_id = o.id
+       WHERE c.code = ? AND o.status = 'paid'
+       LIMIT 1`,
+      [activationKey]
+    );
+    if (rows.length === 0) return null;
+    const order = rows[0];
+    return {
+      id: order.id, userId: order.user_id,
+      items: order.items ? JSON.parse(order.items) : [],
+      totalAmount: order.total_amount, status: order.status,
+      verificationCode: order.verification_code, activationCodes: order.activation_codes,
+      orderNumber: order.order_number, isActivated: order.is_activated === 1,
+      isArchived: order.is_archived === 1, createdAt: order.created_at,
+      paidAt: order.paid_at
+    };
+  } catch (e) {
+    console.error('findOrderByActivationCode error:', e);
+    return null;
+  }
 }
 
 // 获取归档订单
