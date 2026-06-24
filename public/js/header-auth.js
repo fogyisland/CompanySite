@@ -1,6 +1,6 @@
 // 公开页 header 登录态统一处理
 // 依赖：/api/auth/me + /api/user/logout
-// 登录按钮在同一元素上切换：未登录显示「登录」(/user-login)，已登录显示「个人中心」(/user-center)
+// 登录按钮在同一元素上切换：未登录显示「登录」(/login)，已登录显示「个人中心」(/user-center)
 (function () {
   const elLogin = document.getElementById('header-login');
   const elLogout = document.getElementById('header-logout');
@@ -10,7 +10,7 @@
     if (elLogin) {
       elLogin.style.display = 'inline-block';
       elLogin.textContent = '登录';
-      elLogin.setAttribute('href', '/user-login');
+      elLogin.setAttribute('href', '/login');
     }
     if (elLogout) elLogout.style.display = 'none';
     if (elAdmin) elAdmin.style.display = 'none';

@@ -122,7 +122,7 @@
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/user/register` | 用户注册 |
-| POST | `/api/user/login` | 用户登录 |
+| POST | `/api/login` | 用户/管理员登录 |
 | POST | `/api/user/logout` | 用户登出 |
 | POST | `/api/user/forgot-password` | 忘记密码 |
 | GET | `/api/user/profile` | 获取用户资料 |

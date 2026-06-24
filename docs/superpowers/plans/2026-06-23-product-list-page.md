@@ -402,7 +402,7 @@ git commit -m "feat(api): extend /api/products with isCourse/search/page/pageSiz
         </ul>
       </nav>
       <div class="header-actions">
-        <a href="/user-login" class="header-login">登录</a>
+        <a href="/login" class="header-login">登录</a>
       </div>
     </div>
   </header>

@@ -1131,11 +1131,6 @@ app.get('/verify-email', async (req, res) => {
   }
 });
 
-// /api/user/login 自合并登录后已废弃，请使用 /api/login
-app.post('/api/user/login', (req, res) => {
-  res.status(410).json({ error: '请使用 /api/login' });
-});
-
 // 用户登出
 app.post('/api/user/logout', (req, res) => {
   req.session.userId = null;
@@ -4484,10 +4479,6 @@ app.get('/admin-log-activation', (req, res) => {
 });
 
 // 用户页面路由
-app.get('/user-login', (req, res) => {
-  res.redirect('/login');
-});
-
 app.get('/user-register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'user-register.html'));
 });

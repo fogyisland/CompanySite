@@ -45,7 +45,7 @@ POST /api/user/register
   └─ db.addUser → bcrypt 哈希密码 → INSERT users
        └─ 写 registration_logs (SUCCESS / FAILED)
   → 201 { success: true, userId }
-  └─ 客户端跳 /user-login (历史遗留) → 实际跳 /login
+  └─ 客户端跳 /login
 ```
 
 注：2026-06-19 已移除图形验证码。注册端点 `verifyCaptcha(req, captcha)` 旧实现是坏的（参数顺序错误），移除时顺带修好。
@@ -192,9 +192,9 @@ GET /api/installations         (requireAuth, 管理员)
   - 设备数量配额（每激活码允许 3 台设备）
   - 用户中心自助解绑 / 迁移设备
   
-### 4.5 验证码已删除，但 `/api/user/login` 仍返回 410 删除验证码路由
+### 4.5 验证码已删除，登录已统一为 `/api/login`
 
-- 合并登录后 `/api/user/login` 已被替换为 410，可以考虑彻底删除路由
+- 合并登录后 `/api/user/login` 已被删除，统一入口为 `/api/login`（管理员 + 普通用户共用）
 
 ### 4.6 注册流程
 

@@ -248,7 +248,7 @@
       const authData = await authResponse.json();
 
       if (!authData.loggedIn) {
-        window.location.href = '/user-login';
+        window.location.href = '/login';
         return;
       }
 
