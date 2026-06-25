@@ -99,6 +99,34 @@
       return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
     }
   </script>
+
+  <script>
+    // Load site settings — populate logo + companyName from /api/settings.
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          const logoText = document.getElementById('header-logo-text');
+          if (logoText) logoText.textContent = settings.companyName;
+          // Note: doc detail page sets its own title from the loaded doc,
+          // so we don't override it here.
+        }
+
+        if (settings.logo) {
+          const logoIcon = document.getElementById('header-logo-icon');
+          if (logoIcon) {
+            logoIcon.outerHTML =
+              '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadSettings);
+  </script>
   <script src="/js/header-auth.js" defer></script>
   <script src="/js/public-theme.js" defer></script>
 </body>

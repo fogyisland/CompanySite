@@ -16,8 +16,8 @@
   <header>
     <div class="nav-container">
       <a href="/" class="logo">
-        <div class="logo-icon">SV</div>
-        <span class="logo-text">博铭科技</span>
+        <div class="logo-icon" id="header-logo-icon">SV</div>
+        <span class="logo-text" id="header-logo-text">博铭科技</span>
       </a>
       <nav>
         <ul>
@@ -391,6 +391,33 @@
         });
       });
     });
+  </script>
+
+  <script>
+    // Load site settings — populate logo + companyName from /api/settings.
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.companyName) {
+          const logoText = document.getElementById('header-logo-text');
+          if (logoText) logoText.textContent = settings.companyName;
+          document.title = settings.companyName + ' - 产品中心';
+        }
+
+        if (settings.logo) {
+          const logoIcon = document.getElementById('header-logo-icon');
+          if (logoIcon) {
+            logoIcon.outerHTML =
+              '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadSettings);
   </script>
 </body>
 </html>
