@@ -361,10 +361,11 @@ echo "0 0,12 * * * root /usr/bin/certbot renew --quiet" | sudo tee /etc/cron.d/c
 ### 9.1 启动应用
 ```bash
 cd /var/www/booming
-sudo -u booming PORT=15000 pm2 start server.js --name booming
+sudo -u booming pm2 start server.js --name booming
 ```
 
-> **不需要指定 host**：server.js 内部已硬绑 `127.0.0.1`，PM2 的 `--node-args` / env 都不用管。
+> 端口由 `.env` 里的 `PORT` 决定（默认 15000），不需要在 PM2 命令行覆盖。
+> server.js 内部已硬绑 `127.0.0.1`，PM2 的 `--node-args` / host env 都不用管。
 
 ### 9.2 配置开机自启
 ```bash
