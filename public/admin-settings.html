@@ -63,22 +63,6 @@
         </div>
 
         <div class="settings-group">
-          <h3 class="settings-heading">端口设置</h3>
-          <div class="field-row">
-            <div class="field">
-              <label for="httpPort">HTTP 端口</label>
-              <input type="number" id="httpPort" name="httpPort" placeholder="10000" min="1" max="65535">
-              <p class="field-hint">服务器 HTTP 监听端口</p>
-            </div>
-            <div class="field">
-              <label for="httpsPort">HTTPS 端口</label>
-              <input type="number" id="httpsPort" name="httpsPort" placeholder="10001" min="1" max="65535">
-              <p class="field-hint">服务器 HTTPS 监听端口</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="settings-group">
           <h3 class="settings-heading">主题设置</h3>
           <div class="theme-grid" id="themePreview">
             <div class="theme-card active" data-theme="default" onclick="selectTheme('default')">
@@ -198,8 +182,6 @@
         document.getElementById('companyName').value = settings.companyName || '';
         document.getElementById('description').value = settings.description || '';
         document.getElementById('adminEmail').value = settings.adminEmail || '';
-        document.getElementById('httpPort').value = settings.httpPort || 10000;
-        document.getElementById('httpsPort').value = settings.httpsPort || 10001;
         document.getElementById('siteTheme').value = settings.siteTheme || 'minimal';
 
         if (settings.logo) {
@@ -231,15 +213,13 @@
       const companyName = document.getElementById('companyName').value;
       const description = document.getElementById('description').value;
       const adminEmail = document.getElementById('adminEmail').value;
-      const httpPort = parseInt(document.getElementById('httpPort').value) || 10000;
-      const httpsPort = parseInt(document.getElementById('httpsPort').value) || 10001;
       const siteTheme = document.getElementById('siteTheme') ? document.getElementById('siteTheme').value : 'default';
 
       try {
         const response = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ companyName, description, adminEmail, httpPort, httpsPort, siteTheme }),
+          body: JSON.stringify({ companyName, description, adminEmail, siteTheme }),
           credentials: 'include'
         });
 

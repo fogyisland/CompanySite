@@ -145,7 +145,6 @@ async function pruneToLast3() {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Session 版本控制 - 只在首次启动时创建版本号，后续启动复用旧版本
 // 这样服务器重启（崩溃恢复、部署）不会让所有 session 失效
@@ -2972,14 +2971,12 @@ app.get('/api/settings', async (req, res) => {
 
 // 更新网站设置
 app.put('/api/settings', requireAuth, async (req, res) => {
-  const { companyName, description, ssl, banners, httpPort, httpsPort, adminEmail, wechatId, email, ai, carddav, siteTheme } = req.body;
+  const { companyName, description, ssl, banners, adminEmail, wechatId, email, ai, carddav, siteTheme } = req.body;
   const updates = {};
   if (companyName !== undefined) updates.companyName = companyName;
   if (description !== undefined) updates.description = description;
   if (ssl !== undefined) updates.ssl = ssl;
   if (banners !== undefined) updates.banners = banners;
-  if (httpPort !== undefined) updates.httpPort = httpPort;
-  if (httpsPort !== undefined) updates.httpsPort = httpsPort;
   if (adminEmail !== undefined) updates.adminEmail = adminEmail;
   if (wechatId !== undefined) updates.wechatId = wechatId;
   if (email !== undefined) updates.email = email;
@@ -3676,11 +3673,11 @@ async function sendOrderPaidEmail(order, user, items, activationCodes) {
     });
 
     const companyName = settings.companyName || '博铭科技';
-    // baseUrl fallback 链:settings.ssl.domain > settings.httpPort > 当前 HTTP_PORT
-    // 之前硬编码 localhost:3000 在 httpPort=15000 的环境里会让邮件下载链接失效
+    // baseUrl fallback 链:settings.ssl.domain > process.env.PORT
+    // HTTP 端口从 .env 读,不走 DB settings(列已删)
     const baseUrl = settings.ssl?.domain
       ? 'https://' + settings.ssl.domain
-      : ('http://localhost:' + (settings.httpPort || 15000));
+      : ('http://localhost:' + (process.env.PORT || 15000));
 
     // 构建商品列表和下载链接
     let productListHtml = '';
@@ -4747,7 +4744,7 @@ app.post('/api/support', async (req, res) => {
             <td style="padding: 8px;">${escapeHtml(description)}</td>
           </tr>
         </table>
-        <p style="margin-top: 20px;"><a href="http://${settings.ssl?.domain || 'localhost:' + (settings.httpPort || 10000)}/admin-support" style="background: #133c8a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">查看工单</a></p>
+        <p style="margin-top: 20px;"><a href="http://${settings.ssl?.domain || 'localhost:' + (process.env.PORT || 15000)}/admin-support" style="background: #133c8a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">查看工单</a></p>
       `
     });
   }
@@ -4860,9 +4857,10 @@ async function startServer() {
     // 注: 'loopback' = 仅信任 127.0.0.1/::1,公网直连伪造 XFF 头无效
     app.set('trust proxy', 'loopback');
 
-    // 获取端口配置
+    // 端口从 .env 读,不走 DB settings(http_port/https_port 列已删除,nginx 终止 SSL 后只需 1 个 HTTP 端口)
+    const HTTP_PORT = parseInt(process.env.PORT, 10) || 15000;
+    // 读 settings 仅用于启动期可能需要的其他配置
     const settings = await db.getSettings();
-    const HTTP_PORT = settings?.httpPort || 15000;
 
     // 启动 HTTP 服务器 — 绑定 127.0.0.1(loopback)而非 0.0.0.0
     // 配套 nginx 反代: 客户端 → nginx(80/443) → 127.0.0.1:15000

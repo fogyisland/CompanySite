@@ -138,8 +138,6 @@ async function createTablesIfNotExist() {
       ssl_cert_path VARCHAR(500),
       ssl_key_path VARCHAR(500),
       ssl_ca_path VARCHAR(500),
-      http_port INT DEFAULT 10000,
-      https_port INT DEFAULT 10001,
       smtp_host VARCHAR(255),
       smtp_port INT DEFAULT 587,
       smtp_user VARCHAR(255),
@@ -705,8 +703,6 @@ async function getSettings() {
     sslCertPath: row.ssl_cert_path,
     sslKeyPath: row.ssl_key_path,
     sslCaPath: row.ssl_ca_path,
-    httpPort: row.http_port,
-    httpsPort: row.https_port,
     smtp: {
       host: row.smtp_host,
       port: row.smtp_port,
@@ -750,8 +746,6 @@ async function updateSettings(settings) {
   if (settings.sslCertPath !== undefined) { updates.push("ssl_cert_path = ?"); values.push(settings.sslCertPath); }
   if (settings.sslKeyPath !== undefined) { updates.push("ssl_key_path = ?"); values.push(settings.sslKeyPath); }
   if (settings.sslCaPath !== undefined) { updates.push("ssl_ca_path = ?"); values.push(settings.sslCaPath); }
-  if (settings.httpPort !== undefined) { updates.push("http_port = ?"); values.push(settings.httpPort); }
-  if (settings.httpsPort !== undefined) { updates.push("https_port = ?"); values.push(settings.httpsPort); }
   if (settings.smtp) {
     if (settings.smtp.host !== undefined) { updates.push("smtp_host = ?"); values.push(settings.smtp.host); }
     if (settings.smtp.port !== undefined) { updates.push("smtp_port = ?"); values.push(settings.smtp.port); }

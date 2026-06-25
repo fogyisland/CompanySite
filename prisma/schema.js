@@ -182,8 +182,6 @@ module.exports = {
     "ssl_cert_path": "varchar(500)",
     "ssl_key_path": "varchar(500)",
     "ssl_ca_path": "varchar(500)",
-    "http_port": "int(11) DEFAULT 10000",
-    "https_port": "int(11) DEFAULT 10001",
     "smtp_host": "varchar(255)",
     "smtp_port": "int(11) DEFAULT 587",
     "smtp_user": "varchar(255)",
