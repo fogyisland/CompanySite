@@ -305,6 +305,30 @@
       currentNewsId = null;
     }
 
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok) {
+          if (response.status === 401) { window.location.href = '/login'; return; }
+        }
+        const settings = await response.json();
+        if (settings.companyName) {
+          document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
+          document.title = settings.companyName + ' - 动态管理';
+        }
+        if (settings.logo) {
+          document.getElementById('header-logo-icon').outerHTML =
+            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+        }
+        if (settings.siteTheme) {
+          document.documentElement.setAttribute('data-theme', settings.siteTheme);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    loadSettings();
     loadNews();
   </script>
   <script src="/js/lucide-icons.js"></script>
