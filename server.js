@@ -249,7 +249,9 @@ setTimeout(cleanupOldEmailContents, 60 * 60 * 1000).unref();
 setInterval(cleanupOldEmailContents, EMAIL_CLEAN_INTERVAL).unref();
 
 // 获取客户端IP
-// 必须配合 app.set('trust proxy', false) — 否则攻击者可通过伪造 X-Forwarded-For 头绕过 IP 黑名单/限流
+// 配合 app.set('trust proxy', 'loopback') — 仅信任 127.0.0.1 传来的 X-Forwarded-For
+// nginx 反代场景下 req.ip 拿真实客户端 IP;非 loopback 直连则 req.ip = socket.remoteAddress
+// 这样攻击者无法通过伪造 XFF 头绕过 IP 黑名单/限流
 function getClientIp(req) {
   return req.ip ||
          req.connection?.remoteAddress ||
@@ -4852,17 +4854,21 @@ async function startServer() {
     await db.initDatabase();
     console.log('Database initialized');
 
-    // 显式禁用 trust proxy — 不接受 X-Forwarded-For 头，防止攻击者伪造 IP 绕过
-    // 限流/IP 黑名单/审计日志（必须配合 getClientIp 使用 req.ip）
-    app.set('trust proxy', false);
+    // trust proxy: loopback — 仅信任来自 127.0.0.1 的 X-Forwarded-For（nginx 反代场景）
+    // 配置 nginx 时务必用 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    // 这样 req.ip / getClientIp() 拿到的是真实客户端 IP,限流/审计日志正确
+    // 注: 'loopback' = 仅信任 127.0.0.1/::1,公网直连伪造 XFF 头无效
+    app.set('trust proxy', 'loopback');
 
     // 获取端口配置
     const settings = await db.getSettings();
     const HTTP_PORT = settings?.httpPort || 15000;
 
-    // 启动 HTTP 服务器
-    const server = app.listen(HTTP_PORT, '0.0.0.0', () => {
-      console.log(`HTTP Server running at http://0.0.0.0:${HTTP_PORT}`);
+    // 启动 HTTP 服务器 — 绑定 127.0.0.1(loopback)而非 0.0.0.0
+    // 配套 nginx 反代: 客户端 → nginx(80/443) → 127.0.0.1:15000
+    // 绑 loopback 防止公网绕过 nginx 直连,所有流量必经反代(SSL 终止 / gzip / 限流 / HSTS)
+    const server = app.listen(HTTP_PORT, '127.0.0.1', () => {
+      console.log(`HTTP Server running at http://127.0.0.1:${HTTP_PORT} (behind nginx)`);
     });
     // 显式处理 listen 错误(EADDRINUSE 等不会进入 try/catch,会触发 'error' 事件)
     server.on('error', (err) => {
