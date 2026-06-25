@@ -210,7 +210,7 @@
 
       container.innerHTML = products.map(p => {
         const thumbStyle = p.image
-          ? `background-image: url("${encodeURI(p.image)}");`
+          ? `background-image: url('${encodeURI(p.image)}');`
           : '';
         const badgeClass = getCategoryBadgeClass(p.category);
         const badgeText = escapeHtml(p.category || '软件');
