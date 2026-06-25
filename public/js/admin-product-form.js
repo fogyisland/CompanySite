@@ -23,7 +23,7 @@
   }
 
   // 课程型产品分类下拉框渲染（软件 vs 课程）
-  const SOFTWARE_CATEGORIES = ['开发工具', '设计软件', '安全软件', '效率工具', '实用工具', '企业产品', 'GitHub 仓库'];
+  const SOFTWARE_CATEGORIES = ['开发工具', '设计软件', '安全软件', '效率工具', '实用工具', '企业产品', 'GitHub 仓库', '开源产品'];
   const COURSE_CATEGORIES = ['外站课程', '企业内训'];
 
   function updateCategoryOptions(root, isCourse) {
@@ -41,7 +41,8 @@
       '企业产品': 'badge-enterprise-product',
       '外站课程': 'badge-external-course',
       '企业内训': 'badge-enterprise-internal',
-      'GitHub 仓库': 'badge-github-repo'
+      'GitHub 仓库': 'badge-github-repo',
+      '开源产品': 'badge-open-source'
     };
     return map[category] || 'badge-neutral';
   }
@@ -73,6 +74,7 @@
       monthlyPrice: 0,
       yearlyPrice: 0,
       courseLinks: [],
+      repoUrls: [],
       // 事件监听器（destroy 时解绑）
       listeners: []
     };
@@ -98,11 +100,13 @@
     const useTiers = $('#usePricingTiers', root).checked;
     const useExternal = $('#useExternalLink', root).checked;
     const isCourse = $('#isCourse', root).checked;
+    const category = $('#category', root).value;
+    const isOpenSource = category === '开源产品';
 
     const data = {
       name: $('#name', root).value,
       shortName: $('#shortName', root).value,
-      category: $('#category', root).value,
+      category: category,
       description: $('#description', root).innerHTML,
       version: $('#version', root).value,
       platform: $('#platform', root).value,
@@ -123,6 +127,13 @@
       data.courseLinks = state.courseLinks
         .filter(l => l.platform && l.url)
         .map(l => ({ platform: l.platform, url: l.url }));
+    } else if (isOpenSource) {
+      // 开源产品：无价格，提交仓库地址数组
+      data.price = 0;
+      data.pricingTiers = null;
+      data.downloadUrl = '';
+      data.externalLink = false;
+      data.repoUrls = (state.repoUrls || []).map(u => String(u || '').trim()).filter(Boolean);
     } else {
       if (useExternal) {
         data.downloadUrl = $('#externalLink', root).value;
@@ -236,6 +247,61 @@
   function removeCourseLink(root, state, index) {
     state.courseLinks.splice(index, 1);
     renderCourseLinks(root, state);
+  }
+
+  // === 开源产品：仓库地址列表 ===
+  function renderRepoUrls(root, state) {
+    const list = $('#repo-urls-list', root);
+    if (!list) return;
+    if (!state.repoUrls || state.repoUrls.length === 0) {
+      list.innerHTML = '<p style="color:var(--text-light);font-size:13px;padding:12px 0;">点击下方"+ 添加仓库"按钮添加仓库地址（支持 GitHub / Gitee / 自建 GitLab 等）</p>';
+      return;
+    }
+    list.innerHTML = state.repoUrls.map((url, i) =>
+      '<div class="repo-url-row" data-index="' + i + '">' +
+        '<input type="url" class="repo-url-input" data-action="url" placeholder="https://github.com/owner/repo" value="' + escHtml(url) + '">' +
+        '<button type="button" class="btn-remove-course-link" data-action="remove" title="删除">×</button>' +
+      '</div>'
+    ).join('');
+  }
+
+  function addRepoUrl(root, state) {
+    if (!state.repoUrls) state.repoUrls = [];
+    state.repoUrls.push('');
+    renderRepoUrls(root, state);
+  }
+
+  function removeRepoUrl(root, state, index) {
+    state.repoUrls.splice(index, 1);
+    renderRepoUrls(root, state);
+  }
+
+  function updateRepoUrlField(root, state, index, value) {
+    if (state.repoUrls[index] !== undefined) {
+      state.repoUrls[index] = value;
+    }
+  }
+
+  // 类目切换：开源产品时显示仓库地址区 + 隐藏价格/订阅/下载
+  function toggleOpenSource(root, state) {
+    const isOpenSource = $('#category', root).value === '开源产品';
+    const repoSection = $('#repoUrlsSection', root);
+    if (repoSection) repoSection.hidden = !isOpenSource;
+    if (isOpenSource) {
+      $('#priceField', root).hidden = true;
+      $('#subscriptionSection', root).hidden = true;
+      $('#externalLinkSection', root).hidden = true;
+      $('#softwareUploadSection', root).hidden = true;
+      $('#price', root).value = '';
+      $('#tier-monthly-price', root).value = '';
+      $('#tier-yearly-price', root).value = '';
+      $('#usePricingTiers', root).checked = false;
+      $('#useExternalLink', root).checked = false;
+      $('#externalLink', root).value = '';
+    } else {
+      // 恢复价格/订阅/下载区（不强制显示订阅/外部链接，由它们自己的 checkbox 决定）
+      $('#priceField', root).hidden = false;
+    }
   }
 
   function updateCourseLinkField(root, state, index, field, value) {
@@ -373,6 +439,13 @@
         toggleCourse(root, state, { preserveLinks: true });
         renderCourseLinks(root, state);
       }
+
+      // 开源产品加载
+      if (Array.isArray(product.repoUrls)) {
+        state.repoUrls = product.repoUrls.slice();
+        renderRepoUrls(root, state);
+      }
+      toggleOpenSource(root, state);
     } catch (err) {
       console.error('Load product error:', err);
       alert('加载产品失败');
@@ -620,6 +693,16 @@
       addCourseLink(root, state);
     }));
 
+    // 类目切换：开源产品显示仓库地址区
+    state.listeners.push(bind(root, '#category', 'change', function() {
+      toggleOpenSource(root, state);
+    }));
+
+    // 仓库地址增/删
+    state.listeners.push(bind(root, '#add-repo-url-btn', 'click', function() {
+      addRepoUrl(root, state);
+    }));
+
     // 课程链接 input 委托（URL + custom label）
     state.listeners.push(bind(root, '#course-links-list', 'input', function(e) {
       const row = e.target.closest('.course-link-row');
@@ -660,6 +743,26 @@
       if (e.target.dataset.action === 'remove') {
         const i = parseInt(row.dataset.index, 10);
         removeCourseLink(root, state, i);
+      }
+    }));
+
+    // 仓库地址 input 委托
+    state.listeners.push(bind(root, '#repo-urls-list', 'input', function(e) {
+      const row = e.target.closest('.repo-url-row');
+      if (!row) return;
+      const i = parseInt(row.dataset.index, 10);
+      if (e.target.dataset.action === 'url') {
+        updateRepoUrlField(root, state, i, e.target.value);
+      }
+    }));
+
+    // 仓库地址 click 委托（remove button）
+    state.listeners.push(bind(root, '#repo-urls-list', 'click', function(e) {
+      const row = e.target.closest('.repo-url-row');
+      if (!row) return;
+      if (e.target.dataset.action === 'remove') {
+        const i = parseInt(row.dataset.index, 10);
+        removeRepoUrl(root, state, i);
       }
     }));
 
@@ -755,6 +858,7 @@
     } else {
       // 新建模式：默认软件型分类
       updateCategoryOptions(root, false);
+      toggleOpenSource(root, state);
     }
 
     return {

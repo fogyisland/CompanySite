@@ -596,6 +596,17 @@ body.sidebar-collapsed .admin-main {
   color: white;
 }
 
+/* 开源产品 - 紫色渐变（开源/自由软件常见色） */
+.badge-open-source {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: white;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;

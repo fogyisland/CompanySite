@@ -323,6 +323,12 @@
   background: linear-gradient(135deg, #24292e 0%, #0d1117 100%);
   color: white;
 }
+
+/* 开源产品 - 紫色渐变（与 admin.css 同步） */
+.product-card-category-badge.badge-open-source {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: white;
+}
 /* 产品区底部"查看更多"按钮 */
 .products-section-footer {
   text-align: center;

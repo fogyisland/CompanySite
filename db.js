@@ -49,6 +49,19 @@ function updateDbConfig(newConfig) {
 // all-or-nothing (e.g., approve-payment: update order status + insert
 // activation codes). Without this, a partial failure leaves the order paid
 // but with missing codes (I14).
+// products.repo_urls 存的是 JSON 数组；mysql2 驱动对 JSON 列有时返回 string、有时返回 parsed array，统一定义
+function parseRepoUrls(v) {
+  if (v == null) return [];
+  if (Array.isArray(v)) return v.filter(u => typeof u === 'string' && u.trim());
+  if (typeof v === 'string') {
+    try {
+      const arr = JSON.parse(v);
+      return Array.isArray(arr) ? arr.filter(u => typeof u === 'string' && u.trim()) : [];
+    } catch { return []; }
+  }
+  return [];
+}
+
 async function withTransaction(fn) {
   if (!mysqlPool) throw new Error('MySQL pool not initialized');
   const conn = await mysqlPool.getConnection();
@@ -125,6 +138,7 @@ async function createTablesIfNotExist() {
       detail_page VARCHAR(500),
       image VARCHAR(500),
       image_dark_bg INT DEFAULT 0,
+      repo_urls JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`,
@@ -349,6 +363,18 @@ async function createTablesIfNotExist() {
       if (!e.message.includes('Duplicate column')) throw e;
     }
   }
+
+  // ALTER statements for products (open-source repo URLs)
+  const productAlterStatements = [
+    "ALTER TABLE products ADD COLUMN repo_urls JSON"
+  ];
+  for (const sql of productAlterStatements) {
+    try {
+      await mysqlPool.query(sql);
+    } catch (e) {
+      if (!e.message.includes('Duplicate column')) throw e;
+    }
+  }
 }
 
 async function initDefaultData() {
@@ -444,6 +470,7 @@ async function getAllProducts() {
     image: row.image,
     imageDarkBg: row.image_dark_bg === 1,
     isCourse: row.is_course === 1,
+    repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }));
@@ -499,6 +526,7 @@ async function getProductsPaginated({ isCourse, search, page, pageSize }) {
     image: row.image,
     imageDarkBg: row.image_dark_bg === 1,
     isCourse: row.is_course === 1,
+    repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }));
@@ -563,6 +591,7 @@ async function getProductByShortName(shortName) {
     image: row.image,
     imageDarkBg: row.image_dark_bg === 1,
     isCourse: row.is_course === 1,
+    repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -571,11 +600,12 @@ async function getProductByShortName(shortName) {
 async function createProduct(product) {
   const isCourseVal = (product.isCourse === true || product.isCourse === 1) ? 1 : 0;
   const [result] = await mysqlPool.query(
-    `INSERT INTO products (name, short_name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg, is_course)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (name, short_name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg, is_course, repo_urls)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
-     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal]
+     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal,
+     JSON.stringify(product.repoUrls || [])]
   );
   const insertId = result.insertId;
   if (Array.isArray(product.courseLinks) && product.courseLinks.length > 0) {
@@ -587,10 +617,11 @@ async function createProduct(product) {
 async function updateProduct(id, product) {
   const isCourseVal = (product.isCourse === true || product.isCourse === 1) ? 1 : 0;
   await mysqlPool.query(
-    `UPDATE products SET name=?, short_name=?, category=?, price=?, pricing_tiers=?, description=?, version=?, platform=?, features=?, icon=?, featured=?, download_url=?, external_link=?, detail_page=?, image=?, image_dark_bg=?, is_course=? WHERE id=?`,
+    `UPDATE products SET name=?, short_name=?, category=?, price=?, pricing_tiers=?, description=?, version=?, platform=?, features=?, icon=?, featured=?, download_url=?, external_link=?, detail_page=?, image=?, image_dark_bg=?, is_course=?, repo_urls=? WHERE id=?`,
     [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
-     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal, id]
+     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal,
+     JSON.stringify(product.repoUrls || []), id]
   );
   if (Array.isArray(product.courseLinks)) {
     await setProductLinks(id, product.courseLinks);
@@ -663,6 +694,7 @@ async function getProductWithLinks(productId) {
     image: product.image,
     imageDarkBg: product.image_dark_bg === 1,
     isCourse: product.is_course === 1,
+    repoUrls: parseRepoUrls(product.repo_urls),
     courseLinks: links,
     createdAt: product.created_at,
     updatedAt: product.updated_at
@@ -684,6 +716,7 @@ async function searchProducts(keyword) {
     features: row.features ? JSON.parse(row.features) : [], icon: row.icon,
     featured: row.featured === 1, downloadUrl: row.download_url, externalLink: row.external_link === 1,
     detailPage: row.detail_page, image: row.image, imageDarkBg: row.image_dark_bg === 1,
+    isCourse: row.is_course === 1, repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at, updatedAt: row.updated_at
   }));
 }

@@ -2378,33 +2378,39 @@ app.post('/api/news/:id/view', checkPublicEndpointRateLimit, async (req, res) =>
 
 // 添加产品（需登录）
 app.post('/api/products', requireAuth, async (req, res) => {
-  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, courseLinks } = req.body;
+  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, courseLinks, repoUrls } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
   const isCourseVal = isCourse === true || isCourse === 1;
+  const isOpenSource = category === '开源产品';
+  const cleanRepoUrls = Array.isArray(repoUrls) ? repoUrls.filter(u => typeof u === 'string' && /^https?:\/\//i.test(u.trim())) : [];
+  if (isOpenSource && cleanRepoUrls.length === 0) {
+    return res.status(400).json({ error: '开源产品至少需要一个仓库地址' });
+  }
 
   const newProduct = await db.addProduct({
     name,
     shortName: shortName || '',
     category: category || 'General',
-    price: isCourseVal ? 0 : parseFloat(price || 0),
-    pricingTiers: isCourseVal ? null : (pricingTiers || null),
+    price: (isCourseVal || isOpenSource) ? 0 : parseFloat(price || 0),
+    pricingTiers: (isCourseVal || isOpenSource) ? null : (pricingTiers || null),
     description: description || '',
     version: version || '1.0.0',
     platform: platform || 'Windows',
     features: features || [],
     icon: icon || 'software',
     featured: featured || false,
-    downloadUrl: isCourseVal ? '' : (downloadUrl || ''),
-    externalLink: isCourseVal ? false : (externalLink || false),
+    downloadUrl: (isCourseVal || isOpenSource) ? '' : (downloadUrl || ''),
+    externalLink: (isCourseVal || isOpenSource) ? false : (externalLink || false),
     detailPage: detailPage || '',
     image: image || '',
     imageDarkBg: imageDarkBg || false,
     isCourse: isCourseVal,
-    courseLinks: Array.isArray(courseLinks) ? courseLinks : []
+    courseLinks: Array.isArray(courseLinks) ? courseLinks : [],
+    repoUrls: cleanRepoUrls
   });
 
   res.status(201).json(newProduct);
@@ -2415,12 +2421,12 @@ app.post('/api/products', requireAuth, async (req, res) => {
 
 // 更新产品（需登录）
 app.put('/api/products/:id', requireAuth, async (req, res) => {
-  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, courseLinks } = req.body;
+  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, courseLinks, repoUrls } = req.body;
 
   const updates = {};
   if (name) updates.name = name;
   if (shortName !== undefined) updates.shortName = shortName;
-  if (category) updates.category = category;
+  if (category !== undefined) updates.category = category;
   if (price !== undefined) updates.price = parseFloat(price);
   if (pricingTiers !== undefined) updates.pricingTiers = pricingTiers;
   if (description !== undefined) updates.description = description;
@@ -2436,6 +2442,21 @@ app.put('/api/products/:id', requireAuth, async (req, res) => {
   if (imageDarkBg !== undefined) updates.imageDarkBg = imageDarkBg;
   if (isCourse !== undefined) updates.isCourse = isCourse === true || isCourse === 1;
   if (courseLinks !== undefined) updates.courseLinks = Array.isArray(courseLinks) ? courseLinks : [];
+  if (repoUrls !== undefined) {
+    if (!Array.isArray(repoUrls)) {
+      return res.status(400).json({ error: 'repoUrls 必须是数组' });
+    }
+    updates.repoUrls = repoUrls.filter(u => typeof u === 'string' && /^https?:\/\//i.test(u.trim()));
+  }
+  // 开源产品校验：若目标类目是「开源产品」，必须至少 1 个仓库地址
+  const targetCategory = updates.category;
+  if (targetCategory === '开源产品' && (!updates.repoUrls || updates.repoUrls.length === 0)) {
+    const existing = await db.getProduct(req.params.id);
+    if (!existing || !Array.isArray(existing.repoUrls) || existing.repoUrls.length === 0) {
+      return res.status(400).json({ error: '开源产品至少需要一个仓库地址' });
+    }
+    updates.repoUrls = existing.repoUrls;
+  }
 
   const updated = await db.updateProduct(req.params.id, updates);
   if (!updated) {
