@@ -33,6 +33,10 @@
     .admin-btn-primary:hover { opacity: 0.9; }
     .admin-btn-secondary { padding: 8px 16px; background: var(--admin-bg-card, #fff); color: var(--admin-text-primary, #1a1a1a); border: 1px solid var(--admin-border, #e5e7eb); border-radius: var(--admin-radius, 4px); cursor: pointer; font-size: var(--admin-font-size-base, 13px); }
     .admin-btn-secondary:hover { background: var(--admin-bg-hover, #f6f8fa); }
+    .cover-upload { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .cover-preview { min-height: 60px; min-width: 100px; display: flex; align-items: center; }
+    .cover-preview img { max-width: 200px; max-height: 120px; border-radius: 4px; border: 1px solid var(--admin-border, #e5e7eb); object-fit: cover; }
+    .cover-actions { display: flex; align-items: center; gap: 8px; }
   </style>
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
 </head>
@@ -88,8 +92,17 @@
           <textarea id="news-excerpt" rows="2" placeholder="简短描述动态内容"></textarea>
         </div>
         <div class="editor-field">
-          <label>封面图 URL（选填）</label>
-          <input type="text" id="news-cover-image" placeholder="如：/uploads/docs/cover-2026.png">
+          <label>封面图（选填）</label>
+          <div class="cover-upload">
+            <div class="cover-preview" id="cover-preview"></div>
+            <div class="cover-actions">
+              <input type="file" id="news-cover-file" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml" style="display:none">
+              <button type="button" class="admin-btn-secondary" onclick="document.getElementById('news-cover-file').click()">选择图片</button>
+              <button type="button" class="admin-btn-secondary" id="cover-clear-btn" onclick="clearCover()" style="display:none">清除</button>
+              <span id="cover-status" style="color: #666; font-size: 12px"></span>
+            </div>
+            <input type="hidden" id="news-cover-image">
+          </div>
         </div>
         <div class="editor-field">
           <label><input type="checkbox" id="news-is-pinned"> 置顶</label>
@@ -131,6 +144,12 @@
       if (!res.ok) { document.getElementById('news-list').innerHTML = '<div style="padding: 20px; text-align: center; color: #b91c1c;">加载失败</div>'; return; }
       const all = await res.json();
       const filtered = cat ? all.filter(n => n.category === cat) : all;
+      // 置顶优先，同置顶内按 sort_order 升序
+      filtered.sort((a, b) => {
+        const ap = a.is_pinned ? 1 : 0, bp = b.is_pinned ? 1 : 0;
+        if (ap !== bp) return bp - ap;
+        return (a.sort_order || 0) - (b.sort_order || 0);
+      });
       const list = document.getElementById('news-list');
       if (filtered.length === 0) {
         list.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">暂无动态</div>';
@@ -154,6 +173,46 @@
 
     document.getElementById('category-filter').onchange = loadNews;
 
+    function renderCoverPreview(url) {
+      const preview = document.getElementById('cover-preview');
+      const clearBtn = document.getElementById('cover-clear-btn');
+      if (url) {
+        preview.innerHTML = '<img src="' + escapeHtml(url) + '" alt="封面预览">';
+        clearBtn.style.display = 'inline-block';
+      } else {
+        preview.innerHTML = '';
+        clearBtn.style.display = 'none';
+      }
+    }
+
+    function clearCover() {
+      document.getElementById('news-cover-image').value = '';
+      renderCoverPreview('');
+      document.getElementById('news-cover-file').value = '';
+    }
+
+    document.getElementById('news-cover-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('图片大小超过 5MB'); e.target.value = ''; return; }
+      const status = document.getElementById('cover-status');
+      status.textContent = '上传中...';
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const r = await fetch('/api/upload-doc-image', { method: 'POST', body: fd, credentials: 'include' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const j = await r.json();
+        document.getElementById('news-cover-image').value = j.location;
+        renderCoverPreview(j.location);
+        status.textContent = '';
+      } catch (err) {
+        status.textContent = '上传失败';
+        console.error(err);
+        alert('封面图上传失败');
+      }
+    });
+
     function createNewNews() {
       currentNewsId = null;
       document.getElementById('editor-title').textContent = '新建动态';
@@ -162,6 +221,8 @@
       document.getElementById('news-category').value = '';
       document.getElementById('news-excerpt').value = '';
       document.getElementById('news-cover-image').value = '';
+      renderCoverPreview('');
+      document.getElementById('news-cover-file').value = '';
       document.getElementById('news-is-pinned').checked = false;
       document.getElementById('news-sort-order').value = '0';
       document.getElementById('delete-btn').style.display = 'none';
@@ -180,6 +241,8 @@
       document.getElementById('news-category').value = n.category || '';
       document.getElementById('news-excerpt').value = n.excerpt || '';
       document.getElementById('news-cover-image').value = n.cover_image || '';
+      renderCoverPreview(n.cover_image || '');
+      document.getElementById('news-cover-file').value = '';
       document.getElementById('news-is-pinned').checked = n.is_pinned === 1 || n.is_pinned === true;
       document.getElementById('news-sort-order').value = n.sort_order || 0;
       document.getElementById('delete-btn').style.display = 'inline-block';
