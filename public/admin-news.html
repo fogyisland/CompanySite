@@ -299,6 +299,25 @@
         if (initialContent) {
           quill.clipboard.dangerouslyPasteHTML(initialContent, 'silent');
         }
+        // Quill 1.x 编辑器不自动滚动外层页面，长文底部打字时光标会跑出视口。
+        // 监听 text-change，若光标超出视口则滚动页面。
+        quill.on('text-change', function(_delta, _oldDelta, source) {
+          if (source !== 'user') return;
+          const range = quill.getSelection();
+          if (!range) return;
+          const bounds = quill.getBounds(range.index, range.length);
+          if (!bounds) return;
+          const editorRect = quill.root.getBoundingClientRect();
+          const caretTop = editorRect.top + bounds.top;
+          const caretBottom = editorRect.top + bounds.bottom;
+          const vh = window.innerHeight;
+          const margin = 80;
+          if (caretBottom > vh - margin) {
+            window.scrollBy(0, caretBottom - vh + margin * 1.5);
+          } else if (caretTop < margin) {
+            window.scrollBy(0, caretTop - margin);
+          }
+        });
       });
     }
 
