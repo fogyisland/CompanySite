@@ -138,6 +138,7 @@ async function createTablesIfNotExist() {
       detail_page VARCHAR(500),
       image VARCHAR(500),
       image_dark_bg INT DEFAULT 0,
+      is_shared_code INT DEFAULT 0,
       repo_urls JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -364,9 +365,10 @@ async function createTablesIfNotExist() {
     }
   }
 
-  // ALTER statements for products (open-source repo URLs)
+  // ALTER statements for products (open-source repo URLs + shared-code flag)
   const productAlterStatements = [
-    "ALTER TABLE products ADD COLUMN repo_urls JSON"
+    "ALTER TABLE products ADD COLUMN repo_urls JSON",
+    "ALTER TABLE products ADD COLUMN is_shared_code INT DEFAULT 0"
   ];
   for (const sql of productAlterStatements) {
     try {
@@ -470,6 +472,7 @@ async function getAllProducts() {
     image: row.image,
     imageDarkBg: row.image_dark_bg === 1,
     isCourse: row.is_course === 1,
+    isSharedCode: row.is_shared_code === 1,
     repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -526,6 +529,7 @@ async function getProductsPaginated({ isCourse, search, page, pageSize }) {
     image: row.image,
     imageDarkBg: row.image_dark_bg === 1,
     isCourse: row.is_course === 1,
+    isSharedCode: row.is_shared_code === 1,
     repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -563,6 +567,8 @@ async function getProduct(id) {
     image: row.image,
     imageDarkBg: row.image_dark_bg === 1,
     isCourse: row.is_course === 1,
+    isSharedCode: row.is_shared_code === 1,
+    repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -591,6 +597,7 @@ async function getProductByShortName(shortName) {
     image: row.image,
     imageDarkBg: row.image_dark_bg === 1,
     isCourse: row.is_course === 1,
+    isSharedCode: row.is_shared_code === 1,
     repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -599,12 +606,13 @@ async function getProductByShortName(shortName) {
 
 async function createProduct(product) {
   const isCourseVal = (product.isCourse === true || product.isCourse === 1) ? 1 : 0;
+  const isSharedCodeVal = (product.isSharedCode === true || product.isSharedCode === 1) ? 1 : 0;
   const [result] = await mysqlPool.query(
-    `INSERT INTO products (name, short_name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg, is_course, repo_urls)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (name, short_name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg, is_course, is_shared_code, repo_urls)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
-     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal,
+     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal, isSharedCodeVal,
      JSON.stringify(product.repoUrls || [])]
   );
   const insertId = result.insertId;
@@ -616,11 +624,12 @@ async function createProduct(product) {
 
 async function updateProduct(id, product) {
   const isCourseVal = (product.isCourse === true || product.isCourse === 1) ? 1 : 0;
+  const isSharedCodeVal = (product.isSharedCode === true || product.isSharedCode === 1) ? 1 : 0;
   await mysqlPool.query(
-    `UPDATE products SET name=?, short_name=?, category=?, price=?, pricing_tiers=?, description=?, version=?, platform=?, features=?, icon=?, featured=?, download_url=?, external_link=?, detail_page=?, image=?, image_dark_bg=?, is_course=?, repo_urls=? WHERE id=?`,
+    `UPDATE products SET name=?, short_name=?, category=?, price=?, pricing_tiers=?, description=?, version=?, platform=?, features=?, icon=?, featured=?, download_url=?, external_link=?, detail_page=?, image=?, image_dark_bg=?, is_course=?, is_shared_code=?, repo_urls=? WHERE id=?`,
     [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
-     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal,
+     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal, isSharedCodeVal,
      JSON.stringify(product.repoUrls || []), id]
   );
   if (Array.isArray(product.courseLinks)) {
@@ -716,7 +725,7 @@ async function searchProducts(keyword) {
     features: row.features ? JSON.parse(row.features) : [], icon: row.icon,
     featured: row.featured === 1, downloadUrl: row.download_url, externalLink: row.external_link === 1,
     detailPage: row.detail_page, image: row.image, imageDarkBg: row.image_dark_bg === 1,
-    isCourse: row.is_course === 1, repoUrls: parseRepoUrls(row.repo_urls),
+    isCourse: row.is_course === 1, isSharedCode: row.is_shared_code === 1, repoUrls: parseRepoUrls(row.repo_urls),
     createdAt: row.created_at, updatedAt: row.updated_at
   }));
 }

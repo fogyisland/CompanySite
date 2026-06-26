@@ -532,7 +532,7 @@
             list.appendChild(a);
           });
         info.appendChild(list);
-      } else if (product.category === '开源产品' && Array.isArray(product.repoUrls) && product.repoUrls.length > 0) {
+      } else if ((product.category === '开源产品' || product.isSharedCode === true || product.isSharedCode === 1) && Array.isArray(product.repoUrls) && product.repoUrls.length > 0) {
         // 开源产品：显示所有仓库地址（多平台），不显示价格 / 购买按钮
         const list = document.createElement('div');
         list.className = 'course-links-list';

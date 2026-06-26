@@ -223,23 +223,26 @@
         const badgeClass = getCategoryBadgeClass(p.category);
         const badgeText = escapeHtml(p.category || '软件');
         const isOpenSource = p.category === '开源产品';
+        const isSharedCode = p.isSharedCode === true || p.isSharedCode === 1;
+        const isRepoProduct = isOpenSource || isSharedCode;
         const repoUrls = Array.isArray(p.repoUrls) ? p.repoUrls.filter(u => typeof u === 'string' && u.trim()) : [];
 
-        // 价格区: 软件型显示 tier; 课程型显示平台数; 开源产品不显示价格
+        // 价格区: 软件型显示 tier; 课程型显示平台数; 开源/共享代码产品不显示价格
         let pricingHtml = '';
         if (p.isCourse) {
           // 课程型: 显示平台数
           const platforms = (p.platform || '').split(/[,，、]/).filter(Boolean);
           const count = platforms.length;
           pricingHtml = `<div class="product-list-row-platform">${count} 个平台 · ${escapeHtml(p.platform || '')}</div>`;
-        } else if (isOpenSource) {
-          // 开源产品: 显示仓库数 + 平台标签（不显示价格）
+        } else if (isRepoProduct) {
+          // 开源/共享代码产品: 显示仓库数 + 平台标签（不显示价格）
           const platformLabels = repoUrls.map(u => {
             try {
               return new URL(u).hostname.replace(/^www\./, '').split('.')[0];
             } catch { return '仓库'; }
           });
-          pricingHtml = `<div class="product-list-row-platform">🔓 ${repoUrls.length} 个仓库 · ${escapeHtml(platformLabels.join(' / ') || '开源')}</div>`;
+          const label = isSharedCode && !isOpenSource ? '共享代码' : '开源';
+          pricingHtml = `<div class="product-list-row-platform">🔓 ${repoUrls.length} 个仓库 · ${escapeHtml(platformLabels.join(' / ') || label)}</div>`;
         } else if (p.pricingTiers && p.pricingTiers.length > 0) {
           pricingHtml = `<div class="product-list-row-pricing">${p.pricingTiers.map(t =>
             `<span><span class="price-tier-amount">¥${escapeHtml(String(t.price ?? ''))}</span> / ${escapeHtml(t.label)}</span>`
@@ -248,9 +251,9 @@
           pricingHtml = `<div class="product-list-row-pricing"><span class="price-tier-amount">¥${escapeHtml(String(p.price ?? ''))}</span></div>`;
         }
 
-        // 按钮: 开源产品 → 第一个仓库（新标签）; 课程型 → 查看课程; 其他 → 查看详情
+        // 按钮: 开源/共享代码 → 第一个仓库（新标签）; 课程型 → 查看课程; 其他 → 查看详情
         let btnText, btnLink, btnAttrs = '';
-        if (isOpenSource && repoUrls.length > 0) {
+        if (isRepoProduct && repoUrls.length > 0) {
           btnText = '访问仓库 →';
           btnLink = repoUrls[0];
           btnAttrs = ' target="_blank" rel="noopener"';
@@ -270,7 +273,7 @@
                 <h3>${escapeHtml(p.name)}</h3>
                 <span class="product-card-category-badge ${badgeClass}">${badgeText}</span>
                 ${p.isCourse ? '<span class="product-card-category-badge badge-purple">课程型</span>' : ''}
-                ${isOpenSource ? '<span class="product-card-category-badge badge-open-source">开源</span>' : ''}
+                ${isRepoProduct ? '<span class="product-card-category-badge badge-open-source">共享代码</span>' : ''}
               </div>
               ${pricingHtml}
               <div class="product-list-row-desc">${escapeHtml(stripHtml(p.description || ''))}</div>

@@ -2378,37 +2378,42 @@ app.post('/api/news/:id/view', checkPublicEndpointRateLimit, async (req, res) =>
 
 // 添加产品（需登录）
 app.post('/api/products', requireAuth, async (req, res) => {
-  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, courseLinks, repoUrls } = req.body;
+  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, isSharedCode, courseLinks, repoUrls } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
   const isCourseVal = isCourse === true || isCourse === 1;
+  const isSharedCodeVal = isSharedCode === true || isSharedCode === 1;
   const isOpenSource = category === '开源产品';
+  if (isCourseVal && isSharedCodeVal) {
+    return res.status(400).json({ error: '课程型与共享代码不能同时启用' });
+  }
   const cleanRepoUrls = Array.isArray(repoUrls) ? repoUrls.filter(u => typeof u === 'string' && /^https?:\/\//i.test(u.trim())) : [];
-  if (isOpenSource && cleanRepoUrls.length === 0) {
-    return res.status(400).json({ error: '开源产品至少需要一个仓库地址' });
+  if ((isOpenSource || isSharedCodeVal) && cleanRepoUrls.length === 0) {
+    return res.status(400).json({ error: '开源/共享代码产品至少需要一个仓库地址' });
   }
 
   const newProduct = await db.addProduct({
     name,
     shortName: shortName || '',
     category: category || 'General',
-    price: (isCourseVal || isOpenSource) ? 0 : parseFloat(price || 0),
-    pricingTiers: (isCourseVal || isOpenSource) ? null : (pricingTiers || null),
+    price: (isCourseVal || isSharedCodeVal || isOpenSource) ? 0 : parseFloat(price || 0),
+    pricingTiers: (isCourseVal || isSharedCodeVal || isOpenSource) ? null : (pricingTiers || null),
     description: description || '',
     version: version || '1.0.0',
     platform: platform || 'Windows',
     features: features || [],
     icon: icon || 'software',
     featured: featured || false,
-    downloadUrl: (isCourseVal || isOpenSource) ? '' : (downloadUrl || ''),
-    externalLink: (isCourseVal || isOpenSource) ? false : (externalLink || false),
+    downloadUrl: (isCourseVal || isSharedCodeVal || isOpenSource) ? '' : (downloadUrl || ''),
+    externalLink: (isCourseVal || isSharedCodeVal || isOpenSource) ? false : (externalLink || false),
     detailPage: detailPage || '',
     image: image || '',
     imageDarkBg: imageDarkBg || false,
     isCourse: isCourseVal,
+    isSharedCode: isSharedCodeVal,
     courseLinks: Array.isArray(courseLinks) ? courseLinks : [],
     repoUrls: cleanRepoUrls
   });
@@ -2421,7 +2426,7 @@ app.post('/api/products', requireAuth, async (req, res) => {
 
 // 更新产品（需登录）
 app.put('/api/products/:id', requireAuth, async (req, res) => {
-  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, courseLinks, repoUrls } = req.body;
+  const { name, shortName, category, price, pricingTiers, description, version, platform, features, icon, featured, downloadUrl, externalLink, detailPage, image, imageDarkBg, isCourse, isSharedCode, courseLinks, repoUrls } = req.body;
 
   const updates = {};
   if (name) updates.name = name;
@@ -2441,6 +2446,7 @@ app.put('/api/products/:id', requireAuth, async (req, res) => {
   if (image !== undefined) updates.image = image;
   if (imageDarkBg !== undefined) updates.imageDarkBg = imageDarkBg;
   if (isCourse !== undefined) updates.isCourse = isCourse === true || isCourse === 1;
+  if (isSharedCode !== undefined) updates.isSharedCode = isSharedCode === true || isSharedCode === 1;
   if (courseLinks !== undefined) updates.courseLinks = Array.isArray(courseLinks) ? courseLinks : [];
   if (repoUrls !== undefined) {
     if (!Array.isArray(repoUrls)) {
@@ -2448,14 +2454,26 @@ app.put('/api/products/:id', requireAuth, async (req, res) => {
     }
     updates.repoUrls = repoUrls.filter(u => typeof u === 'string' && /^https?:\/\//i.test(u.trim()));
   }
-  // 开源产品校验：若目标类目是「开源产品」，必须至少 1 个仓库地址
+  // 互斥防御：isCourse 与 isSharedCode 不能同时为 true
+  if (updates.isCourse === true && updates.isSharedCode === true) {
+    return res.status(400).json({ error: '课程型与共享代码不能同时启用' });
+  }
+  // 开源/共享代码校验：必须至少 1 个仓库地址
   const targetCategory = updates.category;
-  if (targetCategory === '开源产品' && (!updates.repoUrls || updates.repoUrls.length === 0)) {
+  const needRepo = targetCategory === '开源产品' || updates.isSharedCode === true;
+  if (needRepo && (!updates.repoUrls || updates.repoUrls.length === 0)) {
     const existing = await db.getProduct(req.params.id);
     if (!existing || !Array.isArray(existing.repoUrls) || existing.repoUrls.length === 0) {
-      return res.status(400).json({ error: '开源产品至少需要一个仓库地址' });
+      return res.status(400).json({ error: '开源/共享代码产品至少需要一个仓库地址' });
     }
     updates.repoUrls = existing.repoUrls;
+  }
+  // 共享代码 / 开源产品清零价格字段
+  if (updates.isSharedCode === true || targetCategory === '开源产品') {
+    updates.price = 0;
+    updates.pricingTiers = null;
+    updates.downloadUrl = '';
+    updates.externalLink = false;
   }
 
   const updated = await db.updateProduct(req.params.id, updates);

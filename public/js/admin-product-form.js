@@ -115,7 +115,8 @@
       featured: $('#featured', root).checked,
       image: $('#productImage', root).value,
       imageDarkBg: $('#imageDarkBg', root).checked,
-      isCourse: isCourse
+      isCourse: isCourse,
+      isSharedCode: $('#isSharedCode', root).checked
     };
 
     if (isCourse) {
@@ -127,7 +128,7 @@
       data.courseLinks = state.courseLinks
         .filter(l => l.platform && l.url)
         .map(l => ({ platform: l.platform, url: l.url }));
-    } else if (isOpenSource) {
+    } else if (data.isSharedCode || isOpenSource) {
       // 开源产品：无价格，提交仓库地址数组
       data.price = 0;
       data.pricingTiers = null;
@@ -285,8 +286,10 @@
   // 类目切换：开源产品时显示仓库地址区 + 隐藏价格/订阅/下载
   function toggleOpenSource(root, state) {
     const isOpenSource = $('#category', root).value === '开源产品';
+    const isSharedCodeChecked = $('#isSharedCode', root) && $('#isSharedCode', root).checked;
     const repoSection = $('#repoUrlsSection', root);
-    if (repoSection) repoSection.hidden = !isOpenSource;
+    // 仓库区显示条件：分类=开源产品 OR 用户勾选共享代码
+    if (repoSection) repoSection.hidden = !(isOpenSource || isSharedCodeChecked);
     if (isOpenSource) {
       $('#priceField', root).hidden = true;
       $('#subscriptionSection', root).hidden = true;
@@ -298,8 +301,48 @@
       $('#usePricingTiers', root).checked = false;
       $('#useExternalLink', root).checked = false;
       $('#externalLink', root).value = '';
+      // 分类切到开源产品时，自动同步勾上共享代码（避免用户再点一次）
+      if ($('#isSharedCode', root) && !$('#isSharedCode', root).checked) {
+        $('#isSharedCode', root).checked = true;
+      }
     } else {
       // 恢复价格/订阅/下载区（不强制显示订阅/外部链接，由它们自己的 checkbox 决定）
+      $('#priceField', root).hidden = false;
+    }
+  }
+
+  // === 共享代码模式切换 ===
+  // 勾选后：显示仓库区、隐藏价格/订阅/外部链接/软件上传、清空对应值。
+  // 互斥：勾选时自动取消 #isCourse；反之 #isCourse change 也取消 #isSharedCode。
+  function toggleSharedCode(root, state) {
+    const checkbox = $('#isSharedCode', root);
+    const isSharedCode = checkbox && checkbox.checked;
+    const repoSection = $('#repoUrlsSection', root);
+    if (repoSection) repoSection.hidden = !isSharedCode;
+    if (isSharedCode) {
+      // 互斥：取消课程型
+      const courseBox = $('#isCourse', root);
+      if (courseBox && courseBox.checked) {
+        courseBox.checked = false;
+        updateCategoryOptions(root, false);
+        toggleCourse(root, state);
+      }
+      // 隐藏价格/订阅/外部链接/软件上传
+      $('#priceField', root).hidden = true;
+      $('#subscriptionSection', root).hidden = true;
+      $('#externalLinkSection', root).hidden = true;
+      $('#softwareUploadSection', root).hidden = true;
+      $('#price', root).value = '';
+      $('#tier-monthly-price', root).value = '';
+      $('#tier-yearly-price', root).value = '';
+      $('#usePricingTiers', root).checked = false;
+      $('#useExternalLink', root).checked = false;
+      $('#externalLink', root).value = '';
+      if (!state.repoUrls) state.repoUrls = [];
+    } else {
+      // 取消勾选：仓库区显隐交给 toggleOpenSource（看分类是否为开源产品）
+      const isOpenSource = $('#category', root).value === '开源产品';
+      if (repoSection) repoSection.hidden = !isOpenSource;
       $('#priceField', root).hidden = false;
     }
   }
@@ -445,7 +488,12 @@
         state.repoUrls = product.repoUrls.slice();
         renderRepoUrls(root, state);
       }
+      // 共享代码加载
+      if (product.isSharedCode === true || product.isSharedCode === 1) {
+        $('#isSharedCode', root).checked = true;
+      }
       toggleOpenSource(root, state);
+      toggleSharedCode(root, state);
     } catch (err) {
       console.error('Load product error:', err);
       alert('加载产品失败');
@@ -666,24 +714,46 @@
         $('#category', root).value = currentCategory;
       }
       toggleCourse(root, state);
+      // 互斥：勾课程型时自动取消共享代码
+      if (isCourse && $('#isSharedCode', root).checked) {
+        $('#isSharedCode', root).checked = false;
+        toggleSharedCode(root, state);
+      }
     }));
 
-    // 互斥防御：勾 usePricingTiers 时自动 uncheck isCourse
+    // 共享代码切换
+    state.listeners.push(bind(root, '#isSharedCode', 'change', function() {
+      toggleSharedCode(root, state);
+    }));
+
+    // 互斥防御：勾 usePricingTiers 时自动 uncheck isCourse / isSharedCode
     state.listeners.push(bind(root, '#usePricingTiers', 'change', function() {
-      if (this.checked && $('#isCourse', root).checked) {
-        $('#isCourse', root).checked = false;
-        updateCategoryOptions(root, false);
-        toggleCourse(root, state);
+      if (this.checked) {
+        if ($('#isCourse', root).checked) {
+          $('#isCourse', root).checked = false;
+          updateCategoryOptions(root, false);
+          toggleCourse(root, state);
+        }
+        if ($('#isSharedCode', root).checked) {
+          $('#isSharedCode', root).checked = false;
+          toggleSharedCode(root, state);
+        }
       }
       toggleSubscription(root);
     }));
 
-    // 互斥防御：勾 useExternalLink 时自动 uncheck isCourse
+    // 互斥防御：勾 useExternalLink 时自动 uncheck isCourse / isSharedCode
     state.listeners.push(bind(root, '#useExternalLink', 'change', function() {
-      if (this.checked && $('#isCourse', root).checked) {
-        $('#isCourse', root).checked = false;
-        updateCategoryOptions(root, false);
-        toggleCourse(root, state);
+      if (this.checked) {
+        if ($('#isCourse', root).checked) {
+          $('#isCourse', root).checked = false;
+          updateCategoryOptions(root, false);
+          toggleCourse(root, state);
+        }
+        if ($('#isSharedCode', root).checked) {
+          $('#isSharedCode', root).checked = false;
+          toggleSharedCode(root, state);
+        }
       }
       toggleExternalLink(root);
     }));
