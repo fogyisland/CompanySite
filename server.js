@@ -4065,7 +4065,7 @@ app.post('/api/ai/generate', requireAuth, async (req, res) => {
         body: JSON.stringify({
           model: model,
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 500
+          max_tokens: 4000
         })
       });
 
@@ -4095,7 +4095,7 @@ app.post('/api/ai/generate', requireAuth, async (req, res) => {
         },
         body: JSON.stringify({
           model: model,
-          max_tokens: 500,
+          max_tokens: 4000,
           messages: [{ role: 'user', content: prompt }]
         })
       });
