@@ -7,6 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/share-buttons.css">
   <style>
     .product-detail {
       max-width: 1000px;
@@ -671,6 +672,18 @@
         pc2.appendChild(body);
         container.appendChild(pc2);
       }
+
+      // 分享按钮挂载点
+      const shareMount = document.createElement('div');
+      shareMount.id = 'share-buttons-mount';
+      container.appendChild(shareMount);
+      if (window.ShareButtons) {
+        window.ShareButtons.mount({
+          url: window.location.href,
+          title: product.name,
+          container: shareMount
+        });
+      }
     }
 
     // Allowlist sanitizer: strip everything except safe structural tags
@@ -866,6 +879,7 @@
     })();
   </script>
   <script src="/js/header-auth.js" defer></script>
+  <script src="/js/share-buttons.js" defer></script>
   <script src="/js/public-theme.js" defer></script>
 </body>
 </html>

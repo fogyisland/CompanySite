@@ -1,0 +1,73 @@
+/* ========================================
+   SHARE BUTTONS - 详情页分享按钮组
+   5 个平台：Twitter / Facebook / LinkedIn / 微博 / 复制链接
+   ======================================== */
+
+.share-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 28px 0 0;
+  flex-wrap: wrap;
+}
+
+.share-buttons-label {
+  font-size: 13px;
+  color: var(--text-light, #666);
+  margin-right: 4px;
+}
+
+.share-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--white, #fff);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  text-decoration: none;
+}
+
+.share-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.share-btn:focus-visible {
+  outline: 2px solid var(--primary, #0969da);
+  outline-offset: 2px;
+}
+
+.share-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: currentColor;
+}
+
+/* 品牌色 */
+.share-btn-twitter { background: #1da1f2; border-color: #1da1f2; }
+.share-btn-facebook { background: #1877f2; border-color: #1877f2; }
+.share-btn-linkedin { background: #0a66c2; border-color: #0a66c2; }
+.share-btn-weibo { background: #e6162d; border-color: #e6162d; }
+.share-btn-copy { background: #6b7280; border-color: #6b7280; }
+.share-btn-copy.is-success {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+@media (max-width: 480px) {
+  .share-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .share-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+}
