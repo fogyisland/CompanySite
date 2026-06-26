@@ -172,11 +172,33 @@
 
   // === 提交 ===
   async function submitForm(root, state, opts) {
+    // 前端校验：name / category 必填；普通软件（非课程型/共享代码/开源）下 price 必填
+    const name = $('#name', root).value.trim();
+    const category = $('#category', root).value;
+    const isCourse = $('#isCourse', root).checked;
+    const isSharedCode = $('#isSharedCode', root).checked;
+    const isOpenSource = category === '开源产品';
+    if (!name) { alert('请填写产品名称'); $('#name', root).focus(); return; }
+    if (!category) { alert('请选择产品分类'); $('#category', root).focus(); return; }
+    if (!isCourse && !isSharedCode && !isOpenSource) {
+      const useTiers = $('#usePricingTiers', root).checked;
+      if (!useTiers) {
+        const priceVal = parseFloat($('#price', root).value);
+        if (!isFinite(priceVal) || priceVal < 0) {
+          alert('请填写产品基础价格（普通软件必填）');
+          $('#price', root).focus();
+          return;
+        }
+      }
+    }
+
     const payload = buildPayload(root, state);
     const url = state.currentProduct
       ? '/api/products/' + state.currentProduct.id
       : '/api/products';
     const method = state.currentProduct ? 'PUT' : 'POST';
+    const submitBtn = $('#submit-btn', root);
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
       const response = await fetch(url, {
@@ -188,14 +210,21 @@
 
       if (response.ok) {
         const saved = await response.json();
-        alert(state.currentProduct ? '产品更新成功' : '产品添加成功');
         if (opts.onSaved) opts.onSaved(saved);
+        alert(state.currentProduct ? '产品更新成功' : '产品添加成功');
       } else {
-        alert('保存失败');
+        let errMsg = '保存失败';
+        try {
+          const errBody = await response.json();
+          if (errBody && errBody.error) errMsg = '保存失败：' + errBody.error;
+        } catch (_) {}
+        alert(errMsg);
       }
     } catch (err) {
       console.error('Save error:', err);
-      alert('保存失败');
+      alert('保存失败：网络错误');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   }
 
