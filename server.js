@@ -2500,15 +2500,29 @@ app.put('/api/products/:id', requireAuth, async (req, res) => {
     updates.downloadUrl = '';
     updates.externalLink = false;
   }
-
-  const updated = await db.updateProduct(req.params.id, updates);
-  if (!updated) {
-    return res.status(404).json({ error: 'Product not found' });
+  // 兜底：products.price 列 NOT NULL。若前端没传 price 但传了 pricingTiers（或
+  // 漏传任一字段），必须设个合法值，否则 mysql2 把 undefined → NULL → 报错。
+  if (updates.price === undefined || updates.price === null || Number.isNaN(updates.price)) {
+    if (Array.isArray(updates.pricingTiers) && updates.pricingTiers.length > 0) {
+      updates.price = 0;
+    } else {
+      return res.status(400).json({ error: '请填写产品基础价格' });
+    }
   }
-  // 记录操作日志
-  const username = req.session.userName || req.session.username || 'admin';
-  db.addOperationLog(username, 'PRODUCT_UPDATE', req.params.id, `Updated product: ${name || updated.name}, Price: ${price || updated.price}`);
-  res.json(updated);
+
+  try {
+    const updated = await db.updateProduct(req.params.id, updates);
+    if (!updated) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    // 记录操作日志
+    const username = req.session.userName || req.session.username || 'admin';
+    db.addOperationLog(username, 'PRODUCT_UPDATE', req.params.id, `Updated product: ${name || updated.name}, Price: ${price || updated.price}`);
+    res.json(updated);
+  } catch (err) {
+    console.error('[PUT /api/products/:id] DB error:', err.code, err.sqlMessage || err.message);
+    return res.status(500).json({ error: '保存失败：' + (err.sqlMessage || err.message) });
+  }
 });
 
 // 保存产品详情内容（富文本HTML）

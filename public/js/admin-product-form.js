@@ -159,10 +159,13 @@
 
       if (useTiers) {
         // duration 硬编码 1 / 12，admin 改不了
+        // 注意：即使有多方案，price 字段也不能缺（DB 是 NOT NULL），
+        // 否则后端会 price=NULL → ER_BAD_NULL_ERROR → unhandled rejection
         data.pricingTiers = [
           { label: '月付', duration: 1, price: state.monthlyPrice },
           { label: '年付', duration: 12, price: state.yearlyPrice }
         ];
+        data.price = 0;
       } else {
         data.price = parseFloat($('#price', root).value);
       }
