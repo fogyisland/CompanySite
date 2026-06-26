@@ -110,6 +110,13 @@
         <div class="editor-field">
           <label>正文</label>
           <div id="news-editor-container"></div>
+          <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+            <button type="button" class="admin-btn-secondary" id="ai-optimize-news-btn"
+                    style="background:#10b981;color:#fff;border-color:#10b981;">
+              AI 优化正文
+            </button>
+            <span style="color:#666;font-size:12px;">按所选分类（产品更新 / 公司新闻 / 安全公告）使用对应维度提示词</span>
+          </div>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 16px;">
           <button class="admin-btn-primary" onclick="saveNews('draft')">保存草稿</button>
@@ -321,6 +328,49 @@
       });
     }
 
+    // === AI 优化正文（按 News 分类维度） ===
+    document.getElementById('ai-optimize-news-btn').addEventListener('click', async function() {
+      if (!quill) { Toast.warn('编辑器尚未就绪，请稍候'); return; }
+      const category = document.getElementById('news-category').value;
+      if (!category) {
+        Toast.warn('请先选择动态分类，AI 才能按分类维度优化');
+        document.getElementById('news-category').focus();
+        return;
+      }
+      const title = document.getElementById('news-title').value.trim();
+      const html = quill.root.innerHTML;
+      const text = quill.getText();
+      if (!text.trim()) { Toast.warn('请先输入正文内容'); return; }
+      const btn = document.getElementById('ai-optimize-news-btn');
+      btn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = 'AI 优化中…';
+      try {
+        const response = await fetch('/api/ai/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ text: html, type: 'news_content', category, title })
+        });
+        const data = await response.json();
+        if (data.success) {
+          // 记录光标位置，覆盖后恢复到文末
+          const len = quill.getLength();
+          quill.clipboard.dangerouslyPasteHTML(data.text, 'silent');
+          quill.setSelection(Math.min(len, quill.getLength() - 1), 0);
+          Toast.success('AI 优化成功（按 ' + category + ' 维度）');
+        } else {
+          Toast.error(data.error || 'AI 生成失败');
+        }
+      } catch (err) {
+        console.error('AI error:', err);
+        Toast.error('AI 生成失败：网络错误');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    });
+
     async function saveNews(intent) {
       const title = document.getElementById('news-title').value.trim();
       const slug = document.getElementById('news-slug').value.trim();
@@ -414,6 +464,7 @@
     loadNews();
   </script>
   <script src="/js/lucide-icons.js"></script>
+  <script src="/js/toast.js" defer></script>
   <script src="/js/admin-sidebar.js?v=20260622-2300" defer></script>
 </body>
 </html>

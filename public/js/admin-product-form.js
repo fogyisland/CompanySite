@@ -685,31 +685,43 @@
     }
   }
 
-  // === AI 描述优化 ===
+  // === AI 描述优化（按产品分类选 prompt 维度） ===
   async function regenerateDescription(root) {
     const descEl = $('#description', root);
-    const currentText = descEl.innerText || descEl.innerHTML;
-    if (!currentText.trim()) {
-      Toast.warn('请先输入产品基本信息');
+    const category = $('#category', root).value;
+    if (!category) {
+      Toast.warn('请先选择产品分类，AI 才能按分类维度优化');
+      $('#category', root).focus();
       return;
     }
+    const currentHtml = descEl.innerHTML;
+    const currentText = descEl.innerText || currentHtml;
+    if (!currentText.trim()) {
+      Toast.warn('请先输入产品描述');
+      descEl.focus();
+      return;
+    }
+    const btn = $('#ai-optimize-btn', root);
+    if (btn) { btn.disabled = true; btn.textContent = 'AI 优化中…'; }
     try {
       const response = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ text: currentText, type: 'product_description' })
+        body: JSON.stringify({ text: currentHtml, type: 'product_description', category })
       });
       const data = await response.json();
       if (data.success) {
-        descEl.innerHTML = data.text.replace(/\n/g, '<br>');
-        Toast.success('AI优化成功');
+        descEl.innerHTML = data.text;
+        Toast.success('AI 优化成功（按 ' + category + ' 维度）');
       } else {
-        Toast.error(data.error || 'AI生成失败');
+        Toast.error(data.error || 'AI 生成失败');
       }
     } catch (err) {
       console.error('AI error:', err);
-      Toast.error('AI生成失败');
+      Toast.error('AI 生成失败：网络错误');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'AI优化描述'; }
     }
   }
 

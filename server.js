@@ -4043,8 +4043,76 @@ app.post('/api/ai/test', requireAuth, async (req, res) => {
 });
 
 // AI文本生成
+// 按 (type, category) 选 prompt 维度：产品按 5 分类，News 按 3 分类；其他走通用模板
+const PRODUCT_CATEGORY_GUIDANCE = {
+  '企业产品': '从企业采购决策者视角优化：突出 ROI、合规性、稳定性、长期服务支持、技术支持 SLA、可定制能力。强调可量化收益（效率提升、成本降低、风险管控）。',
+  '外站课程': '从学习者视角优化：突出课程结构清晰、目标人群明确、学习路径循序渐进、动手实践配套、讲师背景。强调「学完后能做什么」。',
+  '企业内训': '从培训负责人视角优化：突出定制化、现场交付、行业案例、互动演练、效果评估、后续跟踪。强调可衡量的培训产出。',
+  'GitHub 仓库': '从开发者视角优化：突出技术栈与版本要求、核心特性与架构亮点、贡献指南、Issue / PR 流程、License 类型、徽章（star / fork / release）。',
+  '开源产品': '从技术决策者视角优化：突出技术亮点、扩展性、二次开发友好、社区活跃度、文档完整度、Roadmap 透明度。'
+};
+const NEWS_CATEGORY_GUIDANCE = {
+  '产品更新': '侧重：版本号清晰、改动条目化（新功能 / 优化 / 修复）、破坏性变更与迁移指引、性能与稳定性数据、致谢用户与贡献者。',
+  '公司新闻': '侧重：业务进展、活动 / 会议、客户与合作伙伴、招聘与团队、里程碑。',
+  '安全公告': '侧重：漏洞等级（CVSS 或自评）、影响范围、受影响版本、修复版本、缓解措施、致谢白帽子、披露时间线。'
+};
+
+function buildAiPrompt({ text, type, category, title, customPrompt }) {
+  if (customPrompt) return customPrompt;
+
+  if (type === 'website_description') {
+    return `请根据以下网站信息，为博铭科技生成一段专业的企业网站描述。要求：\n1. 简洁有力，突出企业核心价值\n2. 50-100 字左右\n3. 专业大气，适合软件行业\n4. 不使用 markdown 格式\n\n现有描述参考：${text || '无'}`;
+  }
+
+  if (type === 'product_description') {
+    const cat = category || '（未选分类）';
+    const guidance = PRODUCT_CATEGORY_GUIDANCE[category] || '从该产品的典型用户视角优化：突出核心价值、差异化优势、目标场景、关键能力。';
+    return `你是非常专业的产品经理与文案编辑。任务：基于用户提供的【HTML 富文本产品描述】进行优化与扩展。
+
+严格要求：
+1. 必须【保留并复用】原 HTML 结构与标签：<h3>、<p>、<ul>、<li>、<strong>、<em>、<img>、<a>、<br>
+2. 不得引入 markdown 语法（不要用 # 标题、- 列表、** 粗体、\`\`\` 代码块）
+3. 输出必须是合法 HTML 片段，可直接作为 contenteditable 的 innerHTML
+4. 在原结构基础上【扩展与润色】：补全要点、补充细节、提升表达专业度
+5. 中文输出
+
+【分类】${cat}
+【分类维度指引】
+${guidance}
+
+原描述：
+${text || '（空）'}`;
+  }
+
+  if (type === 'news_content') {
+    const cat = category || '（未选分类）';
+    const guidance = NEWS_CATEGORY_GUIDANCE[category] || '从该分类的典型读者视角润色：信息密度高、事实清晰、面向潜在读者群。';
+    return `你是非常资深的科技公司内容编辑。任务：基于用户提供的【HTML 富文本动态内容】进行润色与扩展。
+
+严格要求：
+1. 必须【保留并复用】原 HTML 结构与标签：<h2>、<h3>、<p>、<ul>、<li>、<ol>、<strong>、<em>、<a>、<img>、<br>
+2. 不得引入 markdown 语法
+3. 输出必须是合法 HTML 片段
+4. 在原结构基础上【润色文字、补充细节、调整逻辑顺序】，提升可读性与信息量
+5. 中文输出
+6. 不要捏造事实（版本号、日期、数字、URL、人名等），可润色但不要编造新事实
+
+【文章信息】
+标题：${title || '（无）'}
+分类：${cat}
+
+【分类维度指引】
+${guidance}
+
+原内容：
+${text || '（空）'}`;
+  }
+
+  return `请优化以下文本，使其更加专业：\n${text}`;
+}
+
 app.post('/api/ai/generate', requireAuth, async (req, res) => {
-  const { text, type, customPrompt } = req.body;
+  const { text, type, category, title, customPrompt } = req.body;
 
   if (!text && !customPrompt) {
     return res.status(400).json({ success: false, error: '缺少文本内容' });
@@ -4058,18 +4126,8 @@ app.post('/api/ai/generate', requireAuth, async (req, res) => {
   }
 
   try {
-    let prompt = customPrompt || '';
-    let model = ai.model || 'gpt-3.5-turbo';
-
-    if (!customPrompt) {
-      if (type === 'website_description') {
-        prompt = `请根据以下网站信息，为博铭科技生成一段专业的企业网站描述。要求：\n1. 简洁有力，突出企业核心价值\n2. 50-100字左右\n3. 专业大气，适合软件行业\n4. 不使用markdown格式\n\n现有描述参考：${text || '无'}`;
-      } else if (type === 'product_description') {
-        prompt = `你是非常专业的产品经理，基于产品的维度优化和扩展描述内容。要求：\n1. 突出产品特点和优势\n2. 扩展丰富内容\n3. 专业但易于理解\n4. 不使用markdown格式\n\n产品信息：${text || '无'}`;
-      } else {
-        prompt = `请优化以下文本，使其更加专业：\n${text}`;
-      }
-    }
+    const prompt = buildAiPrompt({ text, type, category, title, customPrompt });
+    const model = ai.model || 'gpt-3.5-turbo';
 
     if (ai.provider === 'openai' || ai.provider === 'custom') {
       const openAiEndpoint = ai.endpoint || 'https://api.openai.com/v1';
