@@ -200,14 +200,14 @@
             window.location.href = '/login';
             return;
           }
-          alert('删除产品失败');
+          Toast.error('删除产品失败');
           return;
         }
-        alert('产品删除成功');
+        Toast.success('产品删除成功');
         loadProducts();
       } catch (error) {
         console.error('Error deleting product:', error);
-        alert('删除产品时出错');
+        Toast.error('删除产品时出错');
       }
     }
 
@@ -273,7 +273,7 @@
           });
         } catch (err) {
           console.error('Modal open error:', err);
-          alert('表单加载失败');
+          Toast.error('表单加载失败');
           closeProductModal();
         }
       }
@@ -325,6 +325,7 @@
       });
     });
   </script>
+  <script src="/js/toast.js" defer></script>
   <script src="/js/admin-theme.js" defer></script>
   <script src="/js/lucide-icons.js"></script>
   <script src="/js/admin-sidebar.js?v=20260622-2300" defer></script>

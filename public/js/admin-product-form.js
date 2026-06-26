@@ -178,14 +178,14 @@
     const isCourse = $('#isCourse', root).checked;
     const isSharedCode = $('#isSharedCode', root).checked;
     const isOpenSource = category === '开源产品';
-    if (!name) { alert('请填写产品名称'); $('#name', root).focus(); return; }
-    if (!category) { alert('请选择产品分类'); $('#category', root).focus(); return; }
+    if (!name) { Toast.warn('请填写产品名称'); $('#name', root).focus(); return; }
+    if (!category) { Toast.warn('请选择产品分类'); $('#category', root).focus(); return; }
     if (!isCourse && !isSharedCode && !isOpenSource) {
       const useTiers = $('#usePricingTiers', root).checked;
       if (!useTiers) {
         const priceVal = parseFloat($('#price', root).value);
         if (!isFinite(priceVal) || priceVal < 0) {
-          alert('请填写产品基础价格（普通软件必填）');
+          Toast.warn('请填写产品基础价格（普通软件必填）');
           $('#price', root).focus();
           return;
         }
@@ -211,18 +211,18 @@
       if (response.ok) {
         const saved = await response.json();
         if (opts.onSaved) opts.onSaved(saved);
-        alert(state.currentProduct ? '产品更新成功' : '产品添加成功');
+        Toast.success(state.currentProduct ? '产品更新成功' : '产品添加成功');
       } else {
         let errMsg = '保存失败';
         try {
           const errBody = await response.json();
           if (errBody && errBody.error) errMsg = '保存失败：' + errBody.error;
         } catch (_) {}
-        alert(errMsg);
+        Toast.error(errMsg);
       }
     } catch (err) {
       console.error('Save error:', err);
-      alert('保存失败：网络错误');
+      Toast.error('保存失败：网络错误');
     } finally {
       if (submitBtn) submitBtn.disabled = false;
     }
@@ -546,7 +546,7 @@
       toggleSharedCode(root, state);
     } catch (err) {
       console.error('Load product error:', err);
-      alert('加载产品失败');
+      Toast.error('加载产品失败');
     }
   }
 
@@ -583,11 +583,11 @@
         $('#software-info', root).hidden = false;
         $('#software-upload-section', root).classList.add('has-file');
       } else {
-        alert('文件上传失败');
+        Toast.error('文件上传失败');
       }
     } catch (err) {
       console.error('Software upload error:', err);
-      alert('文件上传失败');
+      Toast.error('文件上传失败');
     }
   }
 
@@ -628,11 +628,11 @@
         $('#product-image-upload-placeholder', root).hidden = true;
         $('#product-image-preview', root).hidden = false;
       } else {
-        alert('图片上传失败');
+        Toast.error('图片上传失败');
       }
     } catch (err) {
       console.error('Image upload error:', err);
-      alert('图片上传失败');
+      Toast.error('图片上传失败');
     }
   }
 
@@ -677,11 +677,11 @@
         $('#description', root).appendChild(img);
         $('#description', root).focus();
       } else {
-        alert('图片上传失败');
+        Toast.error('图片上传失败');
       }
     } catch (err) {
       console.error('Rich image upload error:', err);
-      alert('图片上传失败');
+      Toast.error('图片上传失败');
     }
   }
 
@@ -690,7 +690,7 @@
     const descEl = $('#description', root);
     const currentText = descEl.innerText || descEl.innerHTML;
     if (!currentText.trim()) {
-      alert('请先输入产品基本信息');
+      Toast.warn('请先输入产品基本信息');
       return;
     }
     try {
@@ -703,13 +703,13 @@
       const data = await response.json();
       if (data.success) {
         descEl.innerHTML = data.text.replace(/\n/g, '<br>');
-        alert('AI优化成功');
+        Toast.success('AI优化成功');
       } else {
-        alert(data.error || 'AI生成失败');
+        Toast.error(data.error || 'AI生成失败');
       }
     } catch (err) {
       console.error('AI error:', err);
-      alert('AI生成失败');
+      Toast.error('AI生成失败');
     }
   }
 
@@ -717,7 +717,7 @@
   function parseFeatures(root, state) {
     const input = $('#features-input', root).value;
     state.productFeatures = input.split('\n').map(function(f) { return f.trim(); }).filter(function(f) { return f.length > 0; });
-    alert('已解析 ' + state.productFeatures.length + ' 个功能特点');
+    Toast.info('已解析 ' + state.productFeatures.length + ' 个功能特点');
   }
 
   // === 加载站点 settings (logo / 主题) ===
