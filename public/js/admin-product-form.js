@@ -95,6 +95,18 @@
     state.listeners = [];
   }
 
+  // === price 字段 required 同步 ===
+  // price 在课程型/共享代码/开源/订阅启用时会被 hidden，
+  // 但 HTML 上有 required 属性，浏览器表单校验无法聚焦被 hidden 的字段，会抛
+  // "An invalid form control ... is not focusable"。每次隐藏 priceField 时
+  // 同步去掉 required，恢复时再加回。
+  function setPriceRequired(root, on) {
+    const priceEl = $('#price', root);
+    if (!priceEl) return;
+    if (on) priceEl.setAttribute('required', '');
+    else priceEl.removeAttribute('required');
+  }
+
   // === 提交数据构建 ===
   function buildPayload(root, state) {
     const useTiers = $('#usePricingTiers', root).checked;
@@ -198,6 +210,7 @@
     if (isCourse) {
       // 隐藏其他 4 个区 + 清空值
       $('#priceField', root).hidden = true;
+      setPriceRequired(root, false);
       $('#subscriptionSection', root).hidden = true;
       $('#externalLinkSection', root).hidden = true;
       $('#softwareUploadSection', root).hidden = true;
@@ -213,6 +226,8 @@
       renderCourseLinks(root, state);
     } else {
       $('#priceField', root).hidden = false;
+      // 仅当不启用订阅时才需要 required；启用订阅时由 toggleSubscription 处理
+      if (!$('#usePricingTiers', root).checked) setPriceRequired(root, true);
       // 订阅和外部链接的 visible 状态由它们自己的 usePricingTiers / useExternalLink 决定
     }
   }
@@ -292,6 +307,7 @@
     if (repoSection) repoSection.hidden = !(isOpenSource || isSharedCodeChecked);
     if (isOpenSource) {
       $('#priceField', root).hidden = true;
+      setPriceRequired(root, false);
       $('#subscriptionSection', root).hidden = true;
       $('#externalLinkSection', root).hidden = true;
       $('#softwareUploadSection', root).hidden = true;
@@ -308,6 +324,7 @@
     } else {
       // 恢复价格/订阅/下载区（不强制显示订阅/外部链接，由它们自己的 checkbox 决定）
       $('#priceField', root).hidden = false;
+      if (!$('#usePricingTiers', root).checked) setPriceRequired(root, true);
     }
   }
 
@@ -329,6 +346,7 @@
       }
       // 隐藏价格/订阅/外部链接/软件上传
       $('#priceField', root).hidden = true;
+      setPriceRequired(root, false);
       $('#subscriptionSection', root).hidden = true;
       $('#externalLinkSection', root).hidden = true;
       $('#softwareUploadSection', root).hidden = true;
@@ -344,6 +362,7 @@
       const isOpenSource = $('#category', root).value === '开源产品';
       if (repoSection) repoSection.hidden = !isOpenSource;
       $('#priceField', root).hidden = false;
+      if (!$('#usePricingTiers', root).checked) setPriceRequired(root, true);
     }
   }
 
@@ -377,6 +396,8 @@
 
     subscriptionSection.hidden = !enabled;
     priceField.hidden = enabled;
+    // 启用订阅时 price 被隐藏，去掉 required；取消时恢复
+    setPriceRequired(root, !enabled);
 
     // 启用订阅时清空基础价（避免意外提交）
     if (enabled) $('#price', root).value = '';
