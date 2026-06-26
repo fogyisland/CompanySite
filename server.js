@@ -838,11 +838,36 @@ app.use(express.json({
   verify: (req, res, buf) => { req.rawBody = buf; }
 }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+// 静态资源：dev / 直连时按扩展名分发缓存头
+// HTML → no-cache（每次 revalidate，确保改了能拿到）
+// JS/CSS/图片/字体 → 7d immutable（生产 Nginx 接管后这一层只兜底 dev）
+// 生产环境建议让 Nginx 直接 alias 直出，避开 Node，省一次进程切换
 app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: '7d',
-  immutable: true,
-  etag: true
+  maxAge: 0,
+  immutable: false,
+  etag: true,
+  setHeaders: (res, filePath) => {
+    if (/\.html?$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    } else {
+      // 带版本戳 ?v=YYYYMMDD 的资源可永久缓存
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    }
+  }
 }));
+
+// res.sendFile 路径 hook：让所有通过路由 sendFile 返回的 HTML 也带 no-cache 头
+// （app.get('/xxx', (req, res) => res.sendFile(...)) 这类）
+app.use((req, res, next) => {
+  const origSendFile = res.sendFile.bind(res);
+  res.sendFile = function(p, opts, cb) {
+    if (typeof p === 'string' && /\.html?$/i.test(p)) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+    return origSendFile(p, opts, cb);
+  };
+  next();
+});
 
 // API 限流中间件
 app.use('/api/', checkApiRateLimit);
