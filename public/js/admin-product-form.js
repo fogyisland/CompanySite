@@ -171,6 +171,18 @@
     return data;
   }
 
+  // === Toast 防御：toast.js 加载失败（浏览器缓存老 admin-product.html 无 script）时
+  //     任何 Toast.xxx 调用都会 throw ReferenceError，async 异常被吞没 → "没反应"
+  //     这里把 Toast 包成 safe 调用，fallback 到 alert + console.error
+  function safeToast(type, msg) {
+    if (window.Toast && typeof window.Toast[type] === 'function') {
+      window.Toast[type](msg);
+    } else {
+      console.error('[ProductForm] Toast.' + type + '(' + JSON.stringify(msg) + ') — Toast 未加载，请强刷（Ctrl+Shift+R）');
+      try { alert(msg); } catch (_) {}
+    }
+  }
+
   // === 提交 ===
   async function submitForm(root, state, opts) {
     // 前端校验：name / category 必填；普通软件（非课程型/共享代码/开源）下 price 必填
@@ -181,7 +193,7 @@
     const $usePricingTiers = $('#usePricingTiers', root);
     const $price = $('#price', root);
     if (!$name || !$category) {
-      Toast.error('表单未正确加载，请强刷一次（Ctrl+Shift+R）');
+      safeToast('error', '表单未正确加载，请强刷一次（Ctrl+Shift+R）');
       return;
     }
     const name = $name.value.trim();
@@ -189,14 +201,14 @@
     const isCourse = $isCourse ? $isCourse.checked : false;
     const isSharedCode = $isSharedCode ? $isSharedCode.checked : false;
     const isOpenSource = category === '开源产品';
-    if (!name) { Toast.warn('请填写产品名称'); $name.focus(); return; }
-    if (!category) { Toast.warn('请选择产品分类'); $category.focus(); return; }
+    if (!name) { safeToast('warn', '请填写产品名称'); $name.focus(); return; }
+    if (!category) { safeToast('warn', '请选择产品分类'); $category.focus(); return; }
     if (!isCourse && !isSharedCode && !isOpenSource) {
       const useTiers = $usePricingTiers ? $usePricingTiers.checked : false;
       if (!useTiers) {
         const priceVal = $price ? parseFloat($price.value) : NaN;
         if (!isFinite(priceVal) || priceVal < 0) {
-          Toast.warn('请填写产品基础价格（普通软件必填）');
+          safeToast('warn', '请填写产品基础价格（普通软件必填）');
           if ($price) $price.focus();
           return;
         }
@@ -222,18 +234,18 @@
       if (response.ok) {
         const saved = await response.json();
         if (opts.onSaved) opts.onSaved(saved);
-        Toast.success(state.currentProduct ? '产品更新成功' : '产品添加成功');
+        safeToast('success', state.currentProduct ? '产品更新成功' : '产品添加成功');
       } else {
         let errMsg = '保存失败';
         try {
           const errBody = await response.json();
           if (errBody && errBody.error) errMsg = '保存失败：' + errBody.error;
         } catch (_) {}
-        Toast.error(errMsg);
+        safeToast('error', errMsg);
       }
     } catch (err) {
       console.error('Save error:', err);
-      Toast.error('保存失败：网络错误');
+      safeToast('error', '保存失败：网络错误');
     } finally {
       if (submitBtn) submitBtn.disabled = false;
     }
