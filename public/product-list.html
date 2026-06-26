@@ -123,6 +123,13 @@
       })[c]);
     }
 
+    // 后台 description 是富文本 HTML，列表只显示纯文本（剥标签 + 解码实体）
+    function stripHtml(html) {
+      const div = document.createElement('div');
+      div.innerHTML = String(html ?? '');
+      return (div.textContent || '').trim();
+    }
+
     // 分类名 → badge CSS class (与 admin-product.html / index.html / admin-product-form.js 一致)
     function getCategoryBadgeClass(category) {
       const map = {
@@ -266,7 +273,7 @@
                 ${isOpenSource ? '<span class="product-card-category-badge badge-open-source">开源</span>' : ''}
               </div>
               ${pricingHtml}
-              <div class="product-list-row-desc">${escapeHtml(p.description || '')}</div>
+              <div class="product-list-row-desc">${escapeHtml(stripHtml(p.description || ''))}</div>
               <div class="product-list-row-action">
                 <a href="${btnLink}" class="product-list-row-btn"${btnAttrs}>${btnText}</a>
               </div>
