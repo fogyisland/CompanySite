@@ -112,6 +112,7 @@
     const useTiers = $('#usePricingTiers', root).checked;
     const useExternal = $('#useExternalLink', root).checked;
     const isCourse = $('#isCourse', root).checked;
+    const isSharedCodeEl = $('#isSharedCode', root);
     const category = $('#category', root).value;
     const isOpenSource = category === '开源产品';
 
@@ -128,7 +129,7 @@
       image: $('#productImage', root).value,
       imageDarkBg: $('#imageDarkBg', root).checked,
       isCourse: isCourse,
-      isSharedCode: $('#isSharedCode', root).checked
+      isSharedCode: isSharedCodeEl ? isSharedCodeEl.checked : false
     };
 
     if (isCourse) {
@@ -173,20 +174,30 @@
   // === 提交 ===
   async function submitForm(root, state, opts) {
     // 前端校验：name / category 必填；普通软件（非课程型/共享代码/开源）下 price 必填
-    const name = $('#name', root).value.trim();
-    const category = $('#category', root).value;
-    const isCourse = $('#isCourse', root).checked;
-    const isSharedCode = $('#isSharedCode', root).checked;
+    const $name = $('#name', root);
+    const $category = $('#category', root);
+    const $isCourse = $('#isCourse', root);
+    const $isSharedCode = $('#isSharedCode', root);
+    const $usePricingTiers = $('#usePricingTiers', root);
+    const $price = $('#price', root);
+    if (!$name || !$category) {
+      Toast.error('表单未正确加载，请强刷一次（Ctrl+Shift+R）');
+      return;
+    }
+    const name = $name.value.trim();
+    const category = $category.value;
+    const isCourse = $isCourse ? $isCourse.checked : false;
+    const isSharedCode = $isSharedCode ? $isSharedCode.checked : false;
     const isOpenSource = category === '开源产品';
-    if (!name) { Toast.warn('请填写产品名称'); $('#name', root).focus(); return; }
-    if (!category) { Toast.warn('请选择产品分类'); $('#category', root).focus(); return; }
+    if (!name) { Toast.warn('请填写产品名称'); $name.focus(); return; }
+    if (!category) { Toast.warn('请选择产品分类'); $category.focus(); return; }
     if (!isCourse && !isSharedCode && !isOpenSource) {
-      const useTiers = $('#usePricingTiers', root).checked;
+      const useTiers = $usePricingTiers ? $usePricingTiers.checked : false;
       if (!useTiers) {
-        const priceVal = parseFloat($('#price', root).value);
+        const priceVal = $price ? parseFloat($price.value) : NaN;
         if (!isFinite(priceVal) || priceVal < 0) {
           Toast.warn('请填写产品基础价格（普通软件必填）');
-          $('#price', root).focus();
+          if ($price) $price.focus();
           return;
         }
       }

@@ -254,12 +254,12 @@
             productFormInstance = null;
           }
 
-          const html = await fetch('/admin-product-form.html').then(function(r) { return r.text(); });
+          const html = await fetch('/admin-product-form.html?v=20260626-2100').then(function(r) { return r.text(); });
           mount.innerHTML = html;
 
           // JS script 只在首次加载时挂到 head
           if (!window.ProductForm) {
-            await loadScriptOnce('/js/admin-product-form.js?v=20260624-2030');
+            await loadScriptOnce('/js/admin-product-form.js?v=20260626-2100');
           }
 
           productFormInstance = window.ProductForm.init(mount, {
