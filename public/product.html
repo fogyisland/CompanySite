@@ -324,6 +324,8 @@
       color: var(--text-light);
     }
   </style>
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <header>
@@ -488,7 +490,7 @@
       // Product header
       const header = document.createElement('div');
       header.className = 'product-header';
-      if (product.image && isSafeUrl(product.image)) {
+      if (product.image && isSafeImageSrc(product.image)) {
         const img = document.createElement('img');
         img.setAttribute('src', product.image);
         img.setAttribute('alt', product.name || '');
@@ -531,7 +533,7 @@
         list.className = 'course-links-list';
         list.id = 'course-links-container';
         (Array.isArray(product.courseLinks) ? product.courseLinks : [])
-          .filter(link => isSafeUrl(link.url))
+          .filter(link => isSafeLink(link.url))
           .forEach(link => {
             const a = document.createElement('a');
             a.setAttribute('href', link.url);
@@ -554,7 +556,7 @@
         const list = document.createElement('div');
         list.className = 'course-links-list';
         list.id = 'repo-urls-container';
-        product.repoUrls.filter(u => isSafeUrl(u)).forEach(url => {
+        product.repoUrls.filter(u => isSafeLink(u)).forEach(url => {
           const a = document.createElement('a');
           a.setAttribute('href', url);
           a.setAttribute('target', '_blank');
@@ -704,10 +706,16 @@
 
     // Allowlist sanitizer: strip everything except safe structural tags
     // (defense in depth — even if admin pastes raw HTML with <script>, we drop it)
+    //
+    // 解析必须用 DOMParser，不能用 `div.innerHTML = html`：
+    // 游离的 div 也会真的去加载 <img src=x>，图片加载失败后 onerror 就会执行。
+    // 而当这个 <img> 藏在一个**被整体删掉**的父元素里（<table><img onerror=...>），
+    // 删掉父元素并不会取消子 img 已经在途的加载 —— 载荷照样会触发。
+    // DOMParser 解析出来的文档没有浏览上下文：脚本不执行、图片不加载，
+    // 载荷在解析阶段就根本不会发生。
     function sanitizeHtml(html) {
       const ALLOWED = new Set(['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'code', 'pre', 'blockquote', 'span', 'div']);
-      const tmp = document.createElement('div');
-      tmp.innerHTML = String(html);
+      const doc = new DOMParser().parseFromString(String(html ?? ''), 'text/html');
       const walk = (node) => {
         const children = Array.from(node.childNodes);
         for (const child of children) {
@@ -721,9 +729,9 @@
             for (const attr of attrs) {
               const name = attr.name.toLowerCase();
               if (child.tagName === 'A' && name === 'href') {
-                if (!isSafeUrl(attr.value)) child.removeAttribute(attr.name);
+                if (!isSafeLink(attr.value)) child.removeAttribute(attr.name);
               } else if (child.tagName === 'IMG' && (name === 'src' || name === 'alt')) {
-                if (name === 'src' && !isSafeUrl(attr.value)) child.removeAttribute(attr.name);
+                if (name === 'src' && !isSafeImageSrc(attr.value)) child.removeAttribute(attr.name);
               } else {
                 child.removeAttribute(attr.name);
               }
@@ -735,8 +743,8 @@
           }
         }
       };
-      walk(tmp);
-      return tmp.innerHTML;
+      walk(doc.body);
+      return doc.body.innerHTML;
     }
 
     // Event delegation for pricing cards (replaces inline onclick)
@@ -783,11 +791,15 @@
       `;
     }
 
+    /**
+     * HTML 转义 —— 统一走 SafeHtml（public/js/safe-html.js）。
+     *
+     * 原实现是 `div.textContent = s; return div.innerHTML`：只转义 & < >，
+     * **不转义引号**，放在属性上下文里等于没转义；`if (!text) return ''`
+     * 还会把数字 0 变成空串。
+     */
     function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      return SafeHtml.escapeHtml(text);
     }
 
     const COURSE_PLATFORMS = [
@@ -811,9 +823,26 @@
       return found ? found.label : platform;
     }
 
-    function isSafeUrl(url) {
-      if (typeof url !== 'string' || !url) return false;
-      return /^https?:\/\//i.test(url.trim());
+    /**
+     * 图片地址白名单 —— 走 SafeHtml.safeImageUrl（唯一事实来源）。
+     *
+     * 原先这里用 `^https?://` 判定，把**站内上传路径**（/uploads/products/xxx.png，
+     * 由 /api/upload-product-image 生成）全部判成非法 —— 结果是产品详情页
+     * 永远不显示上传的商品图，只能退回图标。
+     * safeImageUrl 放行站内绝对路径与 data:image/，同时拦掉协议相对地址、
+     * 路径穿越（..）、javascript:/vbscript: 与含引号的地址。
+     */
+    function isSafeImageSrc(url) {
+      return Boolean(SafeHtml.safeImageUrl(url));
+    }
+
+    /**
+     * 链接地址白名单 —— 走 SafeHtml.safeHref。
+     * 放行站内路径 / 锚点 / http(s) / mailto / tel，拦掉 javascript: 等可执行协议、
+     * 协议相对地址（//evil.tld）与含引号的地址（后者能闭合属性）。
+     */
+    function isSafeLink(url) {
+      return Boolean(SafeHtml.safeHref(url));
     }
 
     // 页面加载完成后获取产品数据
@@ -837,9 +866,11 @@
           document.getElementById('footer-company').textContent = settings.companyName;
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           const logoIcon = document.getElementById('header-logo-icon');
-          logoIcon.outerHTML = '<img src="' + settings.logo + '" alt="Logo" style="height:32px;width:auto;">';
+          logoIcon.outerHTML = '<img src="' + logoUrl + '" alt="Logo" style="height:32px;width:auto;">';
         }
       } catch (error) {
         console.error('Error loading settings:', error);

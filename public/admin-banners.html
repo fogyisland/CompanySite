@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="admin-layout">
@@ -31,6 +33,19 @@
   <script>
     let banners = [];
 
+    // 转义统一走 SafeHtml（public/js/safe-html.js）。
+    // 横条的标题、描述、图片地址都会渲染到前台页面，必须转义 / 过滤后再拼进 HTML。
+    function escapeHtml(text) {
+      return SafeHtml.escapeHtml(text);
+    }
+
+    /** 横条配图：地址过白名单，非法就不出图（而不是把非法地址拼进 src）。 */
+    function bannerImageTag(imageUrl) {
+      const url = SafeHtml.safeImageUrl(imageUrl);
+      if (!url) return '<span class="placeholder">暂无图片</span>';
+      return '<img src="' + escapeHtml(url) + '?t=' + Date.now() + '" alt="Banner">';
+    }
+
     // 加载设置
     async function loadSettings() {
       try {
@@ -46,9 +61,10 @@
           document.title = settings.companyName + ' - 横条管理';
         }
 
-        if (settings.logo) {
+        const logoUrl = SafeHtml.safeImageUrl(settings.logo);
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + escapeHtml(logoUrl) + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
 
         // 应用主题
@@ -83,16 +99,16 @@
       list.innerHTML = banners.map((banner, index) => `
         <div class="banner-item" data-index="${index}">
           <div class="banner-preview" id="preview-${index}">
-            ${banner.image ? '<img src="' + banner.image + '?t=' + Date.now() + '" alt="Banner">' : '<span class="placeholder">暂无图片</span>'}
+            ${bannerImageTag(banner.image)}
           </div>
           <div class="banner-form">
             <div class="form-group">
               <label>标题</label>
-              <input type="text" id="title-${index}" value="${banner.title || ''}" placeholder="输入横条标题">
+              <input type="text" id="title-${index}" value="${escapeHtml(banner.title || '')}" placeholder="输入横条标题">
             </div>
             <div class="form-group">
               <label>描述</label>
-              <textarea id="desc-${index}" placeholder="输入横条描述">${banner.description || ''}</textarea>
+              <textarea id="desc-${index}" placeholder="输入横条描述">${escapeHtml(banner.description || '')}</textarea>
             </div>
             <div class="banner-actions">
               <button class="btn-upload" onclick="document.getElementById('banner-upload-input').click(); currentEditIndex=${index};">上传图片</button>
@@ -135,8 +151,7 @@
       const imagePath = await uploadBannerImage(file);
       if (imagePath) {
         banners[currentEditIndex].image = imagePath;
-        document.getElementById('preview-' + currentEditIndex).innerHTML =
-          '<img src="' + imagePath + '?t=' + Date.now() + '" alt="Banner">';
+        document.getElementById('preview-' + currentEditIndex).innerHTML = bannerImageTag(imagePath);
       }
       e.target.value = '';
     });

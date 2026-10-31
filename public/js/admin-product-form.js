@@ -50,11 +50,25 @@
   // === 工具 ===
   function $(sel, scope) { return (scope || document).querySelector(sel); }
   function $$(sel, scope) { return Array.prototype.slice.call((scope || document).querySelectorAll(sel)); }
+
+  /**
+   * HTML 转义 —— 统一走 SafeHtml（public/js/safe-html.js），那里是唯一事实来源。
+   *
+   * 这里原先是 `div.textContent = s; return div.innerHTML` 的写法：它只转义
+   * & < >，**不转义引号**。而本文件的 escHtml 被用在
+   * `value="${escHtml(x)}"` 这种**属性上下文**里（课程链接地址、仓库地址），
+   * 引号照样能提前闭合属性并注入新属性（onerror / onfocus 之类）。
+   * SafeHtml.escapeHtml 连引号一起转义，文本与属性两种上下文都安全。
+   *
+   * SafeHtml 缺失时直接抛错：宁可让表单加载失败并报错，
+   * 也不把未转义的内容写进 DOM（静默降级会让问题更难发现）。
+   */
   function escHtml(text) {
     if (!text && text !== 0) return '';
-    const div = document.createElement('div');
-    div.textContent = String(text);
-    return div.innerHTML;
+    if (!window.SafeHtml || typeof window.SafeHtml.escapeHtml !== 'function') {
+      throw new Error('SafeHtml 未加载：请在宿主页面引入 /js/safe-html.js');
+    }
+    return window.SafeHtml.escapeHtml(text);
   }
   function formatFileSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
@@ -511,7 +525,11 @@
       $('#shortName', root).value = product.shortName || '';
       $('#category', root).value = product.category;
       $('#price', root).value = product.price || '';
-      $('#description', root).innerHTML = product.description || '';
+      // 描述是后台存的富文本 HTML：渲染前统一过净化器（DOMPurify）。
+      // 这条链路上描述可以被 MCP / db-import 写进来，不限于管理员手输，
+      // 所以不能把原始 HTML 直接塞进 contenteditable。
+      // 没有净化器时 setSafeHtml 会退化成纯文本，绝不原样插入。
+      SafeHtml.setSafeHtml($('#description', root), product.description || '');
       $('#version', root).value = product.version || '';
       $('#platform', root).value = product.platform || '';
       $('#icon', root).value = product.icon || 'software';
@@ -739,7 +757,9 @@
       });
       const data = await response.json();
       if (data.success) {
-        descEl.innerHTML = data.text;
+        // AI 返回的是 HTML 片段，但它是「模型输出」——prompt 里可以被间接影响，
+        // 落进 DOM 前必须过净化器（没有 DOMPurify 时退化成纯文本）。
+        SafeHtml.setSafeHtml(descEl, data.text);
         Toast.success('AI 优化成功（按 ' + category + ' 维度）');
       } else {
         Toast.error(data.error || 'AI 生成失败');
@@ -768,8 +788,10 @@
         document.documentElement.setAttribute('data-theme', settings.siteTheme);
       }
       const logoEl = document.getElementById('header-logo-icon');
-      if (logoEl && settings.logo) {
-        logoEl.outerHTML = '<img src="' + settings.logo + '?t=' + Date.now() +
+      // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+      const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+      if (logoEl && logoUrl) {
+        logoEl.outerHTML = '<img src="' + logoUrl + '?t=' + Date.now() +
           '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
       }
       const logoText = document.getElementById('header-logo-text');

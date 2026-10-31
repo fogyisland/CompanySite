@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="admin-layout">
@@ -94,11 +96,10 @@
     const pageSize = 50;
     let totalCount = 0;
 
+    // 转义统一走 SafeHtml：原来的实现（div.textContent → innerHTML）只转义
+    // & < >，不转义引号，被拼进 title="..." 这类属性时会形同虚设。
     function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      return SafeHtml.escapeHtml(text);
     }
 
     // 从 enrichment 字段计算过期显示文本/状态 class（loadTelemetry + showDetail 共用）
@@ -170,23 +171,26 @@
           const events = Array.isArray(t.events) ? t.events : [];
           const firstSeen = t.firstSeen ? new Date(t.firstSeen).toLocaleString('zh-CN') : '-';
           const { expireText, statusClass, statusText } = computeExpireDisplay(t);
+          // deviceId / appName 等字段来自**匿名可访问**的 /api/telemetry，
+          // 类型都不保证（可能是数字、也可能是对象），统一转成字符串再处理。
+          const deviceId = String(t.deviceId === undefined || t.deviceId === null ? '' : t.deviceId);
 
           return `
             <tr>
               <td>${escapeHtml(String(t.id))}</td>
-              <td style="font-family: monospace; font-size: 11px;" title="${escapeHtml(t.deviceId)}">${escapeHtml(t.deviceId.substring(0, 8))}...</td>
+              <td style="font-family: monospace; font-size: 11px;" title="${escapeHtml(deviceId)}">${escapeHtml(deviceId.substring(0, 8))}...</td>
               <td><span class="app-badge">${escapeHtml(t.appName)}</span></td>
               <td>${escapeHtml(t.appVersion || '-')}</td>
               <td><span class="event-count">${events.length}</span></td>
               <td>${escapeHtml(t.platform || '-')}</td>
               <td>${escapeHtml(t.clientIp || '-')}</td>
-              <td style="font-family: monospace; font-size: 11px;">${escapeHtml(t.deviceId)}</td>
+              <td style="font-family: monospace; font-size: 11px;">${escapeHtml(deviceId)}</td>
               <td>${expireText}</td>
               <td><span class="status-tag ${statusClass}">${statusText}</span></td>
               <td>${escapeHtml(new Date(t.createdAt).toLocaleString('zh-CN'))}</td>
               <td>
-                <button class="btn-small" onclick="showDetail(${t.id})">详情</button>
-                <button class="btn-danger btn-small" onclick="deleteTelemetry(${t.id})">删除</button>
+                <button class="btn-small" onclick="showDetail(${Number(t.id)})">详情</button>
+                <button class="btn-danger btn-small" onclick="deleteTelemetry(${Number(t.id)})">删除</button>
               </td>
             </tr>
           `;
@@ -228,7 +232,7 @@
         const offset = currentPage * pageSize;
         const response = await fetch('/api/telemetry?limit=1000&offset=0', { credentials: 'include' });
         const result = await response.json();
-        const t = result.data.find(x => x.id === id);
+        const t = result.data.find(x => Number(x.id) === Number(id));
 
         if (!t) return;
 
@@ -239,7 +243,7 @@
               <div style="margin: 10px 0; padding: 10px; background: var(--light-bg); border-radius: 4px;">
                 <strong>${escapeHtml(e.eventType || 'Unknown')}</strong>
                 <span style="color: var(--text-light); font-size: 12px; margin-left: 10px;">${escapeHtml(e.timestamp || '')}</span>
-                <pre style="margin: 5px 0 0 0; font-size: 12px; white-space: pre-wrap;">${JSON.stringify(e.properties || {}, null, 2)}</pre>
+                <pre style="margin: 5px 0 0 0; font-size: 12px; white-space: pre-wrap;">${escapeHtml(JSON.stringify(e.properties || {}, null, 2))}</pre>
               </div>
             `).join('')
           : '<p>无事件数据</p>';
@@ -323,9 +327,11 @@
           document.title = settings.companyName + ' - 数据遥测';
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
 
         // 应用主题

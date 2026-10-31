@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="admin-layout">
@@ -151,9 +153,11 @@
           document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
           document.title = settings.companyName + ' - 安全设置';
         }
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
         if (settings.siteTheme) {
           document.documentElement.setAttribute('data-theme', settings.siteTheme);
@@ -231,6 +235,9 @@
           document.getElementById('blocked-list').innerHTML = '<p class="empty-text">暂无封禁记录</p>';
           return;
         }
+        // IP 走 data 属性 + this.dataset.ip，不直接拼进 onclick 的 JS 字符串：
+        // HTML 实体（&#39;）在属性里会被浏览器先解码回引号，
+        // 拼进 onclick 里就等于没转义。data 属性才是 HTML 属性上下文，转义有效。
         document.getElementById('blocked-list').innerHTML = data.blocked.map(item => `
           <div class="blocked-item">
             <div class="blocked-info">
@@ -238,7 +245,7 @@
               <span class="blocked-reason">${escapeHtml(item.reason)}</span>
               <span class="blocked-time">${new Date(item.until).toLocaleString('zh-CN')}</span>
             </div>
-            <button class="btn-secondary" onclick="unblockIP('${escapeHtml(item.ip)}')">解封</button>
+            <button class="btn-secondary" data-ip="${escapeHtml(item.ip)}" onclick="unblockIP(this.dataset.ip)">解封</button>
           </div>
         `).join('');
       } catch (error) {
@@ -275,7 +282,7 @@
         counts[type] = data.files ? data.files.length : 0;
         const select = document.getElementById(type + '-date-select');
         if (select && data.files) {
-          select.innerHTML = data.files.map(f => `<option value="${f}">${f}</option>`).join('');
+          select.innerHTML = data.files.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
         }
       }
       document.getElementById('login-count').textContent = counts.login;
@@ -309,10 +316,10 @@
       }
     }
 
+    // 转义统一走 SafeHtml：原来的实现（div.textContent → innerHTML）只转义
+    // & < >，不转义引号，被拼进属性或 onclick 时会形同虚设。
     function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      return SafeHtml.escapeHtml(text);
     }
 
     function showMessage(text, type) {
@@ -321,8 +328,6 @@
       msg.className = 'alert alert-' + type;
       msg.style.display = 'block';
       setTimeout(() => msg.style.display = 'none', 4000);
-    }
-
     }
 
     document.addEventListener('DOMContentLoaded', () => {

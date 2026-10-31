@@ -163,6 +163,8 @@
       box-shadow: 0 6px 20px rgba(19, 60, 138, 0.4);
     }
   </style>
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="login-container">
@@ -237,9 +239,11 @@
           document.title = settings.companyName + ' - 登录';
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('login-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '" alt="Logo" id="login-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '" alt="Logo" id="login-logo-icon" style="height:40px;width:auto;">';
         }
       } catch (error) {
         console.error('Error loading settings:', error);

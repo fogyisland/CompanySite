@@ -7,6 +7,8 @@
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
   <style>
     .order-container {
       max-width: 800px;
@@ -230,9 +232,11 @@
           document.title = settings.companyName + ' - 订单详情';
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -313,15 +317,39 @@
           <div class="order-card">
             <div class="empty-state">
               <h3>加载失败</h3>
-              <p>${error.message}</p>
+              <p>${escapeHtml(error.message)}</p>
             </div>
           </div>
         `;
       }
     }
 
+    /** 转义：统一走 SafeHtml（public/js/safe-html.js）。 */
+    function escapeHtml(text) {
+      return SafeHtml.escapeHtml(text);
+    }
+
+    /** 订单项的产品名：优先取关联产品的名字，其次取下单时快照的名字。 */
+    function productName(item) {
+      const name = item && item.product ? item.product.name : (item ? item.name : '');
+      return name === undefined || name === null ? '' : String(name);
+    }
+
+    /** 订单项的首字（头像位）。名称可能为空，这里兜住。 */
+    function productInitial(item) {
+      const name = productName(item);
+      return name ? name.charAt(0) : '?';
+    }
+
+    /** 订单状态 → CSS class。用固定映射，不把库里的原始值拼进 class。 */
+    function orderStatusClass(status) {
+      return { paid: 'paid', cancelled: 'cancelled', pending: 'pending' }[status] || 'pending';
+    }
+
     function renderOrderDetail(order, items) {
-      const statusClass = order.status;
+      // 订单里的商品名、分类、下载地址都来自后台录入的产品数据，
+      // 这里一律转义后再拼进 HTML；下载地址额外做协议白名单。
+      const statusClass = orderStatusClass(order.status);
       const statusText = order.status === 'paid' ? '已支付' : order.status === 'cancelled' ? '已取消' : '待支付';
       const paidDate = order.paidAt ? new Date(order.paidAt).toLocaleString() : '';
 
@@ -347,7 +375,7 @@
             <div style="margin-bottom: 20px; padding: 20px; background: #f0f7ff; border-radius: 8px;">
               <h4 style="margin-bottom: 10px; color: var(--primary);">您的授权码</h4>
               <p style="font-size: 13px; color: #666; margin-bottom: 10px;">每组授权码可供一台设备使用</p>
-              ${activationCodes.map(c => `<div style="font-family: monospace; font-size: 16px; letter-spacing: 2px; margin: 8px 0; padding: 8px; background: white; border-radius: 4px;">${c}</div>`).join('')}
+              ${activationCodes.map(c => `<div style="font-family: monospace; font-size: 16px; letter-spacing: 2px; margin: 8px 0; padding: 8px; background: white; border-radius: 4px;">${escapeHtml(c)}</div>`).join('')}
             </div>
           `;
         }
@@ -373,7 +401,7 @@
             <h3>订单信息</h3>
             <div class="order-info-row">
               <span class="order-info-label">订单编号</span>
-              <span class="order-info-value">${order.orderNumber || '#' + order.id}</span>
+              <span class="order-info-value">${escapeHtml(order.orderNumber || '#' + order.id)}</span>
             </div>
             <div class="order-info-row">
               <span class="order-info-label">下单时间</span>
@@ -385,14 +413,14 @@
             <h3>商品信息</h3>
             ${items.map(item => `
               <div class="product-item">
-                <div class="product-icon">${item.product ? item.product.name.charAt(0) : item.name.charAt(0)}</div>
+                <div class="product-icon">${escapeHtml(productInitial(item))}</div>
                 <div class="product-info">
-                  <div class="product-name">${item.product ? item.product.name : item.name}</div>
+                  <div class="product-name">${escapeHtml(productName(item))}</div>
                   <div class="product-meta">
-                    ${item.product ? (item.product.category + ' | ' + item.product.version) : ''}
+                    ${item.product ? escapeHtml(item.product.category + ' | ' + item.product.version) : ''}
                   </div>
                 </div>
-                <div class="product-price">¥${item.price}</div>
+                <div class="product-price">¥${escapeHtml(item.price)}</div>
               </div>
             `).join('')}
           </div>
@@ -400,7 +428,7 @@
           <div class="order-section">
             <div class="total-section">
               <span class="total-label">实付金额</span>
-              <span class="total-amount">¥${order.totalAmount}</span>
+              <span class="total-amount">¥${escapeHtml(order.totalAmount)}</span>
             </div>
           </div>
 
@@ -409,19 +437,21 @@
             <h3>下载软件</h3>
             <p style="color: var(--text-light); margin-bottom: 15px;">感谢您的购买！以下是您购买产品的下载地址：</p>
             ${items.map(item => {
-              const downloadUrl = item.product ? item.product.download_url : '';
-              const hasDownload = downloadUrl && downloadUrl.trim() !== '';
+              // 下载地址做协议白名单：javascript: 之类的地址落到 href 上就是脚本执行。
+              const rawDownloadUrl = item.product ? item.product.download_url : '';
+              const downloadUrl = SafeHtml.safeHref(rawDownloadUrl);
+              const hasDownload = !!downloadUrl;
               return `
                 <div class="product-item" style="background: #f0f7ff; border: 1px solid #d0e0ff;">
                   <div class="product-info">
-                    <div class="product-name">${item.product ? item.product.name : item.name}</div>
+                    <div class="product-name">${escapeHtml(productName(item))}</div>
                     <div class="product-meta">
-                      ${item.product ? (item.product.platform || '') : ''}
-                      ${item.duration ? ' | ' + item.duration : ''}
+                      ${item.product ? escapeHtml(item.product.platform || '') : ''}
+                      ${item.duration ? ' | ' + escapeHtml(item.duration) : ''}
                     </div>
                   </div>
                   ${hasDownload
-                    ? `<a href="${downloadUrl}" target="_blank" class="btn-download" style="padding: 8px 20px; background: #10b981; color: white; border-radius: 6px; text-decoration: none; font-size: 14px;">立即下载</a>`
+                    ? `<a href="${escapeHtml(downloadUrl)}" target="_blank" rel="noopener noreferrer" class="btn-download" style="padding: 8px 20px; background: #10b981; color: white; border-radius: 6px; text-decoration: none; font-size: 14px;">立即下载</a>`
                     : `<span style="color: var(--text-light); font-size: 13px;">暂无下载链接</span>`
                   }
                 </div>
@@ -475,7 +505,7 @@
               <div style="margin-top: 20px; padding: 20px; background: #f0f7ff; border-radius: 8px;">
                 <h4 style="margin-bottom: 10px; color: var(--primary);">您的授权码</h4>
                 <p style="font-size: 13px; color: #666; margin-bottom: 10px;">每组授权码可供一台设备使用</p>
-                ${data.activationCodes.map(c => `<div style="font-family: monospace; font-size: 16px; letter-spacing: 2px; margin: 8px 0; padding: 8px; background: white; border-radius: 4px;">${c}</div>`).join('')}
+                ${data.activationCodes.map(c => `<div style="font-family: monospace; font-size: 16px; letter-spacing: 2px; margin: 8px 0; padding: 8px; background: white; border-radius: 4px;">${escapeHtml(c)}</div>`).join('')}
               </div>
             `;
           }

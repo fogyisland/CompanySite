@@ -32,6 +32,8 @@
       color: var(--text-light);
     }
   </style>
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <!-- Header -->
@@ -135,11 +137,14 @@
   </main>
 
   <script>
+    /**
+     * HTML 转义 —— 统一走 SafeHtml（public/js/safe-html.js），那里是唯一事实来源。
+     *
+     * 原实现（div.textContent → innerHTML）只转义 & < >、**不转义引号**，
+     * 放在属性上下文里形同虚设；`if (!text) return ''` 还会把数字 0 变成空串。
+     */
     function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      return SafeHtml.escapeHtml(text);
     }
 
     let products = [];
@@ -155,9 +160,11 @@
           document.title = settings.companyName + ' - 产品管理';
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
       } catch (error) {
         console.error('Error loading settings:', error);

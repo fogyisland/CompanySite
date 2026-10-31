@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="admin-layout">
@@ -110,9 +112,11 @@
           document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
           document.title = settings.companyName + ' - AI设置';
         }
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
         if (settings.siteTheme) {
           document.documentElement.setAttribute('data-theme', settings.siteTheme);

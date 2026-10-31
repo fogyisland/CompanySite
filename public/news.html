@@ -15,6 +15,8 @@
   <style>
     body { font-family: 'Noto Sans SC', -apple-system, sans-serif; background: var(--bg, #fafafa); color: var(--text, #1a1a1a); }
   </style>
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <header>
@@ -65,8 +67,9 @@
     const pageSize = 12;
     let cachedList = [];
 
+    /** 转义统一走 SafeHtml（public/js/safe-html.js），避免各页面各抄一份。 */
     function escapeHtml(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+      return SafeHtml.escapeHtml(s);
     }
 
     function formatDate(d) {
@@ -236,11 +239,13 @@
           document.title = settings.companyName + ' - 动态';
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           const logoIcon = document.getElementById('header-logo-icon');
           if (logoIcon) {
             logoIcon.outerHTML =
-              '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+              '<img src="' + logoUrl + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
           }
         }
       } catch (error) {

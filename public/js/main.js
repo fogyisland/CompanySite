@@ -38,9 +38,13 @@ async function loadSettings() {
       document.getElementById('footer-brand-desc').textContent = settings.description;
     }
 
-    if (settings.logo) {
+    // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+    const logoUrl = window.SafeHtml ? SafeHtml.safeImageUrl(settings.logo) : '';
+    if (logoUrl) {
       const logoIcon = document.getElementById('header-logo-icon');
-      logoIcon.outerHTML = '<img src="' + settings.logo + '" alt="Logo" style="height:40px;width:auto;">';
+      if (logoIcon) {
+        logoIcon.outerHTML = '<img src="' + SafeHtml.escapeHtml(logoUrl) + '" alt="Logo" style="height:40px;width:auto;">';
+      }
     }
 
     // Load banners
@@ -69,9 +73,12 @@ function renderBanners(banners) {
 
     const imgWrap = document.createElement('div');
     imgWrap.className = 'banner-scroll-img';
-    if (banner.image) {
+    // 横条图片地址同样过白名单：DOM API 虽不会造成 HTML 注入，
+    // 但 javascript:/data:text/html 之类的地址仍不该落到 src 上。
+    const bannerImage = window.SafeHtml ? SafeHtml.safeImageUrl(banner.image) : '';
+    if (bannerImage) {
       const img = document.createElement('img');
-      img.setAttribute('src', banner.image);
+      img.setAttribute('src', bannerImage);
       img.setAttribute('alt', banner.title || 'Banner');
       imgWrap.appendChild(img);
     } else {

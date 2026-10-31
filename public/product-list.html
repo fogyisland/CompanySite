@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <link rel="stylesheet" href="/css/pages/product-list.css?v=20260623-1830">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
   <style>
     body { font-family: 'Noto Sans SC', -apple-system, sans-serif; background: var(--bg, #fafafa); color: var(--text, #1a1a1a); }
   </style>
@@ -117,17 +119,24 @@
 
     // ============ Helpers ============
 
+    /** 转义统一走 SafeHtml（public/js/safe-html.js），避免各页面各抄一份。 */
     function escapeHtml(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      })[c]);
+      return SafeHtml.escapeHtml(s);
     }
 
-    // 后台 description 是富文本 HTML，列表只显示纯文本（剥标签 + 解码实体）
+    /**
+     * 后台 description 是富文本 HTML，列表只显示纯文本（剥标签 + 解码实体）。
+     *
+     * 这里原先用 `div.innerHTML = html` 再读 textContent —— 那个写法会**执行**
+     * 载荷：<img src=x onerror=...> 在 innerHTML 里会真的去加载图片、失败后触发
+     * onerror，哪怕这个 div 从没挂进文档。
+     *
+     * 改用 DOMParser：它解析出的文档没有浏览上下文，脚本不执行、图片不加载，
+     * 因此 onerror 这类载荷根本不会触发。
+     */
     function stripHtml(html) {
-      const div = document.createElement('div');
-      div.innerHTML = String(html ?? '');
-      return (div.textContent || '').trim();
+      const parsed = new DOMParser().parseFromString(String(html ?? ''), 'text/html');
+      return (parsed.body.textContent || '').trim();
     }
 
     // 分类名 → badge CSS class (与 admin-product.html / index.html / admin-product-form.js 一致)
@@ -217,8 +226,12 @@
       }
 
       container.innerHTML = products.map(p => {
-        const thumbStyle = p.image
-          ? `background-image: url('${encodeURI(p.image)}');`
+        // 缩略图地址会被拼进 CSS 的 url('...')。
+        // encodeURI 不转义 ' 与 )，形如 x');background:url(evil) 的地址能闭合
+        // url() 再追加新声明 —— 这里改用 SafeHtml.safeCssUrl 做白名单过滤。
+        const thumbImage = SafeHtml.safeCssUrl(p.image);
+        const thumbStyle = thumbImage
+          ? `background-image: url('${thumbImage}');`
           : '';
         const badgeClass = getCategoryBadgeClass(p.category);
         const badgeText = escapeHtml(p.category || '软件');
@@ -255,7 +268,10 @@
         let btnText, btnLink, btnAttrs = '';
         if (isRepoProduct && repoUrls.length > 0) {
           btnText = '访问仓库 →';
-          btnLink = repoUrls[0];
+          // 仓库地址是**写进库的**字段：服务端只按 ^https?:// 过滤前缀、却保留原串，
+          // 所以里面完全可能带引号（https://x" onmouseover="...）。
+          // 落到 href 上之前先过协议+字符白名单，再转义。
+          btnLink = SafeHtml.safeHref(repoUrls[0]);
           btnAttrs = ' target="_blank" rel="noopener"';
         } else if (p.isCourse) {
           btnText = '查看课程 →';
@@ -278,7 +294,7 @@
               ${pricingHtml}
               <div class="product-list-row-desc">${escapeHtml(stripHtml(p.description || ''))}</div>
               <div class="product-list-row-action">
-                <a href="${btnLink}" class="product-list-row-btn"${btnAttrs}>${btnText}</a>
+                <a href="${escapeHtml(btnLink)}" class="product-list-row-btn"${btnAttrs}>${btnText}</a>
               </div>
             </div>
           </div>
@@ -440,11 +456,13 @@
           document.title = settings.companyName + ' - 产品中心';
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           const logoIcon = document.getElementById('header-logo-icon');
           if (logoIcon) {
             logoIcon.outerHTML =
-              '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+              '<img src="' + logoUrl + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
           }
         }
       } catch (error) {

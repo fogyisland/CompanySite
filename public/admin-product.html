@@ -12,6 +12,10 @@
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
   <link rel="stylesheet" href="/css/admin-product-form.css?v=20260622-1000">
   <link rel="stylesheet" href="/css/admin-product-modal.css?v=20260622-1000">
+  <!-- DOMPurify 必须同步加载：不能依赖 defer，否则可能 window.DOMPurify 未就绪导致净化回退到纯文本 -->
+  <script src="/vendor/dompurify/3.0.6/purify.min.js"></script>
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="admin-layout">
@@ -76,11 +80,15 @@
   </div>
 
   <script>
+    /**
+     * HTML 转义 —— 统一走 SafeHtml（public/js/safe-html.js）。
+     *
+     * 原来的实现（div.textContent → innerHTML）只转义 & < >、**不转义引号**，
+     * 被拼进属性上下文时形同虚设；而且 `if (!text) return ''` 会把数字 0 变成空串。
+     * SafeHtml.escapeHtml 两种上下文都安全，且保留 0。
+     */
     function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      return SafeHtml.escapeHtml(text);
     }
 
     // 分类名 → badge CSS class
@@ -111,9 +119,11 @@
           document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
           document.title = settings.companyName + ' - 产品管理';
         }
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
         if (settings.siteTheme) {
           document.documentElement.setAttribute('data-theme', settings.siteTheme);
@@ -159,19 +169,27 @@
           const linkCount = (product.courseLinks || []).length;
           priceDisplay = `<span class="badge badge-purple">课程型</span><br><small style="color:#64748b;">${linkCount} 个链接</small>`;
         } else if (hasTiers) {
-          const tierPrices = savedTiers.map(t => t.label + ':¥' + t.price).join(' / ');
+          // tier.label / tier.price 是**可写进库的**字段（后台表单 / MCP / db-import
+          // 都能写），product-list.html 里同名字段是转义过的，这里原先漏了 ——
+          // 一个 <img onerror> 就能在后台列表里执行脚本。统一转义。
+          const tierPrices = savedTiers
+            .map(t => escapeHtml(t.label) + ':¥' + escapeHtml(t.price))
+            .join(' / ');
           priceDisplay = `<span class="badge badge-info">多方案</span><br><small style="color:#64748b;">${tierPrices}</small>`;
         } else {
-          priceDisplay = '¥' + product.price;
+          priceDisplay = '¥' + escapeHtml(product.price);
         }
         // status：published = 已上架（前台可见），draft = 草稿（前台不可见）
         const isPublished = product.status === 'published';
         const statusBadge = isPublished
           ? '<span class="badge badge-success">已上架</span>'
           : '<span class="badge badge-warning">草稿</span>';
+        // 上架 / 下架 / 删除都改成 data-* + 事件委托：
+        // 内联 onclick 里插值要先过 HTML 转义，而 HTML 实体在 JS 编译**之前**
+        // 就会被浏览器还原 —— 插值本身就不该出现在可执行字符串里。
         const toggleBtn = isPublished
-          ? `<button class="btn-secondary btn-small" onclick="toggleProductStatus(${escapeHtml(product.id)}, false)">下架</button>`
-          : `<button class="btn-success btn-small" onclick="toggleProductStatus(${escapeHtml(product.id)}, true)">上架</button>`;
+          ? `<button class="btn-secondary btn-small" data-toggle-id="${escapeHtml(product.id)}" data-published="0">下架</button>`
+          : `<button class="btn-success btn-small" data-toggle-id="${escapeHtml(product.id)}" data-published="1">上架</button>`;
         return `
           <tr>
             <td>${escapeHtml(product.id)}</td>
@@ -185,7 +203,7 @@
             <td class="table-actions">
               <button class="btn-edit" data-edit-id="${escapeHtml(product.id)}">编辑</button>
               ${toggleBtn}
-              <button class="btn-delete" onclick="deleteProduct(${escapeHtml(product.id)})">删除</button>
+              <button class="btn-delete" data-delete-id="${escapeHtml(product.id)}">删除</button>
             </td>
           </tr>
         `;
@@ -353,11 +371,25 @@
           closeProductModal();
         }
       });
-      // 编辑按钮（用事件委托，renderTable 字符串拼接里只有 data-edit-id）
+      // 行内按钮统一走事件委托：renderTable 只拼 data-* 属性，不拼 onclick。
       document.getElementById('products-table').addEventListener('click', function(e) {
-        const btn = e.target.closest('button[data-edit-id]');
-        if (!btn) return;
-        openProductModal('edit', parseInt(btn.dataset.editId, 10));
+        const editBtn = e.target.closest('button[data-edit-id]');
+        if (editBtn) {
+          openProductModal('edit', parseInt(editBtn.dataset.editId, 10));
+          return;
+        }
+        const toggleBtn = e.target.closest('button[data-toggle-id]');
+        if (toggleBtn) {
+          toggleProductStatus(
+            parseInt(toggleBtn.dataset.toggleId, 10),
+            toggleBtn.dataset.published === '1'
+          );
+          return;
+        }
+        const deleteBtn = e.target.closest('button[data-delete-id]');
+        if (deleteBtn) {
+          deleteProduct(parseInt(deleteBtn.dataset.deleteId, 10));
+        }
       });
 
       // Highlight current page in sidebar

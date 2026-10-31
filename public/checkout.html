@@ -255,6 +255,8 @@
       font-size: 13px;
     }
   </style>
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <header>
@@ -308,9 +310,11 @@
           document.title = settings.companyName + ' - 结算中心';
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -399,16 +403,11 @@
     }
 
     /**
-     * HTML 转义。
+     * HTML 转义 —— 统一走 SafeHtml（public/js/safe-html.js），那里是唯一事实来源。
      * 商品名来自 localStorage 购物车（可被用户改写），拼进 innerHTML 前必须转义。
      */
     function escapeHtml(text) {
-      return String(text === null || text === undefined ? '' : text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+      return SafeHtml.escapeHtml(text);
     }
 
     /**

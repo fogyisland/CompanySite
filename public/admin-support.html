@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
   <link rel="stylesheet" href="/css/pages/admin-support.css?v=20260622-1100">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
   <link rel="stylesheet" href="/css/admin-support-modal.css?v=20260622-1100">
 </head>
 <body>
@@ -102,9 +104,11 @@
           document.title = settings.companyName + ' - 技术支持管理';
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
 
         // 应用主题
@@ -175,9 +179,9 @@
       data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       tbody.innerHTML = data.map(ticket => {
-        const statusClass = ticket.status;
-        const statusText = { open: '待处理', replied: '已回复', resolved: '已解决', closed: '已关闭' }[ticket.status] || ticket.status;
-        const priorityClass = ticket.priority || 'normal';
+        const statusClass = statusBadgeClass(ticket.status);
+        const statusText = { open: '待处理', replied: '已回复', resolved: '已解决', closed: '已关闭' }[ticket.status] || '未知状态';
+        const priorityClass = priorityBadgeClass(ticket.priority);
         const priorityText = { high: '紧急', normal: '普通', low: '低' }[ticket.priority] || '普通';
 
         return `
@@ -186,22 +190,36 @@
             <td>${escapeHtml(ticket.subject)}</td>
             <td>${escapeHtml(ticket.userName)}</td>
             <td>${escapeHtml(ticket.userEmail)}</td>
-            <td><span class="priority-badge ${escapeHtml(priorityClass)}">${escapeHtml(priorityText)}</span></td>
-            <td><span class="status-badge ${escapeHtml(statusClass)}">${escapeHtml(statusText)}</span></td>
+            <td><span class="priority-badge ${priorityClass}">${escapeHtml(priorityText)}</span></td>
+            <td><span class="status-badge ${statusClass}">${escapeHtml(statusText)}</span></td>
             <td>${formatDate(ticket.createdAt)}</td>
             <td>
-              <button class="btn-view" onclick="showDetail(${escapeHtml(ticket.id)})">查看</button>
+              <button class="btn-view" onclick="showDetail(${Number(ticket.id)})">查看</button>
             </td>
           </tr>
         `;
       }).join('');
     }
 
+    // 转义统一走 SafeHtml：原来的实现（div.textContent → innerHTML）只转义
+    // & < >，不转义引号，被拼进 class="..." 这类属性时会形同虚设。
     function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      return SafeHtml.escapeHtml(text);
+    }
+
+    /**
+     * 优先级 / 状态 → CSS class。
+     *
+     * 用固定映射而不是把库里的原始值拼进 class：class 名不需要转义，
+     * 但**根本不该出现库里的原始值**。工单是匿名可提交的，历史数据里
+     * 可能已经有乱七八糟的 priority，直接拼进 class 等于留了个注入口。
+     */
+    function priorityBadgeClass(priority) {
+      return { high: 'high', normal: 'normal', low: 'low' }[priority] || 'normal';
+    }
+
+    function statusBadgeClass(status) {
+      return { open: 'open', replied: 'replied', resolved: 'resolved', closed: 'closed' }[status] || 'open';
     }
 
     function formatDate(dateStr) {
@@ -210,11 +228,11 @@
     }
 
     async function showDetail(id) {
-      const ticket = tickets.find(t => t.id === id);
+      const ticket = tickets.find(t => Number(t.id) === Number(id));
       if (!ticket) return;
 
       const replies = ticket.replies || [];
-      const statusText = { open: '待处理', replied: '已回复', resolved: '已解决', closed: '已关闭' }[ticket.status] || ticket.status;
+      const statusText = { open: '待处理', replied: '已回复', resolved: '已解决', closed: '已关闭' }[ticket.status] || '未知状态';
       const priorityText = { high: '紧急', normal: '普通', low: '低' }[ticket.priority] || '普通';
 
       let repliesHtml = '';
@@ -224,10 +242,10 @@
         repliesHtml = replies.map(reply => `
           <div class="reply-item ${reply.adminName ? 'admin' : 'user'}">
             <div class="reply-header">
-              <span>${reply.adminName || escapeHtml(ticket.userName)}</span>
+              <span>${escapeHtml(reply.adminName || ticket.userName)}</span>
               <span>${formatDate(reply.createdAt)}</span>
             </div>
-            <div class="reply-content">${reply.content}</div>
+            <div class="reply-content">${escapeHtml(reply.content)}</div>
           </div>
         `).join('');
       }
@@ -252,11 +270,11 @@
         </div>
         <div class="ticket-detail-item">
           <span class="label">优先级：</span>
-          <span class="priority-badge ${ticket.priority || 'normal'}">${priorityText}</span>
+          <span class="priority-badge ${priorityBadgeClass(ticket.priority)}">${escapeHtml(priorityText)}</span>
         </div>
         <div class="ticket-detail-item">
           <span class="label">状态：</span>
-          <span class="status-badge ${ticket.status}">${statusText}</span>
+          <span class="status-badge ${statusBadgeClass(ticket.status)}">${escapeHtml(statusText)}</span>
         </div>
         <div class="ticket-detail-item">
           <span class="label">提交时间：</span>

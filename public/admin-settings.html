@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="admin-layout">
@@ -160,11 +162,10 @@
   </main></div>
 
   <script>
+    // 转义统一走 SafeHtml：原来的实现（div.textContent → innerHTML）只转义
+    // & < >，不转义引号，被拼进属性时会形同虚设。
     function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      return SafeHtml.escapeHtml(text);
     }
 
     async function loadSettings() {
@@ -184,9 +185,13 @@
         document.getElementById('adminEmail').value = settings.adminEmail || '';
         document.getElementById('siteTheme').value = settings.siteTheme || 'minimal';
 
-        if (settings.logo) {
+        // Logo 地址：服务端（lib/settings-policy.js）已按白名单过滤并净化过，
+        // 这里再过一次前端白名单 —— 双保险，避免任何一条新写路径漏掉。
+        const logoUrl = SafeHtml.safeImageUrl(settings.logo);
+
+        if (logoUrl) {
           document.getElementById('logo-preview').innerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo">';
+            '<img src="' + escapeHtml(logoUrl) + '?t=' + Date.now() + '" alt="Logo">';
         }
 
         if (settings.companyName) {
@@ -194,9 +199,9 @@
           document.title = settings.companyName + ' - 网站设置';
         }
 
-        if (settings.logo) {
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + escapeHtml(logoUrl) + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
 
         if (settings.siteTheme) {
@@ -259,8 +264,6 @@
       document.getElementById('siteTheme').value = theme;
     }
 
-    }
-
     document.getElementById('logo-input').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -285,8 +288,11 @@
           return;
         }
         const data = await response.json();
-        document.getElementById('logo-preview').innerHTML =
-          '<img src="' + data.logo + '?t=' + Date.now() + '" alt="Logo">';
+        const uploadedLogoUrl = SafeHtml.safeImageUrl(data.logo);
+        if (uploadedLogoUrl) {
+          document.getElementById('logo-preview').innerHTML =
+            '<img src="' + escapeHtml(uploadedLogoUrl) + '?t=' + Date.now() + '" alt="Logo">';
+        }
         showMessage('Logo上传成功', 'success');
       } catch (error) {
         console.error('Upload error:', error);

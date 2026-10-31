@@ -7,6 +7,8 @@
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
   <style>
     .faq-container {
       max-width: 800px;
@@ -226,6 +228,12 @@
   <script>
     document.getElementById('footer-year').textContent = new Date().getFullYear();
 
+    // 转义统一走 SafeHtml（public/js/safe-html.js）。
+    // FAQ 的问答是后台录入的纯文本，这里必须转义后再拼进 innerHTML。
+    function escapeHtml(text) {
+      return SafeHtml.escapeHtml(text);
+    }
+
     async function loadSettings() {
       try {
         const response = await fetch('/api/settings');
@@ -238,9 +246,10 @@
           document.title = settings.companyName + ' - 常见问题';
         }
 
-        if (settings.logo) {
+        const logoUrl = SafeHtml.safeImageUrl(settings.logo);
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + escapeHtml(logoUrl) + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -268,8 +277,8 @@
 
       faqList.innerHTML = faqs.map(faq => `
         <div class="faq-item">
-          <div class="faq-question">${faq.question}</div>
-          <div class="faq-answer">${faq.answer}</div>
+          <div class="faq-question">${escapeHtml(faq.question)}</div>
+          <div class="faq-answer">${escapeHtml(faq.answer)}</div>
         </div>
       `).join('');
     }

@@ -75,8 +75,14 @@
     const palette = ['#0969da', '#1a7f37', '#9a6700', '#cf222e', '#8250df', '#bf3989'];
     return palette[Math.abs(h) % palette.length];
   }
+  // 转义统一走 SafeHtml（public/js/safe-html.js），那里是唯一事实来源。
+  // 加载 admin-sidebar.js 的 27 个后台页面都同步加载了 safe-html.js，
+  // 且本文件是 defer/末尾加载 —— 执行时 SafeHtml 必然已经就绪。
   function escapeHtml(s) {
-    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    if (!window.SafeHtml || typeof window.SafeHtml.escapeHtml !== 'function') {
+      throw new Error('SafeHtml 未加载：请在宿主页面引入 /js/safe-html.js');
+    }
+    return window.SafeHtml.escapeHtml(s);
   }
   function initials(email) {
     if (!email) return '?';

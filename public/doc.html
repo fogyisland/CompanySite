@@ -7,7 +7,10 @@
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
-  <script src="/vendor/dompurify/3.0.6/purify.min.js" defer></script>
+  <!-- DOMPurify 必须同步加载：不能依赖 defer，否则可能 window.DOMPurify 未就绪导致 XSS 回退到 raw HTML -->
+  <script src="/vendor/dompurify/3.0.6/purify.min.js"></script>
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
   <style>
     body { font-family: 'Noto Sans SC', -apple-system, sans-serif; background: var(--bg, #fafafa); color: var(--text, #1a1a1a); }
     .doc-container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
@@ -77,8 +80,9 @@
         }
         if (!res.ok) throw new Error('Fetch failed: ' + res.status);
         const doc = await res.json();
-        // Sanitize with DOMPurify to prevent XSS from editor output
-        const cleanHtml = window.DOMPurify ? DOMPurify.sanitize(doc.content_html) : doc.content_html;
+        // Sanitize with DOMPurify to prevent XSS from editor output.
+        // 绝不回退到原始 HTML —— 没有净化器时退化成转义后的纯文本。
+        const cleanHtml = SafeHtml.sanitizeHtml(doc.content_html);
         const publishedDate = doc.published_at ? new Date(doc.published_at).toLocaleDateString('zh-CN') : '';
         document.getElementById('doc-content-area').innerHTML = `
           <div class="doc-breadcrumb">
@@ -95,8 +99,9 @@
         document.getElementById('doc-content-area').innerHTML = '<div class="doc-error">文档加载失败</div>';
       }
     })();
+    // 转义统一走 SafeHtml（public/js/safe-html.js），避免各页面各抄一份。
     function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+      return SafeHtml.escapeHtml(s);
     }
   </script>
 
@@ -114,11 +119,13 @@
           // so we don't override it here.
         }
 
-        if (settings.logo) {
+        // Logo 地址先过白名单，再转义后拼进 src —— 管理员可控的字段不能直接进 HTML。
+        const logoUrl = SafeHtml.safeImageUrl(settings.logo);
+        if (logoUrl) {
           const logoIcon = document.getElementById('header-logo-icon');
           if (logoIcon) {
             logoIcon.outerHTML =
-              '<img src="' + settings.logo + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+              '<img src="' + escapeHtml(logoUrl) + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
           }
         }
       } catch (error) {

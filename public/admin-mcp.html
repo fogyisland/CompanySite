@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="admin-layout">
@@ -239,18 +241,19 @@
       'product:write': '写入产品'
     };
 
+    /**
+     * HTML 转义 —— 统一走 SafeHtml（public/js/safe-html.js），那里是唯一事实来源。
+     *
+     * 原先这里分成 escapeHtml（只转义 & < >）与 escapeAttr（再补引号）两个函数：
+     * 分成两个就意味着每个调用点都要自己判断「现在是在文本里还是在属性里」，
+     * 漏判一次就是一个属性上下文突破。现在两个函数是同一套规则。
+     */
     function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text == null ? '' : String(text);
-      return div.innerHTML;
+      return SafeHtml.escapeHtml(text);
     }
 
-    // escapeHtml 只转义 & < >（innerHTML 序列化文本节点的行为），
-    // 引号必须单独补 —— 否则拼进属性时会提前闭合。
     function escapeAttr(text) {
-      return escapeHtml(text)
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+      return SafeHtml.escapeAttr(text);
     }
 
     function showMessage(text, type) {

@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <script src="/js/admin-theme.js" defer></script>
+  <!-- DOMPurify 必须同步加载：不能依赖 defer，否则可能 window.DOMPurify 未就绪导致净化回退到纯文本 -->
+  <script src="/vendor/dompurify/3.0.6/purify.min.js"></script>
   <!-- Quill 1.3.7 snow theme (本地化，详见 public/vendor/vendor-manifest.json) -->
   <link href="/vendor/quill/1.3.7/quill.snow.css" rel="stylesheet">
   <script src="/vendor/quill/1.3.7/quill.min.js" defer></script>
@@ -34,6 +36,8 @@
     .admin-btn-secondary:hover { background: var(--admin-bg-hover, #f6f8fa); }
   </style>
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <div class="admin-layout">
@@ -91,8 +95,12 @@
     let currentDocId = null;
     let quill = null;
 
+    /**
+     * HTML 转义 —— 统一走 SafeHtml（public/js/safe-html.js），那里是唯一事实来源。
+     * 本文件原来自己抄了一份（引号安全，但属于第二份实现，改一处漏一处）。
+     */
     function escapeHtml(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+      return SafeHtml.escapeHtml(s);
     }
 
     function ensureQuillLoaded(cb) {
@@ -138,9 +146,9 @@
       list.innerHTML = docs.map(d => `
         <div class="docs-list-item">
           <div class="doc-title-text">${escapeHtml(d.title)} <span style="color: #666; font-weight: 400; font-size: 12px;">/${escapeHtml(d.slug)}</span></div>
-          <span class="doc-status doc-status-${d.status}">${d.status === 'published' ? '已发布' : '草稿'}</span>
-          <button class="admin-btn-secondary" onclick="editDoc(${d.id})">编辑</button>
-          ${d.status === 'published' ? `<button class="admin-btn-secondary" onclick="togglePublish(${d.id}, 'unpublish')">撤稿</button>` : `<button class="admin-btn-primary" onclick="togglePublish(${d.id}, 'publish')">发布</button>`}
+          <span class="doc-status doc-status-${d.status === 'published' ? 'published' : 'draft'}">${d.status === 'published' ? '已发布' : '草稿'}</span>
+          <button class="admin-btn-secondary" onclick="editDoc(${escapeHtml(d.id)})">编辑</button>
+          ${d.status === 'published' ? `<button class="admin-btn-secondary" onclick="togglePublish(${escapeHtml(d.id)}, 'unpublish')">撤稿</button>` : `<button class="admin-btn-primary" onclick="togglePublish(${escapeHtml(d.id)}, 'publish')">发布</button>`}
         </div>
       `).join('');
     }
@@ -223,7 +231,12 @@
         // Always swap content on existing instance
         quill.setText('');  // clear
         if (initialContent) {
-          quill.clipboard.dangerouslyPasteHTML(initialContent, 'silent');
+          // 文档正文是可写进库的富文本（后台表单 / MCP / db-import 都可能写）。
+          // Quill 的 dangerouslyPasteHTML 名字里的 "dangerously" 就是提醒：
+          // 它不做净化，直接把 HTML 塞进编辑器 → 打开文档就可能执行脚本。
+          // 这里先过 DOMPurify 再交给 Quill；没有净化器时 sanitizeHtml 会退化成
+          // 转义后的纯文本（编辑器里会看到原始标记，但不会执行）。
+          quill.clipboard.dangerouslyPasteHTML(SafeHtml.sanitizeHtml(initialContent), 'silent');
         }
         // Quill 1.x 编辑器不自动滚动外层页面，长文底部打字时光标会跑出视口。
         // 监听 text-change，若光标超出视口则滚动页面。
@@ -320,9 +333,11 @@
           document.getElementById('header-logo-text').textContent = ' ' + settings.companyName + ' 管理后台';
           document.title = settings.companyName + ' - 产品文档';
         }
-        if (settings.logo) {
+        // Logo 地址先过白名单再转义 —— 管理员可控的字段不能直接拼进 HTML。
+        const logoUrl = SafeHtml.escapeHtml(SafeHtml.safeImageUrl(settings.logo));
+        if (logoUrl) {
           document.getElementById('header-logo-icon').outerHTML =
-            '<img src="' + settings.logo + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
+            '<img src="' + logoUrl + '?t=' + Date.now() + '" alt="Logo" id="header-logo-icon" style="height:40px;width:auto;">';
         }
         if (settings.siteTheme) {
           document.documentElement.setAttribute('data-theme', settings.siteTheme);

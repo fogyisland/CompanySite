@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <link rel="stylesheet" href="/css/pages/index.css">
+  <!-- 安全渲染工具：转义 / 地址白名单的唯一事实来源（public/js/safe-html.js） -->
+  <script src="/js/safe-html.js?v=1"></script>
 </head>
 <body>
   <!-- Header -->
@@ -190,6 +192,13 @@
       return map[category] || 'product-card-category-badge';
     }
 
+    // 转义统一走 SafeHtml（public/js/safe-html.js）。
+    // 首页展示的产品名、分类、价格、卖点都来自后台录入的产品数据，
+    // 拼进 innerHTML 前必须转义。
+    function escapeHtml(text) {
+      return SafeHtml.escapeHtml(text);
+    }
+
     let currentSlide = 0;
     let slideInterval;
     let heroProducts = [];
@@ -216,7 +225,10 @@
         currentSlide = 0;
 
         slides.innerHTML = products.map(product => {
-          const hasImage = product.image;
+          // 配图会被拼进 CSS 的 url('...')：地址必须过白名单，
+          // 否则 "x'); background-image:url(evil)" 这类值能闭合 url() 再追加声明。
+          const heroImage = SafeHtml.safeCssUrl(product.image);
+          const hasImage = !!heroImage;
           const isDarkBg = product.imageDarkBg === true;
           const tiers = product.pricingTiers || product.pricing_tiers;
           const hasTiers = tiers && tiers.length > 0;
@@ -225,25 +237,25 @@
           if (hasTiers) {
             priceListHtml = tiers.slice(0, 3).map((tier, index) =>
               `<div class="hero-card-price-item ${index === 0 ? 'active' : ''}" data-tier="${index}">
-                <span class="hero-card-price-label">${tier.label}</span>
-                <span class="hero-card-price-value">¥${tier.price}</span>
+                <span class="hero-card-price-label">${escapeHtml(tier.label)}</span>
+                <span class="hero-card-price-value">¥${escapeHtml(tier.price)}</span>
               </div>`
             ).join('');
           } else {
             priceListHtml = `<div class="hero-card-price-item">
               <span class="hero-card-price-label">标准版</span>
-              <span class="hero-card-price-value">¥${product.price}</span>
+              <span class="hero-card-price-value">¥${escapeHtml(product.price)}</span>
             </div>`;
           }
 
           return `
             <div class="hero-carousel-slide">
-              <a href="/product/${product.id}" class="hero-card" ${hasImage ? 'style="background: linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.35)), url(\'' + product.image + '\'); background-size: cover; background-position: center;"' : ''}>
+              <a href="/product/${Number(product.id)}" class="hero-card" ${hasImage ? 'style="background: linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.35)), url(\'' + heroImage + '\'); background-size: cover; background-position: center;"' : ''}>
                 <div class="hero-card-inner">
                   <div class="hero-card-left">
-                    <span class="hero-card-badge ${getCategoryBadgeClass(product.category)}">${product.category || '软件'}</span>
-                    <h3>${product.name}</h3>
-                    ${product.features && product.features.length > 0 ? `<div class="hero-card-features">• ${product.features.slice(0,3).join(' • ')}</div>` : ''}
+                    <span class="hero-card-badge ${getCategoryBadgeClass(product.category)}">${escapeHtml(product.category || '软件')}</span>
+                    <h3>${escapeHtml(product.name)}</h3>
+                    ${product.features && product.features.length > 0 ? `<div class="hero-card-features">• ${escapeHtml(product.features.slice(0,3).join(' • '))}</div>` : ''}
                   </div>
                   <div class="hero-card-right">
                     <div class="hero-card-price-list">
@@ -280,12 +292,14 @@
       const tiers = product.pricingTiers || product.pricing_tiers;
       if (tiers && tiers.length > 0) {
         // 显示价格列表
+        // tier.label / tier.price 是**可写进库的**字段（后台表单 / MCP / db-import
+        // 都能写），这里原先没转义 —— 一个 <img onerror> 就能在首页执行脚本。
         return tiers.map(tier =>
-          `<span class="price-tier">${tier.label} ¥${tier.price}</span>`
+          `<span class="price-tier">${escapeHtml(tier.label)} ¥${escapeHtml(tier.price)}</span>`
         ).join('');
       }
       // 显示固定价格
-      return `¥${product.price}`;
+      return `¥${escapeHtml(product.price)}`;
     }
 
     function goToSlide(index) {
@@ -422,11 +436,12 @@
         const response = await fetch('/api/settings');
         const settings = await response.json();
 
-        // 更新Logo
-        if (settings.logo) {
+        // 更新Logo（地址过白名单，服务端也过滤过一次）
+        const logoUrl = SafeHtml.safeImageUrl(settings.logo);
+        if (logoUrl) {
           const logoIcon = document.getElementById('header-logo-icon');
           if (logoIcon) {
-            logoIcon.innerHTML = '<img src="' + settings.logo + '" alt="Logo" style="width:40px;height:40px;border-radius:6px;">';
+            logoIcon.innerHTML = '<img src="' + escapeHtml(logoUrl) + '" alt="Logo" style="width:40px;height:40px;border-radius:6px;">';
           }
         }
 
