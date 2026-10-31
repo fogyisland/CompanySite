@@ -24,6 +24,27 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const db = require('./db');
+const appPackage = require('./package.json');
+const { createMcpRouter } = require('./lib/mcp/server');
+const { ContentPolicyError, validateNewsIdentity } = require('./lib/content-policy');
+const { resolveProductType } = require('./lib/product-policy');
+const { resolveAndValidateOrderItem } = require('./lib/order-policy');
+const setupPolicy = require('./lib/setup-policy');
+const setupService = require('./lib/setup');
+const envFile = require('./lib/env-file');
+const envConfigService = require('./lib/env-config-service');
+const {
+  generateMcpToken,
+  hashMcpToken,
+  getMcpTokenPreview,
+  normalizeMcpScopes,
+  formatMcpScopes,
+  MCP_SCOPES,
+  SCOPE_READ,
+  SCOPE_WRITE,
+  SCOPE_PRODUCT_READ,
+  SCOPE_PRODUCT_WRITE
+} = require('./lib/mcp/tokens');
 
 // 数据库备份常量
 const BACKUP_DIR = path.join(__dirname, 'backups');
@@ -750,17 +771,62 @@ const PLACEHOLDER_SECRETS = new Set([
   'default-secret-change-in-production',
   'change-me-in-production-2026'
 ]);
-if (!process.env.SESSION_SECRET) {
-  console.error('FATAL: SESSION_SECRET is not set. Refusing to start.');
-  process.exit(1);
-}
-if (PLACEHOLDER_SECRETS.has(process.env.SESSION_SECRET)) {
+
+// .env 现在是**安装向导的产物**（仓库里只留 .env.example）。
+// 于是「密钥没配好」有两种截然不同的含义，必须分开处理：
+//
+//   A. 缺失 —— 全新部署还没跑过向导，或部署坏了但还没修。
+//      缺失 ≠ 危险：临时密钥每次重启都变，猜不到。
+//      **绝不能 exit(1)**：进程一退出，向导也跟着没了，初始化界面就失去了意义
+//      （和「数据库连不上就退出」是同一类错误）。用进程内临时随机密钥顶住，
+//      等向导把正式密钥写进 .env。
+//
+//   B. 命中已知占位值（如 change-me-in-production）——
+//      占位值是公开的，任何人都能伪造会话 Cookie。必须 fail-closed 拒绝启动。
+//
+// 分界是「有没有值」而不是「.env 在不在」：docker 部署常常用环境变量注入密钥、
+// 不落 .env，那属于「配好了」，不该被拦。
+const envFilePresent = envFile.envFileExists();
+const rawSessionSecret = process.env.SESSION_SECRET || '';
+const rawCronToken = process.env.CRON_TOKEN || '';
+
+if (PLACEHOLDER_SECRETS.has(rawSessionSecret)) {
   console.error('FATAL: SESSION_SECRET is a known placeholder value. Refusing to start.');
   process.exit(1);
 }
-if (!process.env.CRON_TOKEN || PLACEHOLDER_SECRETS.has(process.env.CRON_TOKEN)) {
-  console.error('FATAL: CRON_TOKEN is missing or a known placeholder value. Refusing to start.');
+if (PLACEHOLDER_SECRETS.has(rawCronToken)) {
+  console.error('FATAL: CRON_TOKEN is a known placeholder value. Refusing to start.');
   process.exit(1);
+}
+
+if (!rawSessionSecret) {
+  // 临时密钥只在内存里，不落盘 —— 正式密钥由安装向导生成后写进 .env
+  process.env.SESSION_SECRET = envFile.generateSecret();
+  console.warn('  ⚠ 未配置 SESSION_SECRET —— 使用本次启动的临时密钥（重启后失效）。');
+  console.warn('    请在 /setup 或后台「系统设置 → 数据库」保存配置，正式密钥会写进 .env。');
+}
+if (!rawCronToken) {
+  process.env.CRON_TOKEN = envFile.generateHexToken();
+  console.warn('  ⚠ 未配置 CRON_TOKEN —— 使用本次启动的临时令牌（重启后失效）。');
+}
+if (!envFilePresent) {
+  console.warn('  ⚠ 未找到 .env —— 站点尚未完成初始化，请访问 /setup 完成安装。');
+}
+// MCP_TOKEN 不再是「启动前置条件」—— 主令牌改由后台「系统设置 → MCP」生成/轮换。
+//
+// 为什么从 fail-closed(进程) 改成 fail-closed(端点)：
+//   旧模型下 MCP_TOKEN 缺失 = 进程拒绝启动。若沿用，管理员在后台申请令牌之前
+//   就必须先手工编辑 .env —— 那等于「令牌申请」这个功能永远用不上。
+//   现在：进程照常启动；端点若拿不到任何可用凭据（既无主令牌，也没有后台签发的
+//   有效令牌），/mcp 一律返回 503 —— 被保护的是「端点不被无凭据访问」，而不是「进程」。
+//
+// 环境变量 MCP_TOKEN 仍然作为兼容回退保留（存量部署），但优先级低于后台生成的主令牌。
+if (!process.env.MCP_TOKEN) {
+  console.warn('[WARN] 未配置 MCP_TOKEN —— /mcp 主令牌请在后台「系统设置 → MCP」生成；');
+  console.warn('       若后台也没有签发任何有效令牌，端点会返回 503（fail-closed）。');
+} else if (PLACEHOLDER_SECRETS.has(process.env.MCP_TOKEN)) {
+  console.warn('[WARN] MCP_TOKEN 是已知占位值，已按「未配置」处理。');
+  process.env.MCP_TOKEN = '';
 }
 
 app.use(session({
@@ -831,6 +897,68 @@ app.use(cors({
   credentials: true
 }));
 app.use(compression());
+// ===== MCP (Model Context Protocol) =====
+// AI 工具通过 Streamable HTTP 走 /mcp 发布「动态」(news 表) 与「产品 / 产品文档」
+// (products / product_docs 表)。
+//
+// 重要：产品的**上架**不开放给 MCP —— AI 建出来的产品一律是草稿（products.status=0），
+// 上架必须人工在后台点。原因与做法详见 docs/mcp-endpoint.md §3.4。
+//
+// 挂载点必须在全局 express.json() 之前：MCP 单次请求会带整篇文章正文，
+// 全局 100kb 上限装不下；MCP 路由自带 2mb 的 body parser（body-parser 会给
+// 已解析的请求打 req._body 标记，全局解析器随后自动跳过，两者不冲突）。
+const MCP_ALLOWED_HOSTS = (process.env.MCP_ALLOWED_HOSTS || '')
+  .split(',')
+  .map((host) => host.trim())
+  .filter(Boolean);
+
+/**
+ * 解析当前生效的 MCP 配置。
+ *
+ * 后台保存过就以后台为准（enabled / allowedHosts / masterToken 都能在后台改，
+ * 改完立即生效）；从未保存过则回退到环境变量默认值 —— 这样从旧版本升级上来时行为完全不变。
+ *
+ * 主令牌存在数据库里（后台点击生成/轮换），因此每次请求都会重新读 ——
+ * 后台轮换主令牌后立即生效，不需要重启进程。
+ *
+ * 注意：这个函数每次 MCP 请求都会调一次（一次 settings 主键查询）。
+ * MCP 请求量很低（AI 工具调用），不值得为它引入缓存与失效逻辑；
+ * 换来的是「后台改设置立刻生效」，没有陈旧窗口。
+ */
+async function resolveMcpConfig() {
+  const stored = await db.getStoredMcpConfig();
+  if (!stored) {
+    return { enabled: true, allowedHosts: MCP_ALLOWED_HOSTS, masterToken: '' };
+  }
+  return {
+    enabled: stored.enabled !== false,
+    allowedHosts: Array.isArray(stored.allowedHosts) ? stored.allowedHosts : [],
+    masterToken: typeof stored.masterToken === 'string' ? stored.masterToken : ''
+  };
+}
+
+// /mcp 挂载在全局安装闸门之前（闸门在静态资源之后），所以这里单独加一道：
+// 站点没装好时 MCP 端点不参与服务。
+app.use('/mcp', async (req, res, next) => {
+  try {
+    const state = await setupService.getSetupState(db);
+    if (!state.installed && !state.undetermined) {
+      return res.status(503).json({ error: '系统尚未完成初始化' });
+    }
+  } catch (error) {
+    // 状态查不到就放行，交给 MCP 路由自己的错误处理
+    console.error('[setup] MCP 安装状态检查失败:', error.message);
+  }
+  next();
+}, createMcpRouter({
+  db,
+  writeOperationLog,
+  logger: console,
+  mcpToken: process.env.MCP_TOKEN || '',
+  allowedHosts: MCP_ALLOWED_HOSTS,
+  getMcpConfig: resolveMcpConfig,
+  serverVersion: appPackage.version || '1.0.0'
+}));
 // Global JSON limit: 100KB (safe for normal API calls; file uploads use multer directly)
 app.use(express.json({
   limit: '100kb',
@@ -872,10 +1000,492 @@ app.use((req, res, next) => {
 // API 限流中间件
 app.use('/api/', checkApiRateLimit);
 
+// ============================================================================
+// 安装 / 初始化向导
+//
+// 「站点装没装好」的唯一权威判据是 users 表里有没有 is_admin=1 的账号。
+// 建表、灌默认数据都是幂等的，不能拿来当闸门 —— 否则「表建好了但管理员还没
+// 创建」的窗口期内闸门会重新打开，被人抢先建管理员接管站点。
+//
+// 三道闸：
+//   1. 安装令牌 —— SETUP_TOKEN 环境变量，或服务器自动生成并写进
+//      data/setup-token.txt（只打在服务器控制台，不经任何 HTTP 响应回显）。
+//   2. 「确实未安装」判定 —— DB 异常时 fail-closed，拒绝写操作。
+//   3. 管理员创建成功后销毁令牌文件，所有安装接口永久关闭。
+// ============================================================================
+
+const SETUP_ERROR_MESSAGES = {
+  [setupPolicy.SETUP_ERROR_CODES.TOKEN_REQUIRED]: '安装令牌不可用，请检查服务器是否已生成 data/setup-token.txt',
+  [setupPolicy.SETUP_ERROR_CODES.TOKEN_INVALID]: '安装令牌不正确',
+  [setupPolicy.SETUP_ERROR_CODES.ALREADY_INSTALLED]: '站点已完成安装，安装接口已关闭',
+  [setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE]: '数据库当前不可用（连接失败或账号认证失败），请先在第 2 步完成数据库连接配置',
+  [setupPolicy.SETUP_ERROR_CODES.DB_CONFIG_INVALID]: '数据库连接配置不完整，请填写主机、用户名和数据库名',
+  [setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_INVALID]: '用户名需为 3~32 位字母、数字、下划线、点或连字符',
+  [setupPolicy.SETUP_ERROR_CODES.ADMIN_PASSWORD_WEAK]: '密码至少 8 位，且必须同时包含字母和数字',
+  [setupPolicy.SETUP_ERROR_CODES.ADMIN_EMAIL_INVALID]: '邮箱格式无效',
+  [setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN]: '用户名或邮箱已被占用'
+};
+
+function setupErrorMessage(code) {
+  return SETUP_ERROR_MESSAGES[code] || '安装流程出错';
+}
+
+/**
+ * 闸门拒绝时的文案 —— 把数据库的原始错误附在后面。
+ *
+ * 「数据库当前不可用」这句提示太笼统：实际操作者要分清的是
+ * 「连不上 / 账号认证不过」还是「连上了但判定 SQL 跑不通」，只有原始错误能说明白。
+ */
+function setupGateMessage(gate) {
+  const state = (gate && gate.state) || {};
+  let base = setupErrorMessage(gate && gate.code);
+
+  // 状态是「无法判定」且数据库并不是「不可用」→ 数据库其实是通的，
+  // 失败的是那条判定 SQL（例如列缺失、SQL 写错）。
+  // 这时让操作者去「第 2 步改连接配置」是带偏的 —— 改配置解决不了 SQL 报错。
+  if (gate && gate.code === setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE
+    && state.undetermined === true && state.dbUnreachable === false) {
+    base = '数据库已连接，但判定安装状态失败，已暂停安装写操作';
+  }
+
+  const detail = state.error ? state.error : '';
+  return detail ? base + '（' + detail + '）' : base;
+}
+
+/** 提取请求里的安装令牌（优先 header，避免令牌出现在会被记录的 body 里） */
+function readSetupTokenFromRequest(req) {
+  const fromHeader = req.get('X-Setup-Token');
+  if (typeof fromHeader === 'string' && fromHeader.trim()) return fromHeader.trim();
+  if (req.body && typeof req.body.setupToken === 'string') return req.body.setupToken.trim();
+  return '';
+}
+
+/**
+ * 安装写操作的公共前置。
+ * 顺序：先判「确实未安装」，再校验令牌 —— 已安装的站点不该再消耗令牌校验。
+ */
+async function requireSetupAccess(req, res, next) {
+  try {
+    const gate = await setupService.checkSetupWritable(db);
+    if (!gate.ok) {
+      return res.status(403).json({ error: gate.code, message: setupGateMessage(gate) });
+    }
+    const tokenResult = setupService.verifySetupToken(readSetupTokenFromRequest(req));
+    if (!tokenResult.ok) {
+      return res.status(403).json({ error: tokenResult.code, message: setupErrorMessage(tokenResult.code) });
+    }
+    next();
+  } catch (error) {
+    console.error('[setup] 安装闸门异常:', error.message);
+    res.status(500).json({ error: 'SETUP_GATE_ERROR', message: '安装闸门异常: ' + error.message });
+  }
+}
+
+/**
+ * 「改数据库配置」类操作的前置。
+ *
+ * 与 requireSetupAccess 的区别：数据库连不上时也放行 —— 数据库坏了恰恰是
+ * 操作者需要用向导改配置来修的时刻，一刀切 fail-closed 会让向导在唯一该
+ * 生效的场景里彻底没用。
+ */
+async function requireSetupConfig(req, res, next) {
+  try {
+    const gate = await setupService.checkSetupConfigWritable(db);
+    if (!gate.ok) {
+      return res.status(403).json({ error: gate.code, message: setupGateMessage(gate) });
+    }
+    const tokenResult = setupService.verifySetupToken(readSetupTokenFromRequest(req));
+    if (!tokenResult.ok) {
+      return res.status(403).json({ error: tokenResult.code, message: setupErrorMessage(tokenResult.code) });
+    }
+    next();
+  } catch (error) {
+    console.error('[setup] 配置闸门异常:', error.message);
+    res.status(500).json({ error: 'SETUP_GATE_ERROR', message: '安装闸门异常: ' + error.message });
+  }
+}
+
+/** 只校验令牌（用于只读的状态查询） */
+function requireSetupToken(req, res, next) {
+  const tokenResult = setupService.verifySetupToken(readSetupTokenFromRequest(req));
+  if (!tokenResult.ok) {
+    return res.status(403).json({ error: tokenResult.code, message: setupErrorMessage(tokenResult.code) });
+  }
+  next();
+}
+
+/** 对外的数据库配置视图 —— 不回显密码，只告诉界面「有没有配」 */
+function sanitizeDbConfig(config) {
+  const mysql = config && config.mysql ? config.mysql : {};
+  return {
+    type: 'mysql',
+    mysql: {
+      host: mysql.host || '',
+      port: mysql.port || 3306,
+      user: mysql.user || '',
+      database: mysql.database || '',
+      hasPassword: Boolean(mysql.password)
+    }
+  };
+}
+
+/** 组装给界面的安装状态 */
+async function buildSetupPayload(state) {
+  const schema = await setupService.describeSchema(db);
+  const envState = envFile.readEnvFile();
+  return {
+    installed: state.installed,
+    dbReachable: state.dbReachable,
+    undetermined: state.undetermined,
+    dbUnreachable: state.dbUnreachable === true,
+    adminCount: state.adminCount,
+    tablesReady: schema.tablesReady,
+    missingTables: schema.missingTables,
+    requiredTables: schema.requiredTables,
+    configSource: db.getDbConfigSource(),
+    dbConfig: sanitizeDbConfig(db.getDbConfig()),
+    // .env 现状 —— 界面据此说明「哪些参数已经定下来了、哪些还要填」
+    envFile: {
+      exists: envState.exists,
+      path: envFile.ENV_FILE,
+      // 只列键名，不列值 —— 键名不敏感，值是密钥
+      configuredKeys: Object.keys(envState.values).filter((key) => envState.values[key] !== ''),
+      error: envState.error
+    }
+  };
+}
+
+// 安装向导页面
+app.get('/setup', async (req, res) => {
+  try {
+    const state = await setupService.getSetupState(db, { force: true });
+    if (state.installed) {
+      return res.redirect(req.session && req.session.isAdmin ? '/admin-overview' : '/login');
+    }
+  } catch (error) {
+    // 状态查不出来时仍然展示向导 —— 由页面的「测试连接」环节兜底
+    console.error('[setup] 读取安装状态失败:', error.message);
+  }
+  res.sendFile(path.join(__dirname, 'public', 'setup.html'));
+});
+
+// 校验安装令牌 —— 令牌正确才返回安装状态
+app.post('/api/setup/verify-token', async (req, res) => {
+  try {
+    const tokenResult = setupService.verifySetupToken(readSetupTokenFromRequest(req));
+    if (!tokenResult.ok) {
+      return res.status(403).json({ error: tokenResult.code, message: setupErrorMessage(tokenResult.code) });
+    }
+    const state = await setupService.getSetupState(db, { force: true });
+    if (state.installed) {
+      return res.status(403).json({
+        error: setupPolicy.SETUP_ERROR_CODES.ALREADY_INSTALLED,
+        message: setupErrorMessage(setupPolicy.SETUP_ERROR_CODES.ALREADY_INSTALLED)
+      });
+    }
+    res.json({ success: true, state: await buildSetupPayload(state) });
+  } catch (error) {
+    console.error('[setup] 校验令牌失败:', error.message);
+    res.status(500).json({ error: 'SETUP_VERIFY_FAILED', message: error.message });
+  }
+});
+
+// 安装状态（需要令牌）
+app.get('/api/setup/status', requireSetupToken, async (req, res) => {
+  try {
+    const state = await setupService.getSetupState(db, { force: true });
+    res.json({ success: true, state: await buildSetupPayload(state) });
+  } catch (error) {
+    console.error('[setup] 读取状态失败:', error.message);
+    res.status(500).json({ error: 'SETUP_STATUS_FAILED', message: error.message });
+  }
+});
+
+// 测试数据库连接
+app.post('/api/setup/test-db', requireSetupConfig, async (req, res) => {
+  const validated = setupPolicy.validateDbConfig(req.body);
+  if (validated.error) {
+    return res.status(400).json({ error: validated.error, message: setupErrorMessage(validated.error) });
+  }
+  const mysqlConfig = validated.config.mysql;
+  if (!mysqlConfig.password) {
+    // 界面不回显密码 —— 留空表示沿用已保存的密码
+    const stored = db.getDbConfig();
+    if (stored && stored.mysql && stored.mysql.password) {
+      mysqlConfig.password = stored.mysql.password;
+    }
+  }
+  try {
+    const result = await db.testMySQLConnection(mysqlConfig);
+    res.json({
+      success: true,
+      message: '连接成功',
+      version: result.version,
+      database: result.database
+    });
+  } catch (error) {
+    res.status(400).json({
+      error: setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE,
+      message: '连接失败: ' + error.message
+    });
+  }
+});
+
+// 保存数据库连接配置 —— 写进 .env（.env 是安装向导的产物）
+//
+// 这里**没有**「env 已接管就不让改」的锁：向导的目标本来就是 .env。
+// 旧逻辑的 DB_CONFIG_ENV_LOCKED 是为了防止「界面改了不生效」，
+// 现在界面改的就是 .env 本体，锁反而会让向导在修复场景下无路可走。
+app.post('/api/setup/save-db-config', requireSetupConfig, async (req, res) => {
+  const validated = setupPolicy.validateDbConfig(req.body);
+  if (validated.error) {
+    return res.status(400).json({ error: validated.error, message: setupErrorMessage(validated.error) });
+  }
+
+  const mysqlConfig = validated.config.mysql;
+  if (!mysqlConfig.password) {
+    // 界面不回显密码 —— 留空表示沿用已保存的密码
+    const stored = db.getDbConfig();
+    if (stored && stored.mysql && stored.mysql.password) {
+      mysqlConfig.password = stored.mysql.password;
+    }
+  }
+
+  const saved = envConfigService.saveDbConfigToEnv({ mysql: mysqlConfig });
+  if (!saved.ok) {
+    console.error('[setup] 写入 .env 失败:', saved.error);
+    return res.status(500).json({ error: 'ENV_WRITE_FAILED', message: saved.error });
+  }
+
+  try {
+    // 保存后立刻切换连接池 —— 否则下一步「初始化表结构」跑的仍然是旧库
+    await db.reconnectWithConfig(mysqlConfig);
+  } catch (error) {
+    // 新配置连不上 → 回滚 .env 与进程 env，保留旧连接池，不能把站点带挂
+    const rolled = envConfigService.rollbackDbConfigToEnv(saved);
+    console.error('[setup] 保存数据库配置失败:', error.message);
+    return res.status(400).json({
+      error: setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE,
+      message: '保存失败，新配置无法连接数据库（已保留原配置）: ' + error.message
+        + (rolled.ok ? '' : '；并且 .env 回滚也失败了，请手工检查 ' + envFile.ENV_FILE)
+    });
+  }
+
+  setupService.invalidateState();
+  res.json({
+    success: true,
+    message: '数据库配置已写入 .env 并生效',
+    configSource: 'env',
+    envPath: saved.envPath,
+    // 会话密钥与 sessionPool 在启动时绑定 —— 连接参数当场生效，
+    // 但要彻底对齐（含已登录会话）仍需重启。
+    restartRequired: true,
+    state: await buildSetupPayload(await setupService.getSetupState(db, { force: true }))
+  });
+});
+
+// 初始化数据库 —— 建表 + 灌默认数据（全部幂等，可重复执行）
+app.post('/api/setup/init-db', requireSetupAccess, async (req, res) => {
+  try {
+    await db.createTablesIfNotExist();
+    await db.initDefaultData();
+    setupService.invalidateState();
+    const state = await setupService.getSetupState(db, { force: true });
+    const integrity = await db.verifyDataIntegrity();
+    res.json({
+      success: true,
+      message: '数据库初始化完成',
+      state: await buildSetupPayload(state),
+      tables: integrity.results
+    });
+  } catch (error) {
+    console.error('[setup] 初始化数据库失败:', error.message);
+    res.status(500).json({ error: 'SETUP_INIT_FAILED', message: '初始化失败: ' + error.message });
+  }
+});
+
+// 创建首个管理员 —— 成功后销毁令牌，安装接口永久关闭
+app.post('/api/setup/create-admin', requireSetupAccess, async (req, res) => {
+  const validated = setupPolicy.validateAdminInput(req.body);
+  if (validated.error) {
+    return res.status(400).json({ error: validated.error, message: setupErrorMessage(validated.error) });
+  }
+  const { username, password, email } = validated.admin;
+
+  try {
+    if (await db.getUserByUsername(username)) {
+      return res.status(409).json({
+        error: setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+        message: '用户名已被占用'
+      });
+    }
+    if (email && await db.getUserByEmail(email)) {
+      return res.status(409).json({
+        error: setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+        message: '邮箱已被注册'
+      });
+    }
+
+    const userId = await db.addUser({
+      username,
+      password,
+      email,
+      phone: '',
+      realName: '系统管理员',
+      company: '',
+      isAdmin: true,
+      // 管理员是本机安装者本人创建的，不走邮箱验证流程
+      emailVerified: 1
+    });
+
+    // 令牌销毁 + 状态缓存失效 —— 之后所有安装接口都返回 403
+    setupService.consumeSetupToken();
+    res.json({ success: true, message: '管理员创建成功', userId });
+  } catch (error) {
+    console.error('[setup] 创建管理员失败:', error.message);
+    res.status(500).json({ error: 'SETUP_ADMIN_FAILED', message: '创建失败: ' + error.message });
+  }
+});
+
+/**
+ * 未安装闸门 —— 站点还没装好时，除安装相关路径外一律引导去 /setup。
+ *
+ * fail-open 还是 fail-closed：
+ *   - 确定未安装 → 拦截（这正是要拦的情况）
+ *   - 已安装     → 放行
+ *   - 无法判定（DB 异常）→ 放行。DB 挂了站点本来也用不了，如果这里
+ *     fail-closed，DB 抖一下整个站点跟着挂，可运维性太差。
+ *     安装**写操作**另有 requireSetupAccess 闸门，那里的 fail-closed 才是关键。
+ *
+ * 「数据库连不上」单独处理：这时站点所有依赖数据库的功能都不可用，
+ * 与其让每个接口各自抛 500，不如统一返回 503 并指向 /setup ——
+ * 向导就是为「把数据库连回去」准备的。
+ */
+app.use(async (req, res, next) => {
+  try {
+    const state = await setupService.getSetupState(db);
+    if (state.dbUnreachable) {
+      if (req.path.startsWith('/api/')) {
+        return res.status(503).json({ error: '数据库当前不可用', setupUrl: '/setup' });
+      }
+      return res.redirect('/setup');
+    }
+    if (state.installed || state.undetermined) return next();
+    if (req.path.startsWith('/api/')) {
+      return res.status(503).json({ error: '系统尚未完成初始化', setupUrl: '/setup' });
+    }
+    return res.redirect('/setup');
+  } catch (error) {
+    console.error('[setup] 安装状态检查失败:', error.message);
+    return next();
+  }
+});
+
 // 关于我们页面路由
 app.get('/about', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'about.html'));
 });
+
+// ============================================================================
+// 上传安全原语（B-4）
+//
+// 上传的落盘目录都在 public/ 之下，由 express.static 直出同源。
+// 因此「谁能写进 public/」等价于「谁能往本站点注入脚本」——
+// 传一个 logo.html 或 image.svg 就等于拿到同源 XSS。
+//
+// 三条铁律：
+//   1. 扩展名用「锚定白名单」判定，不用子串正则（.jpg.exe / a.jpG 都要挡住）
+//   2. 白名单里永远不要有 svg / html / js / php —— SVG 能内嵌 <script>
+//   3. 落盘文件名只允许服务端生成的基名 + 白名单后缀，绝不复用 originalname
+// ============================================================================
+
+/** 扩展名归一：取最后一段、小写、只保留 a-z0-9。返回 '' 表示不可用。 */
+function normalizeUploadExt(originalname) {
+  const raw = path.extname(String(originalname || '')).toLowerCase();
+  return /^\.[a-z0-9]+$/.test(raw) ? raw : '';
+}
+
+/**
+ * 判断文件是否同时满足「扩展名在白名单」且「mimetype 属于该扩展名对应的类型」。
+ * 只看其一都不够：扩展名可伪造，mimetype 也由客户端声明，
+ * 但两者交叉校验能把「.svg 配 image/png」这类明显不一致挡掉。
+ */
+function isUploadAllowed(originalname, mimetype, rules) {
+  const ext = normalizeUploadExt(originalname);
+  if (!ext || !Object.prototype.hasOwnProperty.call(rules, ext)) return false;
+  const mime = String(mimetype || '').toLowerCase();
+  return rules[ext].includes(mime);
+}
+
+/** 图片类上传的白名单规则（不含 SVG —— SVG 是 XSS 载体）。 */
+const IMAGE_UPLOAD_RULES = Object.freeze({
+  '.jpg': ['image/jpeg', 'image/pjpeg'],
+  '.jpeg': ['image/jpeg', 'image/pjpeg'],
+  '.png': ['image/png', 'image/x-png'],
+  '.gif': ['image/gif'],
+  '.webp': ['image/webp']
+});
+
+/** 软件安装包白名单规则。 */
+const SOFTWARE_UPLOAD_RULES = Object.freeze({
+  '.exe': ['application/x-msdownload', 'application/octet-stream', 'application/vnd.microsoft.portable-executable', 'application/x-msdos-program'],
+  '.msi': ['application/x-msi', 'application/x-msdownload', 'application/octet-stream', 'application/vnd.ms-package'],
+  '.zip': ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'],
+  '.rar': ['application/vnd.rar', 'application/x-rar-compressed', 'application/octet-stream'],
+  '.7z': ['application/x-7z-compressed', 'application/octet-stream'],
+  '.tar': ['application/x-tar', 'application/octet-stream'],
+  '.gz': ['application/gzip', 'application/x-gzip', 'application/octet-stream'],
+  '.dmg': ['application/x-apple-diskimage', 'application/octet-stream'],
+  '.pkg': ['application/x-newton-compatible-pkg', 'application/octet-stream'],
+  '.deb': ['application/vnd.debian.binary-package', 'application/x-debian-package', 'application/octet-stream'],
+  '.rpm': ['application/x-rpm', 'application/octet-stream'],
+  '.appimage': ['application/x-executable', 'application/octet-stream'],
+  '.apk': ['application/vnd.android.package-archive', 'application/octet-stream'],
+  '.jar': ['application/java-archive', 'application/octet-stream'],
+  '.war': ['application/java-archive', 'application/octet-stream'],
+  '.pdf': ['application/pdf', 'application/octet-stream'],
+  '.txt': ['text/plain', 'application/octet-stream'],
+  '.doc': ['application/msword', 'application/octet-stream'],
+  '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/octet-stream'],
+  '.xls': ['application/vnd.ms-excel', 'application/octet-stream'],
+  '.xlsx': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip', 'application/octet-stream']
+});
+
+/** 生成一个 fileFilter，失败时返回可读的 400 文案。 */
+function buildUploadFilter(rules, rejectMessage) {
+  return (req, file, cb) => {
+    if (isUploadAllowed(file.originalname, file.mimetype, rules)) {
+      return cb(null, true);
+    }
+    const err = new Error(rejectMessage);
+    err.isUploadRejection = true;
+    cb(err);
+  };
+}
+
+/**
+ * 统一的 multer 错误映射：把 fileFilter 拒绝 / 超限 / 字段缺失
+ * 翻译成 400 / 413，而不是让 Express 兜底成 500。
+ */
+function multerErrorResponder(limitLabel) {
+  return (err, req, res, next) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: `文件过大，上限 ${limitLabel}` });
+      }
+      if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({ error: '非预期的上传字段' });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    if (err && err.isUploadRejection) {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error('[upload] 未预期的错误:', err);
+    return res.status(500).json({ error: '上传失败' });
+  };
+}
 
 // 文件上传配置 - Logo专用
 const logoStorage = multer.diskStorage({
@@ -883,8 +1493,10 @@ const logoStorage = multer.diskStorage({
     cb(null, path.join(__dirname, 'public', 'uploads'));
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, 'logo' + ext);
+    // 后缀只从白名单取，绝不复用 originalname 的扩展名
+    const ext = normalizeUploadExt(file.originalname);
+    const safeExt = Object.prototype.hasOwnProperty.call(IMAGE_UPLOAD_RULES, ext) ? ext : '.png';
+    cb(null, 'logo' + safeExt);
   }
 });
 
@@ -894,8 +1506,9 @@ const bannerStorage = multer.diskStorage({
     cb(null, path.join(__dirname, 'public', 'uploads'));
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, 'banner-' + Date.now() + ext);
+    const ext = normalizeUploadExt(file.originalname);
+    const safeExt = Object.prototype.hasOwnProperty.call(IMAGE_UPLOAD_RULES, ext) ? ext : '.png';
+    cb(null, 'banner-' + Date.now() + safeExt);
   }
 });
 
@@ -905,8 +1518,9 @@ const productImageStorage = multer.diskStorage({
     cb(null, path.join(__dirname, 'public', 'uploads', 'products'));
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, 'product-img-' + Date.now() + ext);
+    const ext = normalizeUploadExt(file.originalname);
+    const safeExt = Object.prototype.hasOwnProperty.call(IMAGE_UPLOAD_RULES, ext) ? ext : '.png';
+    cb(null, 'product-img-' + Date.now() + safeExt);
   }
 });
 
@@ -916,21 +1530,22 @@ if (!fs.existsSync(productImageDir)) {
   fs.mkdirSync(productImageDir, { recursive: true });
 }
 
-const uploadLogo = multer({ storage: logoStorage });
-const uploadBanner = multer({ storage: bannerStorage });
+const uploadLogo = multer({
+  storage: logoStorage,
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 }, // 修复 B-4：logo 原先无任何上限
+  fileFilter: buildUploadFilter(IMAGE_UPLOAD_RULES, '只允许上传图片文件 (jpg, jpeg, png, gif, webp)')
+});
+
+const uploadBanner = multer({
+  storage: bannerStorage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 }, // 修复 B-4：banner 原先无任何上限
+  fileFilter: buildUploadFilter(IMAGE_UPLOAD_RULES, '只允许上传图片文件 (jpg, jpeg, png, gif, webp)')
+});
+
 const uploadProductImage = multer({
   storage: productImageStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 限制5MB
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
-      cb(null, true);
-    } else {
-      cb(new Error('只允许上传图片文件 (jpeg, jpg, png, gif, webp)'));
-    }
-  }
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: buildUploadFilter(IMAGE_UPLOAD_RULES, '只允许上传图片文件 (jpg, jpeg, png, gif, webp)')
 });
 
 // Doc 图片上传配置 - public/uploads/doc-images/<yyyy>/<mm>/
@@ -943,8 +1558,10 @@ const docImageStorage = multer.diskStorage({
     fs.mkdir(dir, { recursive: true }, (err) => cb(err, dir));
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '');
-    const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext) ? ext : '.bin';
+    // 修复 B-4：移除 .svg —— SVG 可内嵌 <script>，直出即同源 XSS。
+    // 白名单外的扩展名一律降级为 .bin，绝不原样落盘。
+    const ext = normalizeUploadExt(file.originalname);
+    const safeExt = Object.prototype.hasOwnProperty.call(IMAGE_UPLOAD_RULES, ext) ? ext : '.bin';
     const uuid = crypto.randomBytes(8).toString('hex');
     cb(null, `${uuid}${safeExt}`);
   }
@@ -952,20 +1569,16 @@ const docImageStorage = multer.diskStorage({
 
 const docImageUpload = multer({
   storage: docImageStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('不支持的图片类型'));
-  }
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: buildUploadFilter(IMAGE_UPLOAD_RULES, '不支持的图片类型（不允许 SVG）')
 });
 
 // 数据库备份上传配置
 const backupUpload = multer({
   dest: BACKUP_DIR,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+  limits: { fileSize: 100 * 1024 * 1024, files: 1 },
   fileFilter: (req, file, cb) => {
-    if (path.extname(file.originalname).toLowerCase() !== '.sql') {
+    if (normalizeUploadExt(file.originalname) !== '.sql') {
       return cb(new Error('Only .sql files allowed'));
     }
     cb(null, true);
@@ -978,8 +1591,10 @@ const softwareStorage = multer.diskStorage({
     cb(null, path.join(__dirname, 'public', 'uploads', 'software'));
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, 'software-' + Date.now() + ext);
+    // 修复 B-4：不再复用原始扩展名，只认白名单
+    const ext = normalizeUploadExt(file.originalname);
+    const safeExt = Object.prototype.hasOwnProperty.call(SOFTWARE_UPLOAD_RULES, ext) ? ext : '.bin';
+    cb(null, 'software-' + Date.now() + safeExt);
   }
 });
 
@@ -991,16 +1606,8 @@ if (!fs.existsSync(softwareDir)) {
 
 const uploadSoftware = multer({
   storage: softwareStorage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 限制500MB
-  fileFilter: (req, file, cb) => {
-    // 允许常见的软件文件格式
-    const allowedExtensions = /\.(exe|zip|rar|7z|tar|gz|msi|dmg|pkg|deb|rpm|appimage|jar|war|pdf|txt|doc|docx|xls|xlsx)$/i;
-    if (allowedExtensions.test(file.originalname)) {
-      cb(null, true);
-    } else {
-      cb(new Error('不支持的文件格式'));
-    }
-  }
+  limits: { fileSize: 500 * 1024 * 1024, files: 1 },
+  fileFilter: buildUploadFilter(SOFTWARE_UPLOAD_RULES, '不支持的文件格式')
 });
 
 // 登录状态检查中间件
@@ -1497,15 +2104,51 @@ app.delete('/api/telemetry', requireAuth, async (req, res) => {
 
 // ============ API路由 - 订单 ============
 
+/**
+ * 下单项的校验 + 价格重算（B-1 修复）已经抽到 lib/order-policy.js。
+ *
+ * 抽出去的原因：验证脚本要测同一份实现，不能再各写一份内联副本
+ * （B-2 那轮踩过「内联副本和被测代码静默漂移」的坑）。
+ *
+ * 错误码（每条都映射一个稳定字符串，方便后续日志聚合与前台文案映射）：
+ *   INVALID_ITEM / INVALID_PRODUCT_ID / INVALID_QUANTITY /
+ *   INVALID_TIER_INDEX / PRODUCT_NOT_FOUND / PRODUCT_NOT_AVAILABLE /
+ *   TIER_NOT_AVAILABLE / TIER_OUT_OF_RANGE / PRICE_NOT_AVAILABLE
+ */
+
 // 创建订单
 app.post('/api/orders', requireUserAuth, async (req, res) => {
-  const { items, totalAmount, paymentMethod } = req.body;
+  const { items, paymentMethod } = req.body;
 
-  if (!items || items.length === 0) {
+  // 基本结构校验
+  if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: '订单商品不能为空' });
   }
+  if (items.length > 50) {
+    return res.status(400).json({ error: '单次订单商品过多' });
+  }
 
-  // 生成订单编号: BL + 年月日时分秒 + 7位随机数
+  // 校验 + 重算每条（任一条失败整批拒绝，避免半截订单）
+  const normalizedItems = [];
+  let serverTotal = 0;
+  for (const rawItem of items) {
+    let result;
+    try {
+      result = await resolveAndValidateOrderItem(rawItem, (id) => db.getProduct(id));
+    } catch (err) {
+      console.error('[POST /api/orders] validate error:', err);
+      return res.status(500).json({ error: '订单校验失败' });
+    }
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+    normalizedItems.push(result.normalized);
+    // 服务端累计金额（先乘 100 转分再加，避免浮点尾差）
+    const lineTotal = Math.round(result.normalized.price * result.normalized.quantity * 100) / 100;
+    serverTotal = Math.round((serverTotal + lineTotal) * 100) / 100;
+  }
+
+  // 生成订单编号: BL + 年月日时分秒 + 7位十六进制随机
   const now = new Date();
   const dateStr = now.getFullYear() +
     String(now.getMonth() + 1).padStart(2, '0') +
@@ -1515,10 +2158,11 @@ app.post('/api/orders', requireUserAuth, async (req, res) => {
     String(now.getSeconds()).padStart(2, '0');
   const orderNumber = 'BL' + dateStr + crypto.randomBytes(4).toString('hex').toUpperCase();
 
+  // 写库只用服务端正本；完全不收客户端的 price / totalAmount / productName
   const order = await db.createOrder({
     userId: req.session.userId,
-    items: items,
-    totalAmount: totalAmount,
+    items: normalizedItems,
+    totalAmount: serverTotal,
     paymentMethod: paymentMethod,
     orderNumber: orderNumber
   });
@@ -1527,21 +2171,27 @@ app.post('/api/orders', requireUserAuth, async (req, res) => {
   const user = await db.getUserById(req.session.userId);
   if (user && user.email) {
     // 异步发送邮件，不阻塞响应
-    // createOrder 返回 { id, orderNumber }，所以这里补全 sendOrderConfirmationEmail 需要的字段
+    // createOrder 返回 { id, orderNumber }，补全 sendOrderConfirmationEmail 需要的字段
     const orderForEmail = {
       id: order.id,
       orderNumber: order.orderNumber,
-      totalAmount: totalAmount,
+      totalAmount: serverTotal,
       createdAt: now
     };
-    sendOrderConfirmationEmail(orderForEmail, user, items).catch(err => {
+    sendOrderConfirmationEmail(orderForEmail, user, normalizedItems).catch(err => {
       console.error('Order email error:', err);
     });
   }
 
-  writeOrderLog(order.id, 'ORDER_CREATED', user?.username || 'unknown', `New order created, amount: ¥${totalAmount}, payment: ${paymentMethod || 'bank_transfer'}`);
+  writeOrderLog(order.id, 'ORDER_CREATED', user?.username || 'unknown', `New order created, amount: ¥${serverTotal}, payment: ${paymentMethod || 'bank_transfer'}`);
 
-  res.status(201).json(order);
+  // 响应里把服务端正本回给前端（前端用以更新 UI/历史）
+  res.status(201).json({
+    id: order.id,
+    orderNumber: order.orderNumber,
+    items: normalizedItems,
+    totalAmount: serverTotal
+  });
 });
 
 // 获取用户订单列表
@@ -1758,7 +2408,58 @@ app.post('/api/admin/user-software-status/:id/unlock', requireAuth, async (req, 
   }
 });
 
+/**
+ * 从 PayPal webhook resource 中解析「实际收到的金额」与「币种」（B-2）
+ *
+ * PayPal 两种事件形态的 resource 结构不同：
+ *   - CHECKOUT.ORDER.COMPLETED  : resource.amount = { value: "9.99", currency_code: "CNY" }
+ *                                  或 resource.purchase_units[0].amount = { ... }
+ *   - PAYMENT.CAPTURE.COMPLETED: resource.amount = { value: "9.99", currency_code: "CNY" }
+ *                                  （capture 事件字段在顶层）
+ *   - 旧版 / 部分场景           : resource.amount = "9.99"（纯字符串） + resource.currency_code
+ *
+ * 返回 { amount: Number, currency: string } 或 null（解析不出来）。
+ * 一律以「分」为单位比较，避免浮点尾差导致 9.99 !== 9.99 的误判。
+ */
+function extractPayPalAmount(resource) {
+  if (!resource || typeof resource !== 'object') return null;
+
+  // 候选金额来源，按优先级
+  const amountSources = [
+    resource.amount,                                   // v2: { value, currency_code }
+    resource.purchase_units?.[0]?.amount              // v2: 挂在 purchase_units 上
+  ];
+
+  for (const src of amountSources) {
+    if (!src) continue;
+
+    // 形态 1: { value: "9.99", currency_code: "CNY" }
+    if (typeof src === 'object' && typeof src.value === 'string') {
+      const parsed = Number(src.value);
+      if (!Number.isFinite(parsed) || parsed < 0) return null;
+      const currency = src.currency_code
+        || resource.currency_code
+        || resource.purchase_units?.[0]?.amount?.currency_code
+        || null;
+      if (!currency) return null;
+      return { amount: parsed, currency };
+    }
+
+    // 形态 2: 纯字符串 "9.99"（此时币种在 resource.currency_code）
+    if (typeof src === 'string') {
+      const parsed = Number(src);
+      if (!Number.isFinite(parsed) || parsed < 0) return null;
+      const currency = resource.currency_code || null;
+      if (!currency) return null;
+      return { amount: parsed, currency };
+    }
+  }
+
+  return null;
+}
+
 // PayPal webhook（修复 S2：强制签名校验，fail-closed if PAYPAL_WEBHOOK_ID 未配置）
+// B-2 修复：验签之后、置 paid 之前，必须比对实付金额与订单金额
 app.post('/api/paypal/webhook', async (req, res) => {
   try {
     // 修复 S2：必须先验证签名，再处理业务逻辑
@@ -1790,10 +2491,79 @@ app.post('/api/paypal/webhook', async (req, res) => {
       return res.status(400).json({ error: 'No custom_id' });
     }
 
-    const orderId = parseInt(customId);
+    // custom_id 必须是纯数字串，避免 "57abc" 被 parseInt 截断成 57 而命中他人订单
+    if (!/^\d+$/.test(String(customId))) {
+      return res.status(400).json({ error: 'Malformed custom_id' });
+    }
+
+    const orderId = parseInt(customId, 10);
+    if (!Number.isSafeInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ error: 'Malformed custom_id' });
+    }
+
     const orderRows = await db.query("SELECT * FROM orders WHERE id = ?", [orderId]);
     if (orderRows.length === 0) return res.status(404).json({ error: 'Order not found' });
     const order = orderRows[0];
+
+    // ===== B-2 修复：金额与币种强校验 =====
+    // 签名有效只证明「这确实是 PayPal 发的」，不证明「金额正确」。
+    // 若不比对，任何人可用 ¥0.01 的 PayPal 订单触发任意高额订单发货。
+    const paid = extractPayPalAmount(resource);
+    if (!paid) {
+      writeOperationLog(
+        'PAYPAL_AMOUNT_MISSING',
+        'paypal',
+        `Order #${orderId}: cannot parse amount from resource`
+      );
+      return res.status(400).json({
+        error: 'Amount missing in webhook payload',
+        orderId
+      });
+    }
+
+    const expectedAmount = Number(order.total_amount);
+    if (!Number.isFinite(expectedAmount) || expectedAmount < 0) {
+      // 订单自身金额异常（脏数据），同样 fail-closed
+      writeOperationLog(
+        'PAYPAL_AMOUNT_MISMATCH',
+        'paypal',
+        `Order #${orderId}: order.total_amount is invalid (${order.total_amount})`
+      );
+      return res.status(400).json({ error: 'Order amount is invalid', orderId });
+    }
+
+    if (paid.currency !== 'CNY') {
+      writeOperationLog(
+        'PAYPAL_CURRENCY_MISMATCH',
+        'paypal',
+        `Order #${orderId}: expected CNY, got ${paid.currency} ${paid.amount}`
+      );
+      return res.status(400).json({
+        error: 'Currency mismatch',
+        expected: 'CNY',
+        received: paid.currency,
+        orderId
+      });
+    }
+
+    // 以「分」为最小单位做整数比较，杜绝浮点尾差
+    const receivedCents = Math.round(paid.amount * 100);
+    const expectedCents = Math.round(expectedAmount * 100);
+    if (receivedCents !== expectedCents) {
+      writeOperationLog(
+        'PAYPAL_AMOUNT_MISMATCH',
+        'paypal',
+        `Order #${orderId}: expected ${expectedAmount} CNY (${expectedCents} cents), got ${paid.amount} CNY (${receivedCents} cents)`
+      );
+      return res.status(400).json({
+        error: 'Amount mismatch',
+        expected: expectedAmount,
+        received: paid.amount,
+        currency: paid.currency,
+        orderId
+      });
+    }
+    // ===== B-2 修复结束 =====
 
     // 幂等性：已处理过
     if (order.status === 'paid' || order.status === 'completed') {
@@ -2310,7 +3080,9 @@ app.get('/api/products', checkPublicEndpointRateLimit, async (req, res) => {
       isCourse: isCourseFilter,
       search: search || '',
       page,
-      pageSize
+      pageSize,
+      // 前台只显示已上架的产品；草稿 / 已下架的由后台接口提供
+      status: 1
     });
     res.json(result);
   } catch (e) {
@@ -2330,6 +3102,10 @@ app.get('/api/products/:id', async (req, res) => {
   if (!product) {
     return res.status(404).json({ error: 'Product not found' });
   }
+  // 草稿 / 已下架的产品对前台不可见（与 /api/news/:slug 的处理一致，防泄露）
+  if (product.status !== 'published') {
+    return res.status(404).json({ error: 'Product not found' });
+  }
   res.json(product);
 });
 
@@ -2338,6 +3114,8 @@ app.get('/api/products/:slug/docs', async (req, res) => {
   try {
     const product = await db.getProductByShortName(req.params.slug);
     if (!product) return res.status(404).json({ error: '产品不存在' });
+    // 草稿 / 已下架的产品连同它的文档一起对前台隐藏
+    if (product.status !== 'published') return res.status(404).json({ error: '产品不存在' });
     const docs = await db.listPublishedProductDocs(product.id);
     res.json(docs);
   } catch (e) {
@@ -2409,38 +3187,50 @@ app.post('/api/products', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Name is required' });
   }
 
-  const isCourseVal = isCourse === true || isCourse === 1;
-  const isSharedCodeVal = isSharedCode === true || isSharedCode === 1;
-  const isOpenSource = category === '开源产品';
-  if (isCourseVal && isSharedCodeVal) {
-    return res.status(400).json({ error: '课程型与共享代码不能同时启用' });
-  }
-  const cleanRepoUrls = Array.isArray(repoUrls) ? repoUrls.filter(u => typeof u === 'string' && /^https?:\/\//i.test(u.trim())) : [];
-  if ((isOpenSource || isSharedCodeVal) && cleanRepoUrls.length === 0) {
-    return res.status(400).json({ error: '开源/共享代码产品至少需要一个仓库地址' });
+  // 类型矩阵（课程型 / 共享代码 / 开源产品 → 免费、仓库校验、两者互斥）
+  // 改走 lib/product-policy.js 的共享实现 —— MCP 的 create_product 用的是同一份，
+  // 规则只有一处，不会漂移。抛出的 ContentPolicyError.message 与原内联实现逐字一致，
+  // 所以前端看到的报错文案不变。
+  let productType;
+  try {
+    productType = resolveProductType({
+      category,
+      isCourse,
+      isSharedCode,
+      repoUrls,
+      price,
+      pricingTiers,
+      downloadUrl,
+      externalLink
+    });
+  } catch (err) {
+    if (err instanceof ContentPolicyError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
   }
 
   const newProduct = await db.addProduct({
     name,
     shortName: shortName || '',
-    category: category || 'General',
-    price: (isCourseVal || isSharedCodeVal || isOpenSource) ? 0 : parseFloat(price || 0),
-    pricingTiers: (isCourseVal || isSharedCodeVal || isOpenSource) ? null : (pricingTiers || null),
+    category: productType.category,
+    price: productType.price,
+    pricingTiers: productType.pricingTiers,
     description: description || '',
     version: version || '1.0.0',
     platform: platform || 'Windows',
     features: features || [],
     icon: icon || 'software',
     featured: featured || false,
-    downloadUrl: (isCourseVal || isSharedCodeVal || isOpenSource) ? '' : (downloadUrl || ''),
-    externalLink: (isCourseVal || isSharedCodeVal || isOpenSource) ? false : (externalLink || false),
+    downloadUrl: productType.downloadUrl,
+    externalLink: productType.externalLink,
     detailPage: detailPage || '',
     image: image || '',
     imageDarkBg: imageDarkBg || false,
-    isCourse: isCourseVal,
-    isSharedCode: isSharedCodeVal,
+    isCourse: productType.isCourse,
+    isSharedCode: productType.isSharedCode,
     courseLinks: Array.isArray(courseLinks) ? courseLinks : [],
-    repoUrls: cleanRepoUrls
+    repoUrls: productType.repoUrls
   });
 
   res.status(201).json(newProduct);
@@ -2599,13 +3389,110 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
 });
 
 // 上传产品描述图片
-app.post('/api/upload-product-image', requireAuth, uploadProductImage.single('image'), (req, res) => {
+app.post('/api/upload-product-image', requireAuth, uploadProductImage.single('image'), multerErrorResponder('5MB'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: '没有上传文件' });
   }
 
   const imagePath = '/uploads/products/' + req.file.filename;
   res.json({ path: imagePath, filename: req.file.filename });
+});
+
+// ============================================================================
+// Admin API: 产品管理（草稿 / 上架）
+//
+// 前台的 /api/products 只返回已上架的产品；草稿与已下架的产品只能在后台看到。
+// 上架动作**只能由人点**（MCP 没有上架工具），AI 建出来的产品一律是草稿。
+// ============================================================================
+
+// Admin: 列出全部产品（含草稿 / 已下架）
+app.get('/api/admin/products', requireAuth, async (req, res) => {
+  try {
+    const { search, category, status } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize, 10) || 50));
+
+    // status：'published' | 'draft' | 不传（全部）
+    let statusFilter;
+    if (status === 'published') statusFilter = 1;
+    else if (status === 'draft') statusFilter = 0;
+
+    const result = await db.getProductsPaginated({
+      search: typeof search === 'string' ? search : '',
+      category: typeof category === 'string' ? category : '',
+      page,
+      pageSize,
+      status: statusFilter
+    });
+    res.json(result);
+  } catch (e) {
+    console.error('GET /api/admin/products error:', e);
+    res.status(500).json({ error: '获取产品列表失败' });
+  }
+});
+
+// Admin: 单个产品详情（草稿也返回）
+app.get('/api/admin/products/:id', requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '无效的产品 ID' });
+  }
+  try {
+    const product = await db.getProduct(id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(product);
+  } catch (e) {
+    console.error('GET /api/admin/products/:id error:', e);
+    res.status(500).json({ error: '获取产品失败' });
+  }
+});
+
+// Admin: 上架产品（草稿 → 前台可见）
+app.post('/api/admin/products/:id/publish', requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '无效的产品 ID' });
+  }
+  try {
+    const product = await db.getProduct(id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    if (product.status === 'published') {
+      return res.status(400).json({ error: '该产品已经是上架状态' });
+    }
+    await db.setProductStatus(id, true);
+    writeOperationLog('PRODUCT_PUBLISH', req.session.userName || req.session.username || 'admin', `Product #${id}: ${product.name}`);
+    res.json({ success: true, status: 'published' });
+  } catch (e) {
+    console.error('POST /api/admin/products/:id/publish error:', e);
+    res.status(500).json({ error: '上架失败' });
+  }
+});
+
+// Admin: 下架产品（前台立即不可见）
+app.post('/api/admin/products/:id/unpublish', requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: '无效的产品 ID' });
+  }
+  try {
+    const product = await db.getProduct(id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    if (product.status !== 'published') {
+      return res.status(400).json({ error: '该产品已经是下架状态' });
+    }
+    await db.setProductStatus(id, false);
+    writeOperationLog('PRODUCT_UNPUBLISH', req.session.userName || req.session.username || 'admin', `Product #${id}: ${product.name}`);
+    res.json({ success: true, status: 'draft' });
+  } catch (e) {
+    console.error('POST /api/admin/products/:id/unpublish error:', e);
+    res.status(500).json({ error: '下架失败' });
+  }
 });
 
 // ============================================================================
@@ -2801,10 +3688,16 @@ app.get('/api/admin/news/:id', requireAuth, async (req, res) => {
 app.post('/api/admin/news', requireAuth, async (req, res) => {
   try {
     const { title, slug, excerpt, content_html, cover_image, category, is_pinned, sort_order } = req.body;
-    if (!title || !slug) return res.status(400).json({ error: '标题和 slug 必填' });
-    if (!/^[a-z0-9-]+$/.test(slug)) return res.status(400).json({ error: 'slug 仅允许小写字母、数字、连字符' });
+    // 标题/slug 规则走共享模块（lib/content-policy.js），与 MCP 端同一套规则、同一份文案
+    let identity;
+    try {
+      identity = validateNewsIdentity({ title, slug });
+    } catch (err) {
+      if (err instanceof ContentPolicyError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
     const result = await db.createNews({
-      title, slug, excerpt,
+      title: identity.title, slug: identity.slug, excerpt,
       contentHtml: content_html,
       coverImage: cover_image,
       category,
@@ -2812,7 +3705,7 @@ app.post('/api/admin/news', requireAuth, async (req, res) => {
       sortOrder: parseInt(sort_order, 10) || 0
     });
     const username = req.session.userName || req.session.username || 'admin';
-    writeOperationLog('NEWS_CREATE', username, `News #${result.id} (${slug})`);
+    writeOperationLog('NEWS_CREATE', username, `News #${result.id} (${identity.slug})`);
     res.json(result);
   } catch (err) {
     console.error('[admin news create]', err);
@@ -2827,12 +3720,18 @@ app.put('/api/admin/news/:id', requireAuth, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: '无效的 id' });
     const { title, slug, excerpt, content_html, cover_image, category, is_pinned, sort_order } = req.body;
-    if (!title || !slug) return res.status(400).json({ error: '标题和 slug 必填' });
-    if (!/^[a-z0-9-]+$/.test(slug)) return res.status(400).json({ error: 'slug 仅允许小写字母、数字、连字符' });
+    // 与创建端点共用同一份标题/slug 校验规则
+    let identity;
+    try {
+      identity = validateNewsIdentity({ title, slug });
+    } catch (err) {
+      if (err instanceof ContentPolicyError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
     const existing = await db.getNews(id);
     if (!existing) return res.status(404).json({ error: '动态不存在' });
     await db.updateNews(id, {
-      title, slug, excerpt,
+      title: identity.title, slug: identity.slug, excerpt,
       contentHtml: content_html,
       coverImage: cover_image,
       category,
@@ -2840,7 +3739,7 @@ app.put('/api/admin/news/:id', requireAuth, async (req, res) => {
       sortOrder: parseInt(sort_order, 10) || 0
     });
     const username = req.session.userName || req.session.username || 'admin';
-    writeOperationLog('NEWS_UPDATE', username, `News #${id} (${slug || ''})`);
+    writeOperationLog('NEWS_UPDATE', username, `News #${id} (${identity.slug || ''})`);
     res.json({ ok: true });
   } catch (err) {
     console.error('[admin news update]', err);
@@ -2901,7 +3800,7 @@ app.post('/api/admin/news/:id/unpublish', requireAuth, async (req, res) => {
 });
 
 // TinyMCE image upload handler
-app.post('/api/upload-doc-image', requireAuth, docImageUpload.single('file'), (req, res) => {
+app.post('/api/upload-doc-image', requireAuth, docImageUpload.single('file'), multerErrorResponder('5MB'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: '未上传文件' });
     // 修复 I9: 用 path.relative(publicDir, file.path) 构造相对路径,避免 split('uploads/doc-images') 字符串扫描脆弱性
@@ -2989,6 +3888,45 @@ app.post('/api/send-email', requireAuth, async (req, res) => {
   res.json({ success: true, message: `邮件已保存，准备发送给 ${emails.length} 位订阅者` });
 });
 
+// 安全删除：把客户端传来的 filename 限制在 dir 之内，且校验扩展名。
+// path.join 会规范化 `..`，因此 filename 必须先经过 path.basename 剥离目录部分，
+// 再用 path.resolve 校验最终路径确实仍位于 dir 之内（防目录穿越）。
+function safeUnlinkInDir(dir, filename, allowedExts) {
+  if (typeof filename !== 'string' || filename.length === 0) {
+    return { error: 'INVALID_NAME' };
+  }
+
+  // 剥离任何目录分隔符成分，只保留纯文件名
+  const baseName = path.basename(filename);
+  if (baseName.length === 0 || baseName === '.' || baseName === '..') {
+    return { error: 'INVALID_NAME' };
+  }
+
+  const ext = path.extname(baseName).toLowerCase();
+  if (!allowedExts.includes(ext)) {
+    return { error: 'INVALID_EXT' };
+  }
+
+  // 双重防护：resolve 后必须仍以 dir + 分隔符 开头
+  const resolvedDir = path.resolve(dir);
+  const target = path.resolve(resolvedDir, baseName);
+  if (target !== resolvedDir && !target.startsWith(resolvedDir + path.sep)) {
+    return { error: 'INVALID_NAME' };
+  }
+
+  if (!fs.existsSync(target)) {
+    return { error: 'NOT_FOUND' };
+  }
+
+  try {
+    fs.unlinkSync(target);
+    return { success: true };
+  } catch (err) {
+    console.error('[safeUnlink] 删除失败:', { target, error: err.message });
+    return { error: 'DELETE_FAILED' };
+  }
+}
+
 // 删除产品描述图片
 app.delete('/api/upload-product-image', requireAuth, (req, res) => {
   const { filename } = req.body;
@@ -2996,17 +3934,30 @@ app.delete('/api/upload-product-image', requireAuth, (req, res) => {
     return res.status(400).json({ error: '缺少文件名' });
   }
 
-  const filePath = path.join(__dirname, 'public', 'uploads', 'products', filename);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ error: '文件不存在' });
+  const result = safeUnlinkInDir(
+    path.join(__dirname, 'public', 'uploads', 'products'),
+    filename,
+    ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+  );
+
+  if (result.error === 'INVALID_NAME') {
+    return res.status(400).json({ error: '文件名不合法' });
   }
+  if (result.error === 'INVALID_EXT') {
+    return res.status(400).json({ error: '仅允许删除图片文件' });
+  }
+  if (result.error === 'NOT_FOUND') {
+    return res.status(404).json({ error: '文件不存在' });
+  }
+  if (result.error === 'DELETE_FAILED') {
+    return res.status(500).json({ error: '删除失败' });
+  }
+
+  res.json({ success: true });
 });
 
 // 上传软件文件
-app.post('/api/upload-software', requireAuth, uploadSoftware.single('software'), (req, res) => {
+app.post('/api/upload-software', requireAuth, uploadSoftware.single('software'), multerErrorResponder('500MB'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: '没有上传文件' });
   }
@@ -3027,13 +3978,26 @@ app.delete('/api/upload-software', requireAuth, (req, res) => {
     return res.status(400).json({ error: '缺少文件名' });
   }
 
-  const filePath = path.join(__dirname, 'public', 'uploads', 'software', filename);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ error: '文件不存在' });
+  const result = safeUnlinkInDir(
+    path.join(__dirname, 'public', 'uploads', 'software'),
+    filename,
+    ['.exe', '.msi', '.dmg', '.deb', '.zip', '.tar', '.gz', '.pkg', '.apk']
+  );
+
+  if (result.error === 'INVALID_NAME') {
+    return res.status(400).json({ error: '文件名不合法' });
   }
+  if (result.error === 'INVALID_EXT') {
+    return res.status(400).json({ error: '不允许的文件类型' });
+  }
+  if (result.error === 'NOT_FOUND') {
+    return res.status(404).json({ error: '文件不存在' });
+  }
+  if (result.error === 'DELETE_FAILED') {
+    return res.status(500).json({ error: '删除失败' });
+  }
+
+  res.json({ success: true });
 });
 
 // ============ API路由 - 设置 ============
@@ -3068,6 +4032,402 @@ app.put('/api/settings', requireAuth, async (req, res) => {
   const changedFields = Object.keys(updates).join(', ');
   db.addOperationLog(username, 'SETTINGS_UPDATE', 'website', `Updated settings: ${changedFields}`);
   res.json(settings);
+});
+
+// ============ API路由 - MCP 设置与令牌申请 ============
+//
+// 后台菜单：系统设置 → MCP（public/admin-mcp.html）
+//
+// 两类凭据：
+//   - 主令牌：.env 的 MCP_TOKEN，全权限，运维逃生口。后台只显示掩码，不展示全文。
+//   - 后台签发的令牌：mcp_tokens 表，带作用域、可吊销、可设有效期。
+//     明文只在签发那一刻返回一次，之后任何接口都拿不回（库里只有 sha256）。
+
+/** Host 白名单最多 20 条 —— 防滥用 */
+const MCP_ALLOWED_HOSTS_MAX = 20;
+
+/** 令牌有效期上限（天）。0 表示永不过期 */
+const MCP_TOKEN_MAX_DAYS = 3650;
+
+/** 令牌默认有效期（天）。给默认过期时间比「永久有效」安全 */
+const MCP_TOKEN_DEFAULT_DAYS = 90;
+
+/**
+ * Host 白名单条目校验：只接受纯主机名（不带端口、不带协议）。
+ * 带端口或带 scheme 的写法会让 SDK 的 hostname 比对永远失败，
+ * 所以在入口就拒掉，并告诉用户正确写法。
+ */
+function isValidMcpHostname(value) {
+  const text = String(value || '').trim();
+  if (!text || text.length > 255) return false;
+  // IPv6 字面量：[::1]
+  if (text.startsWith('[')) return /^\[[0-9a-fA-F:.]+\]$/.test(text);
+  // IPv4
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(text)) {
+    return text.split('.').every((part) => Number(part) <= 255);
+  }
+  // 域名：每段以字母数字开头结尾，中间可含连字符
+  return /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(text);
+}
+
+/** 掩码：只露出头尾，用于界面识别，不用于复制 */
+function maskSecret(value) {
+  const text = String(value || '');
+  if (!text) return '';
+  if (text.length <= 12) return text.slice(0, 2) + '****';
+  return text.slice(0, 8) + '****' + text.slice(-4);
+}
+
+/** 取当前管理员标识（写审计日志用） */
+function getAdminUsername(req) {
+  return req.session.userName || req.session.username || 'admin';
+}
+
+/**
+ * 取当前生效的 MCP 主令牌。
+ *
+ * 优先级：后台生成并存进数据库的（settings.mcp_config）> 环境变量 MCP_TOKEN。
+ * 环境变量只是存量兼容 —— 后台点了「生成 / 轮换」之后，库里的那份才是权威，
+ * 否则后台的轮换按钮会看起来没生效。
+ *
+ * 主令牌在库里是**明文**：运维需要随时把它复制出来交给 MCP 客户端。
+ * 这与 .env 里的 DB_PASSWORD / SESSION_SECRET 是同一风险等级。
+ */
+function resolveAdminMasterToken(stored) {
+  const fromDb = stored && typeof stored.masterToken === 'string' ? stored.masterToken : '';
+  if (fromDb) return { token: fromDb, source: 'database' };
+  const fromEnv = typeof process.env.MCP_TOKEN === 'string' ? process.env.MCP_TOKEN : '';
+  if (fromEnv) return { token: fromEnv, source: 'env' };
+  return { token: '', source: 'none' };
+}
+
+/** 令牌状态：revoked（已吊销）/ expired（已过期）/ active（有效） */
+function getMcpTokenStatus(row) {
+  if (row.revoked_at) return 'revoked';
+  if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) return 'expired';
+  return 'active';
+}
+
+/** DB 行 → 后台展示用的令牌对象（不含 token_hash） */
+function toMcpTokenView(row) {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    tokenPrefix: row.token_prefix,
+    scopes: String(row.scopes || '').split(',').filter(Boolean),
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    lastUsedAt: row.last_used_at,
+    revokedAt: row.revoked_at,
+    status: getMcpTokenStatus(row)
+  };
+}
+
+// ---- 读取 MCP 设置 ----
+app.get('/api/admin/mcp/config', requireAuth, async (req, res) => {
+  try {
+    const stored = await db.getStoredMcpConfig();
+    const tokens = await db.listMcpTokens();
+    const views = tokens.map(toMcpTokenView);
+
+    const stats = {
+      total: views.length,
+      active: views.filter((t) => t.status === 'active').length,
+      revoked: views.filter((t) => t.status === 'revoked').length,
+      expired: views.filter((t) => t.status === 'expired').length
+    };
+
+    const master = resolveAdminMasterToken(stored);
+
+    res.json({
+      // 是否已在后台保存过配置（false 表示仍在用环境变量兜底）
+      configured: stored !== null,
+      enabled: stored ? stored.enabled !== false : true,
+      allowedHosts: stored
+        ? (Array.isArray(stored.allowedHosts) ? stored.allowedHosts : [])
+        : MCP_ALLOWED_HOSTS,
+      endpointPath: '/mcp',
+      masterToken: {
+        configured: Boolean(master.token),
+        masked: maskSecret(master.token),
+        // database = 后台生成；env = 环境变量兜底；none = 还没生成
+        source: master.source,
+        rotatedAt: stored && typeof stored.masterTokenRotatedAt === 'string'
+          ? stored.masterTokenRotatedAt
+          : null
+      },
+      scopes: [
+        { value: SCOPE_READ, label: '读取动态（list_news / get_news）' },
+        { value: SCOPE_WRITE, label: '写入动态（新建 / 修改 / 发布 / 撤稿）' },
+        { value: SCOPE_PRODUCT_READ, label: '读取产品（列产品 / 读详情 / 读产品文档）' },
+        { value: SCOPE_PRODUCT_WRITE, label: '写入产品与产品文档（新建 / 修改；产品上架仍需人工）' }
+      ],
+      stats
+    });
+  } catch (e) {
+    console.error('GET /api/admin/mcp/config error:', e);
+    res.status(500).json({ error: '读取 MCP 设置失败' });
+  }
+});
+
+// ---- 主令牌：查看（复制） ----
+//
+// 与子令牌的关键差别：子令牌明文只在签发那一刻返回一次，库里只存 sha256；
+// 主令牌必须**随时能复制**（运维要把它交给 AI 工具，可能在任意时刻取用），
+// 所以库里存明文、这里直接回明文。这是有意的取舍 —— 主令牌的存在意义
+// 就是「随时能取用」，而存它的库里本来就躺着同级的明文秘密。
+//
+// 因此这个端点必须是 requireAuth —— 它等价于交出 MCP 全权限。
+app.get('/api/admin/mcp/master-token', requireAuth, async (req, res) => {
+  try {
+    const stored = await db.getStoredMcpConfig();
+    const master = resolveAdminMasterToken(stored);
+    res.json({
+      configured: Boolean(master.token),
+      masked: maskSecret(master.token),
+      // 明文直出，供「复制」按钮使用
+      token: master.token,
+      source: master.source,
+      rotatedAt: stored && typeof stored.masterTokenRotatedAt === 'string'
+        ? stored.masterTokenRotatedAt
+        : null
+    });
+  } catch (e) {
+    console.error('GET /api/admin/mcp/master-token error:', e);
+    res.status(500).json({ error: '读取主令牌失败' });
+  }
+});
+
+// ---- 主令牌：生成 / 轮换 ----
+//
+// 轮换会**立即作废**旧令牌（鉴权每次请求都现读配置，不缓存），
+// 所以已经配到 AI 客户端里的旧令牌会当场失效，需要重新分发。
+// 因此：已存在令牌时必须显式 confirm，避免误点把唯一的副本弄丢。
+app.post('/api/admin/mcp/master-token', requireAuth, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const stored = await db.getStoredMcpConfig();
+    const existing = resolveAdminMasterToken(stored);
+
+    if (existing.token && body.confirm !== true) {
+      return res.status(409).json({
+        error: '主令牌已存在。轮换会立即作废旧令牌，请确认后重试。',
+        code: 'MCP_MASTER_TOKEN_CONFIRM_REQUIRED',
+        masked: maskSecret(existing.token)
+      });
+    }
+
+    const token = generateMcpToken();
+    const nextConfig = Object.assign({}, stored && typeof stored === 'object' ? stored : {}, {
+      masterToken: token,
+      masterTokenRotatedAt: new Date().toISOString()
+    });
+
+    const saved = await db.saveMcpConfig(nextConfig);
+    if (!saved || saved.masterToken !== token) {
+      console.error('POST /api/admin/mcp/master-token: 写入后回读不一致');
+      return res.status(500).json({ error: '主令牌已写入但回读失败，请到数据库核对后重试' });
+    }
+
+    writeOperationLog(
+      existing.token ? 'MCP_MASTER_TOKEN_ROTATE' : 'MCP_MASTER_TOKEN_CREATE',
+      getAdminUsername(req),
+      existing.token
+        ? '[MCP] 主令牌轮换：旧令牌立即作废'
+        : '[MCP] 主令牌生成'
+    );
+
+    res.json({
+      success: true,
+      token,
+      masked: maskSecret(token),
+      rotated: Boolean(existing.token),
+      rotatedAt: nextConfig.masterTokenRotatedAt,
+      message: existing.token
+        ? '主令牌已轮换，旧令牌立即失效，请重新分发'
+        : '主令牌已生成'
+    });
+  } catch (e) {
+    console.error('POST /api/admin/mcp/master-token error:', e);
+    res.status(500).json({ error: '生成主令牌失败' });
+  }
+});
+
+// ---- 保存 MCP 设置 ----
+app.put('/api/admin/mcp/config', requireAuth, async (req, res) => {
+  try {
+    const { enabled, allowedHosts } = req.body || {};
+
+    if (enabled !== undefined && typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled 必须是布尔值' });
+    }
+
+    let hosts = [];
+    if (allowedHosts !== undefined) {
+      if (!Array.isArray(allowedHosts)) {
+        return res.status(400).json({ error: 'allowedHosts 必须是数组' });
+      }
+      if (allowedHosts.length > MCP_ALLOWED_HOSTS_MAX) {
+        return res.status(400).json({ error: `Host 白名单最多 ${MCP_ALLOWED_HOSTS_MAX} 条` });
+      }
+      const seen = [];
+      for (const raw of allowedHosts) {
+        if (typeof raw !== 'string') {
+          return res.status(400).json({ error: 'Host 白名单只能包含字符串' });
+        }
+        const host = raw.trim();
+        if (!host) continue;
+        if (!isValidMcpHostname(host)) {
+          return res.status(400).json({
+            error: `Host 白名单包含非法条目「${host}」。只写主机名，不要带端口或协议（例如 www.booming.one）`
+          });
+        }
+        if (!seen.includes(host)) seen.push(host);
+      }
+      hosts = seen;
+    }
+
+    const stored = await db.getStoredMcpConfig();
+    const nextConfig = {
+      enabled: enabled !== undefined ? enabled : stored ? stored.enabled !== false : true,
+      allowedHosts: hosts
+    };
+
+    // 主令牌不能被这次保存顺手抹掉 —— saveMcpConfig 是覆盖写整份 JSON。
+    // 主令牌由「生成 / 轮换」按钮单独管理，与启用开关、Host 白名单互不相干。
+    const master = resolveAdminMasterToken(stored);
+    if (master.source === 'database') {
+      nextConfig.masterToken = master.token;
+      if (stored && typeof stored.masterTokenRotatedAt === 'string') {
+        nextConfig.masterTokenRotatedAt = stored.masterTokenRotatedAt;
+      }
+    }
+
+    await db.saveMcpConfig(nextConfig);
+    writeOperationLog('MCP_CONFIG_UPDATE', getAdminUsername(req),
+      `[MCP] 配置更新：enabled=${nextConfig.enabled}, allowedHosts=${nextConfig.allowedHosts.join(',') || '(空)'}`);
+
+    res.json({
+      success: true,
+      configured: true,
+      enabled: nextConfig.enabled,
+      allowedHosts: nextConfig.allowedHosts
+    });
+  } catch (e) {
+    console.error('PUT /api/admin/mcp/config error:', e);
+    res.status(500).json({ error: '保存 MCP 设置失败' });
+  }
+});
+
+// ---- 令牌列表 ----
+app.get('/api/admin/mcp/tokens', requireAuth, async (req, res) => {
+  try {
+    const rows = await db.listMcpTokens();
+    res.json({ tokens: rows.map(toMcpTokenView) });
+  } catch (e) {
+    console.error('GET /api/admin/mcp/tokens error:', e);
+    res.status(500).json({ error: '读取令牌列表失败' });
+  }
+});
+
+// ---- 申请（签发）新令牌 ----
+app.post('/api/admin/mcp/tokens', requireAuth, async (req, res) => {
+  try {
+    const { name, scopes, expiresInDays } = req.body || {};
+
+    const tokenName = typeof name === 'string' ? name.trim() : '';
+    if (!tokenName) {
+      return res.status(400).json({ error: '请填写令牌用途（名称）' });
+    }
+    if (tokenName.length > 100) {
+      return res.status(400).json({ error: '令牌名称不能超过 100 个字符' });
+    }
+
+    const scopeResult = normalizeMcpScopes(scopes);
+    if (!scopeResult.ok) {
+      return res.status(400).json({ error: scopeResult.error });
+    }
+
+    let days = MCP_TOKEN_DEFAULT_DAYS;
+    if (expiresInDays !== undefined && expiresInDays !== null && expiresInDays !== '') {
+      const parsed = Number(expiresInDays);
+      if (!Number.isInteger(parsed) || parsed < 0 || parsed > MCP_TOKEN_MAX_DAYS) {
+        return res.status(400).json({ error: `有效期必须是 0（永不过期）或 1-${MCP_TOKEN_MAX_DAYS} 之间的整数天` });
+      }
+      days = parsed;
+    }
+
+    const plaintext = generateMcpToken();
+    const expiresAt = days > 0
+      ? new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+      : null;
+
+    const record = await db.createMcpToken({
+      name: tokenName,
+      tokenHash: hashMcpToken(plaintext),
+      tokenPrefix: getMcpTokenPreview(plaintext),
+      scopes: formatMcpScopes(scopeResult.scopes),
+      createdBy: getAdminUsername(req),
+      expiresAt
+    });
+
+    if (!record) {
+      console.error('POST /api/admin/mcp/tokens: 写入后回读失败, name=', tokenName);
+      return res.status(500).json({ error: '令牌已写入但回读失败，请到数据库核对后重试' });
+    }
+
+    writeOperationLog('MCP_TOKEN_CREATE', getAdminUsername(req),
+      `[MCP] 签发令牌「${tokenName}」(${record.token_prefix}) scopes=${record.scopes} expires=${expiresAt ? expiresAt.toISOString() : 'never'}`);
+
+    res.status(201).json({
+      success: true,
+      // 明文只在这里出现一次 —— 前端展示后请立刻复制走，刷新即不可再见
+      token: plaintext,
+      record: toMcpTokenView(record)
+    });
+  } catch (e) {
+    console.error('POST /api/admin/mcp/tokens error:', e);
+    res.status(500).json({ error: '签发令牌失败' });
+  }
+});
+
+// ---- 吊销令牌 ----
+app.post('/api/admin/mcp/tokens/:id/revoke', requireAuth, async (req, res) => {
+  try {
+    const tokenId = Number(req.params.id);
+    if (!Number.isInteger(tokenId) || tokenId <= 0) {
+      return res.status(400).json({ error: '令牌 id 不合法' });
+    }
+
+    // 二次确认：与 /api/security/config 的 MODIFY_WHITELIST 同一套做法，
+    // 防止被劫持的 admin 会话「一键吊销全部令牌」
+    if (!req.body || req.body.confirm !== 'REVOKE_TOKEN') {
+      return res.status(400).json({ error: '吊销令牌需要 confirm 字段值为 "REVOKE_TOKEN"' });
+    }
+
+    const rows = await db.listMcpTokens();
+    const target = rows.find((row) => Number(row.id) === tokenId);
+    if (!target) {
+      return res.status(404).json({ error: '令牌不存在' });
+    }
+    if (target.revoked_at) {
+      return res.status(400).json({ error: '该令牌已被吊销' });
+    }
+
+    const result = await db.revokeMcpToken(tokenId);
+    if (!result.affectedRows) {
+      return res.status(409).json({ error: '吊销失败：令牌状态已变化，请刷新后重试' });
+    }
+
+    writeOperationLog('MCP_TOKEN_REVOKE', getAdminUsername(req),
+      `[MCP] 吊销令牌「${target.name}」(${target.token_prefix})`);
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('POST /api/admin/mcp/tokens/:id/revoke error:', e);
+    res.status(500).json({ error: '吊销令牌失败' });
+  }
 });
 
 // ============ Admin Theme System — system_settings ============
@@ -3205,19 +4565,8 @@ app.delete('/api/admin/backup/:filename', requireAuth, async (req, res) => {
 // to spec-required 400 / 413 instead of Express's default 500.
 const backupUploadHandler = (req, res, next) => {
   backupUpload.single('sqlFile')(req, res, (err) => {
-    if (err) {
-      if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(413).json({ error: 'File too large (max 100MB)' });
-        }
-        return res.status(400).json({ error: err.message });
-      }
-      if (/Only \.sql files allowed/i.test(err.message)) {
-        return res.status(400).json({ error: err.message });
-      }
-      return res.status(500).json({ error: err.message });
-    }
-    next();
+    if (!err) return next();
+    multerErrorResponder('100MB')(err, req, res, next);
   });
 };
 
@@ -3321,7 +4670,7 @@ app.put('/api/carddav', requireAuth, async (req, res) => {
 });
 
 // 上传Logo
-app.post('/api/upload-logo', requireAuth, uploadLogo.single('logo'), async (req, res) => {
+app.post('/api/upload-logo', requireAuth, uploadLogo.single('logo'), multerErrorResponder('2MB'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: '没有上传文件' });
   }
@@ -3332,7 +4681,7 @@ app.post('/api/upload-logo', requireAuth, uploadLogo.single('logo'), async (req,
 });
 
 // 上传Banner图片
-app.post('/api/upload-banner', requireAuth, uploadBanner.single('banner'), (req, res) => {
+app.post('/api/upload-banner', requireAuth, uploadBanner.single('banner'), multerErrorResponder('5MB'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: '没有上传文件' });
   }
@@ -4244,22 +5593,95 @@ app.post('/api/ai/generate', requireAuth, async (req, res) => {
 app.get('/api/db-config', requireAuth, (req, res) => {
   const config = db.getDbConfig();
   // 返回完整配置（包括密码，供已登录管理员查看）
-  res.json(config);
+  // configSource 告诉界面「这份配置到底从哪来」—— .env 是唯一事实来源，
+  // 不告诉前端就会让人以为保存到别处去了。
+  const envState = envFile.readEnvFile();
+  res.json({
+    ...config,
+    configSource: db.getDbConfigSource(),
+    envFile: {
+      exists: envState.exists,
+      path: envFile.ENV_FILE,
+      backupPath: envFile.BACKUP_FILE
+    }
+  });
 });
 
-// 更新数据库配置
-app.post('/api/db-config', requireAuth, (req, res) => {
+// 更新数据库配置 —— 写进 .env
+//
+// .env 是数据库连接参数的唯一事实来源（安装向导生成的，0600 权限）。
+// 旧逻辑在 source==='env' 时直接 409 拒绝，那是因为当时界面写的是
+// data/db-config.json、会被 env 静默吃掉；现在界面写的就是 .env 本体，
+// 锁只会让管理员改不动。
+app.post('/api/db-config', requireAuth, async (req, res) => {
   try {
     const newConfig = req.body;
-    // 如果密码是 ******，不更新密码
-    if (newConfig.mysql && newConfig.mysql.password === '******') {
-      const oldConfig = db.getDbConfig();
-      newConfig.mysql.password = oldConfig.mysql.password;
+    if (!newConfig || typeof newConfig !== 'object' || !newConfig.mysql || typeof newConfig.mysql !== 'object') {
+      return res.status(400).json({ error: '数据库配置不完整，请填写主机、用户名和数据库名' });
     }
-    const config = db.updateDbConfig(newConfig);
-    res.json(config);
+    const host = typeof newConfig.mysql.host === 'string' ? newConfig.mysql.host.trim() : '';
+    const user = typeof newConfig.mysql.user === 'string' ? newConfig.mysql.user.trim() : '';
+    const database = typeof newConfig.mysql.database === 'string' ? newConfig.mysql.database.trim() : '';
+    if (!host || !user || !database) {
+      return res.status(400).json({ error: '数据库配置不完整，请填写主机、用户名和数据库名' });
+    }
+    const port = Number(newConfig.mysql.port || 3306);
+    if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+      return res.status(400).json({ error: '端口不合法' });
+    }
+    newConfig.mysql.host = host;
+    newConfig.mysql.user = user;
+    newConfig.mysql.database = database;
+    newConfig.mysql.port = port;
+    newConfig.type = 'mysql';
+
+    // 如果密码是 ******，不更新密码
+    if (newConfig.mysql.password === '******') {
+      const oldConfig = db.getDbConfig();
+      newConfig.mysql.password = (oldConfig && oldConfig.mysql && oldConfig.mysql.password) || '';
+    }
+
+    const saved = envConfigService.saveDbConfigToEnv({ mysql: newConfig.mysql });
+    if (!saved.ok) {
+      console.error('数据库配置保存失败:', saved.error);
+      return res.status(500).json({ error: 'ENV_WRITE_FAILED', message: saved.error });
+    }
+
+    // 旧部署遗留的 data/db-config.json 同步一份，免得两份配置各说各话。
+    // 只在它已经存在时更新 —— 不主动新建一份明文密码文件（.env 已是 0600）。
+    const previousStoredConfig = db.readStoredDbConfig();
+    if (previousStoredConfig !== null) {
+      db.updateDbConfig(newConfig);
+    }
+
+    try {
+      // 保存后立刻切换连接池 —— 否则新配置要等重启才生效
+      await db.reconnectWithConfig(newConfig.mysql);
+    } catch (error) {
+      // 新配置连不上 → 回滚 .env、进程 env 与旧配置文件，旧连接池原样保留，
+      // 不能把站点带挂
+      const rolled = envConfigService.rollbackDbConfigToEnv(saved);
+      if (previousStoredConfig !== null) {
+        db.restoreDbConfig(previousStoredConfig);
+      }
+      console.error('数据库配置保存失败:', error);
+      return res.status(400).json({
+        error: 'DB_UNREACHABLE',
+        message: '新配置无法连接数据库（已保留原配置）: ' + error.message
+          + (rolled.ok ? '' : '；并且 .env 回滚也失败了，请手工检查 ' + envFile.ENV_FILE)
+      });
+    }
+
+    res.json({
+      ...db.getDbConfig(),
+      configSource: db.getDbConfigSource(),
+      envPath: saved.envPath,
+      // 连接参数当场生效，但会话密钥与 sessionPool 在启动时绑定 —— 需重启才彻底对齐
+      restartRequired: true
+    });
   } catch (error) {
-    res.status(500).json({ error: '配置保存失败' });
+    console.error('数据库配置保存失败:', error);
+    res.status(500).json({ error: '配置保存失败: ' + error.message });
   }
 });
 
@@ -4275,23 +5697,51 @@ app.get('/api/db-schema', requireAuth, async (req, res) => {
 
 // 测试数据库连接
 app.post('/api/db-test', requireAuth, async (req, res) => {
-  const config = req.body;
   try {
-    if (config.type === 'mysql') {
-      const mysql = require('mysql2/promise');
-      const connection = await mysql.createConnection({
-        host: config.mysql.host,
-        port: config.mysql.port,
-        user: config.mysql.user,
-        password: config.mysql.password,
-        database: config.mysql.database
+    const config = req.body;
+    if (!config || !config.mysql || typeof config.mysql !== 'object') {
+      return res.status(400).json({ success: false, error: '数据库配置不完整' });
+    }
+    const host = String(config.mysql.host || '').trim();
+    const user = String(config.mysql.user || '').trim();
+    const database = String(config.mysql.database || '').trim();
+    if (!host || !user || !database) {
+      return res.status(400).json({ success: false, error: '请填写完整的主机、用户名和数据库名' });
+    }
+    const port = Number(config.mysql.port || 3306);
+    let password = typeof config.mysql.password === 'string' ? config.mysql.password : '';
+    // 密码不回显 —— 留空或保持 ****** 表示沿用已保存的密码
+    if (!password || password === '******') {
+      const stored = db.getDbConfig();
+      if (stored && stored.mysql && stored.mysql.password) password = stored.mysql.password;
+    }
+
+    const mysql = require('mysql2/promise');
+    let connection = null;
+    try {
+      connection = await mysql.createConnection({
+        host,
+        port,
+        user,
+        password,
+        database,
+        connectTimeout: 8000
       });
       await connection.ping();
-      await connection.end();
+      const [rows] = await connection.query('SELECT VERSION() AS version, DATABASE() AS db');
+      res.json({
+        success: true,
+        message: '连接成功',
+        version: rows && rows[0] ? rows[0].version : null,
+        database: rows && rows[0] ? rows[0].db : database
+      });
+    } finally {
+      if (connection) {
+        try { await connection.end(); } catch (_) { /* 关闭失败不影响测试结论 */ }
+      }
     }
-    res.json({ success: true, message: '连接成功' });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: '连接失败: ' + error.message });
   }
 });
 
@@ -4518,40 +5968,29 @@ app.post('/api/db-switch', requireAuth, async (req, res) => {
   }
 });
 
-// 初始化数据库
+// 初始化 / 修复数据库表结构
+//
+// 全程幂等，可以随时重复执行：
+//   - 建表用 CREATE TABLE IF NOT EXISTS
+//   - 补列用 ALTER TABLE ... ADD COLUMN，Duplicate column 被吞掉
+//   - 默认数据只在目标表为空时灌入
+//
+// 注意：这里用的是应用自己的连接池（db.createTablesIfNotExist），
+// 而不是请求体里传来的配置 —— 建表必须在「站点真正在用的那个库」上做。
 app.post('/api/db-init', requireAuth, async (req, res) => {
   try {
-    const config = req.body;
-    const storedConfig = db.getDbConfig();
-    const finalConfig = {
-      type: 'mysql',
-      mysql: config.mysql || storedConfig.mysql
-    };
-
-    console.log('db-init request:', { type: finalConfig.type, mysql: finalConfig.mysql ? { host: finalConfig.mysql.host, user: finalConfig.mysql.user, database: finalConfig.mysql.database } : null });
-
-    if (!finalConfig.mysql || !finalConfig.mysql.host || !finalConfig.mysql.user || !finalConfig.mysql.database) {
-      return res.status(400).json({ success: false, error: 'MySQL配置不完整，请填写完整的主机、用户名和数据库名' });
-    }
-
-    // MySQL 初始化
-    const mysql = require('mysql2/promise');
-    const connection = await mysql.createConnection({
-      host: finalConfig.mysql.host,
-      port: finalConfig.mysql.port || 3306,
-      user: finalConfig.mysql.user,
-      password: finalConfig.mysql.password || '',
-      database: finalConfig.mysql.database,
-      multipleStatements: true
+    await db.createTablesIfNotExist();
+    await db.initDefaultData();
+    const integrity = await db.verifyDataIntegrity();
+    res.json({
+      success: true,
+      message: '数据库初始化完成',
+      configSource: db.getDbConfigSource(),
+      tables: integrity.results
     });
-
-    const schema = db.getMySQLSchema();
-    await connection.query(schema);
-    await connection.end();
-    res.json({ success: true, message: 'MySQL数据库初始化成功' });
   } catch (error) {
     console.error('DB init error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: '初始化失败: ' + error.message });
   }
 });
 
@@ -4713,6 +6152,10 @@ app.get('/admin-newsletter', (req, res) => {
 
 app.get('/admin-ai', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-ai.html'));
+});
+
+app.get('/admin-mcp', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin-mcp.html'));
 });
 
 app.get('/admin-carddav', (req, res) => {
@@ -4983,9 +6426,49 @@ app.use((err, req, res, next) => {
 // 启动服务器
 async function startServer() {
   try {
-    // 初始化数据库
-    await db.initDatabase();
-    console.log('Database initialized');
+    // 初始化数据库。
+    //
+    // 关键：**不能**因为数据库连不上就退出进程。
+    // 「数据库连不上」恰恰是最需要安装向导的场景 —— 向导要是跟着进程一起没了，
+    // 操作者就只能去服务器上手改 .env 再重启，界面化初始化就失去了意义。
+    // 这里降级启动：/setup 与 /api/setup/* 照常可用，
+    // 其余依赖数据库的接口由安装闸门统一返回 503 并指向 /setup。
+    let databaseReady = true;
+    try {
+      await db.initDatabase();
+      console.log('Database initialized');
+    } catch (error) {
+      databaseReady = false;
+      console.error('');
+      console.error('  ✖ 数据库初始化失败:', error.message);
+      console.error('    服务以降级模式启动：/setup 安装向导可用，其余依赖数据库的接口返回 503。');
+      console.error('    请打开 /setup 按提示修正数据库连接配置。');
+      console.error('');
+    }
+
+    // 安装闸门：站点还没装好（没有管理员账号）时，生成安装令牌并打进控制台
+    try {
+      const setupState = await setupService.getSetupState(db, { force: true });
+      if (!setupState.installed && (!setupState.undetermined || setupState.dbUnreachable)) {
+        // 两种情况都要令牌：
+        //   - 确定未安装（全新部署）
+        //   - 数据库连不上（站点是坏的，需要向导改配置来救）
+        // 后者此时无法判断站点是否已安装，但令牌只打进控制台、
+        // 数据库恢复后若站点已安装，闸门会立刻把安装接口关掉。
+        setupService.ensureSetupToken(
+          setupState.dbUnreachable ? { reason: 'db-unreachable' } : undefined
+        );
+      } else if (setupState.installed && process.env.SETUP_TOKEN) {
+        // 站点已装好，但 .env 里还留着安装令牌 —— 进程环境变量删不掉，
+        // 这个令牌会一直有效，安装接口也就一直开着。必须提醒运维处理。
+        console.warn('');
+        console.warn('  ⚠ 站点已完成安装，但 .env 里仍设置了 SETUP_TOKEN。');
+        console.warn('    安装接口将持续可用。请从 .env 中删除 SETUP_TOKEN 并重启服务。');
+        console.warn('');
+      }
+    } catch (setupError) {
+      console.error('[setup] 安装状态检查失败:', setupError.message);
+    }
 
     // trust proxy: loopback — 仅信任来自 127.0.0.1 的 X-Forwarded-For（nginx 反代场景）
     // 配置 nginx 时务必用 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -4995,14 +6478,22 @@ async function startServer() {
 
     // 端口从 .env 读,不走 DB settings(http_port/https_port 列已删除,nginx 终止 SSL 后只需 1 个 HTTP 端口)
     const HTTP_PORT = parseInt(process.env.PORT, 10) || 15000;
-    // 读 settings 仅用于启动期可能需要的其他配置
-    const settings = await db.getSettings();
+    // 读 settings 仅用于启动期可能需要的其他配置；数据库不可用时读不到是正常的，不能因此中断启动
+    let settings = null;
+    try {
+      settings = await db.getSettings();
+    } catch (settingsError) {
+      console.warn('[startup] 读取站点设置失败:', settingsError.message);
+    }
 
     // 启动 HTTP 服务器 — 绑定 127.0.0.1(loopback)而非 0.0.0.0
     // 配套 nginx 反代: 客户端 → nginx(80/443) → 127.0.0.1:15000
     // 绑 loopback 防止公网绕过 nginx 直连,所有流量必经反代(SSL 终止 / gzip / 限流 / HSTS)
     const server = app.listen(HTTP_PORT, '127.0.0.1', () => {
       console.log(`HTTP Server running at http://127.0.0.1:${HTTP_PORT} (behind nginx)`);
+      if (!databaseReady) {
+        console.log('  注意：数据库当前不可用，请打开 /setup 修正连接配置。');
+      }
     });
     // 显式处理 listen 错误(EADDRINUSE 等不会进入 try/catch,会触发 'error' 事件)
     server.on('error', (err) => {

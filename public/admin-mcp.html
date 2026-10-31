@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博铭科技 - MCP设置</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
+  <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
+  <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
+</head>
+<body>
+  <div class="admin-layout">
+    <main class="admin-main settings-page">
+      <h1 class="page-title">MCP设置</h1>
+      <p class="page-desc">配置 MCP（Model Context Protocol）端点，并申请 / 吊销 AI 工具访问令牌</p>
+
+      <div class="alert" id="message"></div>
+
+      <!-- 端点概览 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">端点概览</h3>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-num" id="stat-endpoint">—</div>
+              <div class="stat-label">端点状态</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" id="stat-master">—</div>
+              <div class="stat-label">主令牌</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" id="stat-active">0</div>
+              <div class="stat-label">有效令牌</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" id="stat-revoked">0</div>
+              <div class="stat-label">已吊销令牌</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>端点地址</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="endpoint-url" readonly style="flex:1;min-width:260px;">
+              <button class="btn-secondary" type="button" onclick="copyText(document.getElementById('endpoint-url').value, '端点地址已复制')">复制</button>
+            </div>
+            <p class="field-hint">传输：MCP Streamable HTTP（POST）。客户端需带上 <code>Authorization: Bearer <令牌></code> 请求头。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- MCP 设置 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">MCP设置</h3>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="mcp-enabled" style="width:auto;">
+              <span>启用 MCP 端点</span>
+            </label>
+            <p class="field-hint">关闭后 /mcp 一律返回 503（fail-closed），AI 工具无法访问。修改立即生效，无需重启。</p>
+          </div>
+          <div class="field">
+            <label for="mcp-allowed-hosts">Host 白名单</label>
+            <textarea id="mcp-allowed-hosts" rows="4" placeholder="每行一个主机名，例如：&#10;www.booming.one&#10;booming.one"></textarea>
+            <p class="field-hint">
+              留空 = 不启用 DNS 重绑定防护（默认）。填了之后只有这些 Host 头的请求能通过。
+              只写主机名，<strong>不要带端口或协议</strong>。
+            </p>
+          </div>
+          <div class="field-row" style="margin-top:16px;">
+            <button class="btn-primary" type="button" onclick="saveConfig()">保存设置</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 主令牌 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">主令牌</h3>
+          <div class="field">
+            <label>当前主令牌</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="master-token-value" readonly style="flex:1;min-width:260px;font-family:monospace;" placeholder="尚未生成">
+              <button class="btn-secondary" type="button" onclick="revealMasterToken()">显示明文</button>
+              <button class="btn-secondary" type="button" onclick="copyMasterToken()">复制</button>
+            </div>
+            <p class="field-hint" id="master-token-hint">加载中…</p>
+          </div>
+          <div class="field-row" style="margin-top:16px;">
+            <button class="btn-primary" type="button" id="btn-master-token" onclick="generateMasterToken()">生成主令牌</button>
+          </div>
+          <p class="field-hint">
+            主令牌拥有<strong>全部权限</strong>，用途是「逃生口」—— 万一后台签发的令牌全部吊光了，
+            还能靠它恢复访问。日常给 AI 工具用的应该是下方申请到的带作用域令牌。<br>
+            主令牌存在数据库里（明文，因此可以随时复制出来），轮换后<strong>立即生效</strong>、
+            旧令牌当场作废，不需要重启。环境变量 <code>MCP_TOKEN</code> 只作为存量兼容回退，
+            优先级低于这里生成的主令牌。
+          </p>
+        </div>
+      </div>
+
+      <!-- 申请令牌 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">申请令牌</h3>
+          <div class="field">
+            <label for="token-name">令牌用途（名称）</label>
+            <input type="text" id="token-name" maxlength="100" placeholder="例如：Claude Code（我的电脑）">
+            <p class="field-hint">仅用于自己辨认，令牌本身与名称无关。</p>
+          </div>
+          <div class="field">
+            <label>权限范围</label>
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="scope-read" style="width:auto;" checked>
+              <span>读取动态（list_news / get_news）</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+              <input type="checkbox" id="scope-write" style="width:auto;">
+              <span>写入动态（新建 / 修改 / 发布 / 撤稿）</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+              <input type="checkbox" id="scope-product-read" style="width:auto;">
+              <span>读取产品（列产品 / 读详情 / 读产品文档）</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+              <input type="checkbox" id="scope-product-write" style="width:auto;">
+              <span>写入产品与产品文档（新建 / 修改 / 发布文档）</span>
+            </label>
+            <p class="field-hint">勾选「写入」会自动包含同族的「读取」。没勾选的权限不会出现在该令牌的工具列表里。</p>
+            <p class="field-hint">产品<b>没有</b>「上架」权限 —— AI 建出来的产品一律是草稿，上架必须人工在「产品管理」里点。</p>
+          </div>
+          <div class="field">
+            <label for="token-expires">有效期</label>
+            <select id="token-expires">
+              <option value="30">30 天</option>
+              <option value="90" selected>90 天</option>
+              <option value="180">180 天</option>
+              <option value="365">365 天</option>
+              <option value="0">永不过期（不推荐）</option>
+            </select>
+          </div>
+          <div class="field-row" style="margin-top:16px;">
+            <button class="btn-primary" type="button" onclick="createToken()">申请令牌</button>
+          </div>
+
+          <!-- 新签发的令牌：明文只在这里出现一次 -->
+          <div class="field" id="issued-token-box" style="display:none;">
+            <label for="issued-token">新令牌（仅显示一次，请立刻复制）</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="issued-token" readonly style="flex:1;min-width:260px;font-family:monospace;">
+              <button class="btn-secondary" type="button" onclick="copyText(document.getElementById('issued-token').value, '令牌已复制到剪贴板')">复制</button>
+            </div>
+            <p class="field-hint">离开本页面后无法再次查看（服务器只保存 sha256 摘要）。遗失了请吊销并重新申请。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 令牌列表 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">令牌列表</h3>
+          <div class="field">
+            <table class="data-table" id="token-table">
+              <thead>
+                <tr>
+                  <th>名称</th>
+                  <th>前缀</th>
+                  <th>权限</th>
+                  <th>创建时间</th>
+                  <th>最后使用</th>
+                  <th>过期时间</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="token-tbody">
+                <tr><td colspan="8">加载中…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 使用说明 -->
+      <div class="settings-card">
+        <div class="settings-group">
+          <h3 class="settings-heading">使用说明</h3>
+          <div class="field">
+            <p><strong>Claude Code（命令行）</strong></p>
+            <pre style="overflow-x:auto;background:#f6f8fa;padding:12px;border-radius:6px;font-size:12px;">claude mcp add --transport http booming-news https://www.booming.one/mcp \
+  --header "Authorization: Bearer <你申请的令牌>"</pre>
+          </div>
+          <div class="field">
+            <p><strong>Claude Desktop / 其它 MCP 客户端</strong></p>
+            <pre style="overflow-x:auto;background:#f6f8fa;padding:12px;border-radius:6px;font-size:12px;">{
+  "mcpServers": {
+    "booming-news": {
+      "type": "http",
+      "url": "https://www.booming.one/mcp",
+      "headers": { "Authorization": "Bearer <你申请的令牌>" }
+    }
+  }
+}</pre>
+          </div>
+          <div class="field">
+            <p><strong>主令牌</strong></p>
+            <p class="field-hint">
+              主令牌在上方「主令牌」区生成，拥有全部权限，可以随时复制出来。
+              它的用途是「逃生口」—— 万一后台令牌全部吊光了，还能靠它恢复访问。
+              日常给 AI 工具用的应该是下面申请到的、带作用域的令牌。
+            </p>
+          </div>
+          <div class="field">
+            <p><strong>吊销</strong></p>
+            <p class="field-hint">
+              令牌泄露时在下方「令牌列表」点吊销即可，该令牌立刻失效（下次请求返回 401），不影响其它令牌。
+              吊销记录会写入操作日志，可在「系统日志 → 操作日志」查看。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions-back">
+        <a href="/admin-product" class="link-back">← 返回</a>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const SCOPE_LABELS = {
+      'news:read': '读取动态',
+      'news:write': '写入动态',
+      'product:read': '读取产品',
+      'product:write': '写入产品'
+    };
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text == null ? '' : String(text);
+      return div.innerHTML;
+    }
+
+    // escapeHtml 只转义 & < >（innerHTML 序列化文本节点的行为），
+    // 引号必须单独补 —— 否则拼进属性时会提前闭合。
+    function escapeAttr(text) {
+      return escapeHtml(text)
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'alert alert-' + type;
+      msg.style.display = 'block';
+      setTimeout(() => { msg.style.display = 'none'; }, 5000);
+    }
+
+    function formatTime(value) {
+      if (!value) return '—';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '—';
+      const pad = (n) => String(n).padStart(2, '0');
+      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+        ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
+
+    function statusBadge(status) {
+      if (status === 'active') return '<span class="badge badge-success">有效</span>';
+      if (status === 'revoked') return '<span class="badge badge-danger">已吊销</span>';
+      if (status === 'expired') return '<span class="badge badge-neutral">已过期</span>';
+      return '<span class="badge badge-neutral">未知</span>';
+    }
+
+    async function copyText(text, successText) {
+      if (!text) {
+        showMessage('没有可复制的内容', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        showMessage(successText || '已复制', 'success');
+      } catch (error) {
+        console.error('复制失败:', error);
+        showMessage('复制失败，请手动选中复制', 'error');
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/admin/mcp/config', { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const mcpConfig = await response.json();
+
+        const endpointUrl = window.location.origin + (mcpConfig.endpointPath || '/mcp');
+        document.getElementById('endpoint-url').value = endpointUrl;
+        document.getElementById('stat-endpoint').textContent = mcpConfig.enabled ? '已启用' : '已关闭';
+        document.getElementById('stat-master').textContent = mcpConfig.masterToken.configured ? '已配置' : '未配置';
+        document.getElementById('stat-active').textContent = mcpConfig.stats.active;
+        document.getElementById('stat-revoked').textContent = mcpConfig.stats.revoked;
+
+        document.getElementById('mcp-enabled').checked = mcpConfig.enabled !== false;
+        document.getElementById('mcp-allowed-hosts').value = (mcpConfig.allowedHosts || []).join('\n');
+      } catch (error) {
+        console.error('加载 MCP 设置失败:', error);
+        showMessage('加载 MCP 设置失败', 'error');
+      }
+    }
+
+    // ---- 主令牌 ----
+    //
+    // 主令牌与服务端保存的是同一份明文（后台要能随时复制出来），
+    // 因此这里不做掩码缓存 —— 拿到就放在内存里，点「显示明文」直接填进输入框。
+    let masterTokenValue = '';
+    let masterTokenConfigured = false;
+
+    async function loadMasterToken(options) {
+      const reveal = Boolean(options && options.reveal);
+      const input = document.getElementById('master-token-value');
+      const hint = document.getElementById('master-token-hint');
+      const button = document.getElementById('btn-master-token');
+      try {
+        const response = await fetch('/api/admin/mcp/master-token', { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+
+        masterTokenConfigured = Boolean(data.configured);
+        masterTokenValue = data.token || '';
+        input.value = masterTokenValue ? (reveal ? masterTokenValue : data.masked || '') : '';
+        input.placeholder = masterTokenConfigured ? '已配置（点「显示明文」查看全文）' : '尚未生成';
+        button.textContent = masterTokenConfigured ? '轮换主令牌' : '生成主令牌';
+
+        if (!masterTokenConfigured) {
+          hint.textContent = '尚未生成主令牌。此时若后台也没有任何有效令牌，/mcp 会返回 503（fail-closed）。';
+        } else if (data.source === 'database') {
+          hint.textContent = '主令牌已生成，存放在数据库里（可随时复制）。'
+            + (data.rotatedAt ? '最近一次轮换：' + formatTime(data.rotatedAt) : '');
+        } else {
+          hint.textContent = '当前主令牌来自环境变量 MCP_TOKEN（存量兼容）。在下方生成后会立即接管。';
+        }
+      } catch (error) {
+        console.error('加载主令牌失败:', error);
+        hint.textContent = '主令牌状态加载失败，请刷新页面重试。';
+      }
+    }
+
+    async function revealMasterToken() {
+      await loadMasterToken({ reveal: true });
+    }
+
+    async function copyMasterToken() {
+      if (!masterTokenValue) {
+        await loadMasterToken({ reveal: true });
+      }
+      if (!masterTokenValue) {
+        showMessage('还没有主令牌，请先生成', 'error');
+        return;
+      }
+      await copyText(masterTokenValue, '主令牌已复制到剪贴板');
+    }
+
+    async function generateMasterToken() {
+      const rotating = masterTokenConfigured;
+      const confirmed = window.confirm(rotating
+        ? '确定要轮换主令牌吗？\n\n轮换后旧令牌立即作废，已经配到 AI 客户端里的旧令牌会当场失效，需要重新分发。'
+        : '确定要生成主令牌吗？\n\n主令牌拥有全部权限，请只在必要时使用。');
+      if (!confirmed) return;
+
+      try {
+        const response = await fetch('/api/admin/mcp/master-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ confirm: rotating })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          showMessage(data.error || '生成失败', 'error');
+          return;
+        }
+        masterTokenValue = data.token || '';
+        masterTokenConfigured = true;
+        document.getElementById('master-token-value').value = masterTokenValue;
+        showMessage(data.message || '主令牌已生成，请立刻复制保存', 'success');
+        await loadConfig();
+        await loadMasterToken({ reveal: true });
+      } catch (error) {
+        console.error('生成主令牌失败:', error);
+        showMessage('生成失败', 'error');
+      }
+    }
+
+    async function loadTokens() {
+      const tbody = document.getElementById('token-tbody');
+      try {
+        const response = await fetch('/api/admin/mcp/tokens', { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        const tokens = data.tokens || [];
+
+        if (tokens.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8">还没有任何令牌，请在上方「申请令牌」签发一枚。</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = tokens.map((token) => {
+          const scopes = (token.scopes || []).map(
+            (scope) => '<span class="badge ' + (scope.endsWith(':write') ? 'badge-warning' : 'badge-info') + '">' +
+              escapeHtml(SCOPE_LABELS[scope] || scope) + '</span>'
+          ).join(' ');
+          const action = token.status === 'active'
+            ? '<button class="btn-secondary js-revoke" type="button" data-token-id="' +
+              escapeAttr(String(token.id)) + '" data-token-name="' + escapeAttr(token.name) + '">吊销</button>'
+            : '<span style="color:#999;">—</span>';
+          return '<tr>' +
+            '<td>' + escapeHtml(token.name) + '</td>' +
+            '<td><code>' + escapeHtml(token.tokenPrefix) + '</code></td>' +
+            '<td>' + (scopes || '—') + '</td>' +
+            '<td>' + escapeHtml(formatTime(token.createdAt)) + '</td>' +
+            '<td>' + escapeHtml(formatTime(token.lastUsedAt)) + '</td>' +
+            '<td>' + escapeHtml(token.expiresAt ? formatTime(token.expiresAt) : '永不过期') + '</td>' +
+            '<td>' + statusBadge(token.status) + '</td>' +
+            '<td>' + action + '</td>' +
+            '</tr>';
+        }).join('');
+      } catch (error) {
+        console.error('加载令牌列表失败:', error);
+        tbody.innerHTML = '<tr><td colspan="8">加载失败，请刷新页面重试。</td></tr>';
+        showMessage('加载令牌列表失败', 'error');
+      }
+    }
+
+    async function saveConfig() {
+      const enabled = document.getElementById('mcp-enabled').checked;
+      const rawHosts = document.getElementById('mcp-allowed-hosts').value
+        .split(/[\n,]+/)
+        .map((host) => host.trim())
+        .filter(Boolean);
+
+      try {
+        const response = await fetch('/api/admin/mcp/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ enabled: enabled, allowedHosts: rawHosts })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          showMessage(data.error || '保存失败', 'error');
+          return;
+        }
+        showMessage('MCP 设置已保存，立即生效', 'success');
+        await loadConfig();
+      } catch (error) {
+        console.error('保存 MCP 设置失败:', error);
+        showMessage('保存失败', 'error');
+      }
+    }
+
+    async function createToken() {
+      const nameInput = document.getElementById('token-name');
+      const name = nameInput.value.trim();
+      if (!name) {
+        showMessage('请填写令牌用途（名称）', 'error');
+        nameInput.focus();
+        return;
+      }
+
+      const scopes = [];
+      if (document.getElementById('scope-read').checked) scopes.push('news:read');
+      if (document.getElementById('scope-write').checked) scopes.push('news:write');
+      if (document.getElementById('scope-product-read').checked) scopes.push('product:read');
+      if (document.getElementById('scope-product-write').checked) scopes.push('product:write');
+      if (scopes.length === 0) {
+        showMessage('至少需要选择一项权限范围', 'error');
+        return;
+      }
+
+      const expiresInDays = Number(document.getElementById('token-expires').value);
+
+      try {
+        const response = await fetch('/api/admin/mcp/tokens', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name: name, scopes: scopes, expiresInDays: expiresInDays })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          showMessage(data.error || '申请失败', 'error');
+          return;
+        }
+
+        document.getElementById('issued-token').value = data.token;
+        document.getElementById('issued-token-box').style.display = 'block';
+        nameInput.value = '';
+        showMessage('令牌已签发，请立刻复制保存', 'success');
+        await loadTokens();
+        await loadConfig();
+      } catch (error) {
+        console.error('申请令牌失败:', error);
+        showMessage('申请失败', 'error');
+      }
+    }
+
+    async function revokeToken(id, name) {
+      const confirmed = window.confirm(
+        '确定吊销令牌「' + name + '」吗？\n\n吊销后该令牌立即失效，使用它的 AI 工具会收到 401。此操作不可撤销。'
+      );
+      if (!confirmed) return;
+
+      try {
+        const response = await fetch('/api/admin/mcp/tokens/' + id + '/revoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ confirm: 'REVOKE_TOKEN' })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          showMessage(data.error || '吊销失败', 'error');
+          return;
+        }
+        showMessage('令牌已吊销', 'success');
+        await loadTokens();
+        await loadConfig();
+      } catch (error) {
+        console.error('吊销令牌失败:', error);
+        showMessage('吊销失败', 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadConfig();
+      loadMasterToken();
+      loadTokens();
+    });
+
+    // 令牌列表是动态渲染的，事件委托比内联 onclick 更安全：
+    // 令牌名完全由用户输入，绝不拼进可执行字符串。
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest ? event.target.closest('.js-revoke') : null;
+      if (!button) return;
+      revokeToken(Number(button.dataset.tokenId), button.dataset.tokenName || '');
+    });
+  </script>
+  <script src="/js/admin-theme.js" defer></script>
+  <script src="/js/lucide-icons.js"></script>
+  <script src="/js/admin-sidebar.js?v=20260622-2300" defer></script>
+</body>
+</html>

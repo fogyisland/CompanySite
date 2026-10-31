@@ -1,0 +1,443 @@
+/* ========================================
+   安装 / 初始化向导样式
+   沿用 login.html 的视觉语言：深蓝渐变背景 + 白色卡片
+   ======================================== */
+
+body.setup-body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 32px 20px 48px;
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary, #133c8a) 0%, var(--primary-dark, #0a2644) 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  color: var(--text, #1e293b);
+  line-height: 1.6;
+}
+
+body.setup-body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.setup-shell {
+  position: relative;
+  width: 100%;
+  max-width: 780px;
+}
+
+/* ---------- 头部 ---------- */
+.setup-header {
+  color: #fff;
+  margin-bottom: 24px;
+}
+
+/* 覆盖 style.css 里全局 header 的 sticky + 白底 —— 向导页是渐变背景 */
+body.setup-body header.setup-header {
+  position: static;
+  background: transparent;
+  border-bottom: none;
+  color: #fff;
+}
+
+.setup-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.setup-logo {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.setup-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.setup-header p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ---------- 步骤条 ---------- */
+.setup-steps {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 6px;
+}
+
+.setup-steps li {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.setup-steps .step-index {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.setup-steps .step-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setup-steps li.active {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.setup-steps li.active .step-index {
+  background: #fff;
+  color: var(--primary, #133c8a);
+}
+
+.setup-steps li.done {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.setup-steps li.done .step-index {
+  background: #22c55e;
+  color: #fff;
+}
+
+/* ---------- 卡片 ---------- */
+.setup-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 36px 40px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.35);
+}
+
+.setup-panel[hidden] {
+  display: none;
+}
+
+.setup-panel h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.setup-desc {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: var(--text-light, #64748b);
+}
+
+.setup-desc code,
+.setup-card code {
+  background: var(--light-bg, #f8f9fa);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 13px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+}
+
+/* ---------- 表单 ---------- */
+.setup-field {
+  margin-bottom: 18px;
+}
+
+.setup-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.setup-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.setup-field input:focus {
+  outline: none;
+  border-color: var(--primary, #133c8a);
+  box-shadow: 0 0 0 3px rgba(19, 60, 138, 0.1);
+}
+
+.setup-field input[readonly] {
+  background: var(--light-bg, #f8f9fa);
+  color: var(--text-light, #64748b);
+}
+
+.setup-field .field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-light, #64748b);
+}
+
+.setup-field-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.setup-field-row > .setup-field {
+  flex: 1 1 160px;
+}
+
+/* ---------- 按钮 ---------- */
+.setup-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.setup-btn {
+  padding: 12px 26px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--primary, #133c8a) 0%, var(--primary-dark, #0a2644) 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(19, 60, 138, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.setup-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(19, 60, 138, 0.4);
+}
+
+/* 按钮也用在 <a> 上（完成页的「前往登录」） */
+a.setup-btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.setup-btn[hidden] {
+  display: none;
+}
+
+.setup-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.setup-btn.secondary {
+  background: var(--secondary, #f5f5f5);
+  color: var(--text, #333);
+  box-shadow: none;
+  border: 1px solid var(--border, #e0e0e0);
+}
+
+.setup-btn.secondary:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  background: #ebebeb;
+}
+
+.setup-btn.danger {
+  background: linear-gradient(135deg, #cf222e 0%, #a40e26 100%);
+  box-shadow: 0 4px 12px rgba(207, 34, 46, 0.3);
+}
+
+/* ---------- 提示条 ---------- */
+.setup-alert {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  border: 1px solid transparent;
+  word-break: break-word;
+}
+
+.setup-alert[hidden] {
+  display: none;
+}
+
+.setup-alert.success {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+  color: #1b5e20;
+}
+
+.setup-alert.error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.setup-alert.info {
+  background: #e3f2fd;
+  border-color: #90caf9;
+  color: #0d47a1;
+}
+
+.setup-alert.warning {
+  background: #fff8e1;
+  border-color: #ffe082;
+  color: #8d6e00;
+}
+
+/* ---------- 配置来源徽标 ---------- */
+.source-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.source-badge.env { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; }
+.source-badge.file { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+.source-badge.default { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+
+/* ---------- 表清单 ---------- */
+.setup-table-wrap {
+  margin-top: 16px;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.setup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.setup-table th,
+.setup-table td {
+  padding: 8px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+}
+
+.setup-table th {
+  background: var(--light-bg, #f8f9fa);
+  font-weight: 600;
+  color: var(--text-light, #64748b);
+}
+
+.setup-table tr:last-child td {
+  border-bottom: none;
+}
+
+.setup-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.setup-table .tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.setup-table .tag.ok { background: #e8f5e9; color: #1b5e20; }
+.setup-table .tag.missing { background: #fef2f2; color: #991b1b; }
+
+/* ---------- 完成页 ---------- */
+.setup-done {
+  text-align: center;
+  padding: 16px 0 8px;
+}
+
+.setup-done .done-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.setup-done h2 {
+  margin-bottom: 8px;
+}
+
+.setup-done .setup-actions {
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  body.setup-body {
+    padding: 20px 14px 32px;
+  }
+
+  .setup-card {
+    padding: 26px 22px;
+    border-radius: 16px;
+  }
+
+  .setup-steps li {
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 4px;
+    text-align: center;
+  }
+
+  .setup-steps .step-label {
+    font-size: 11px;
+  }
+
+  .setup-actions .setup-btn {
+    flex: 1 1 100%;
+  }
+}

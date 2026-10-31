@@ -1,6 +1,9 @@
 // Bootstrapped from MySQL "homedb" on 2026-06-22T00:57:28.274Z
 // 已移除 admin（merge 后废弃）和 sessions（express-mysql-session 管理）。
-// 共 20 张表。添加新表/列后运行 node prisma/diff.js --apply 同步到 MySQL。
+// 共 23 张表。添加新表/列后运行 node prisma/diff.js --apply 同步到 MySQL。
+//
+// 注：products.status = 草稿/上架开关（1 = 已上架，0 = 草稿，前台不可见）。
+//     MCP 建出来的产品一律是草稿，上架必须人工在后台点 —— 详见 docs/mcp-endpoint.md §3.4。
 
 module.exports = {
   "activations": {
@@ -140,7 +143,9 @@ module.exports = {
     "updated_at": "timestamp DEFAULT CURRENT_TIMESTAMP",
     "short_name": "varchar(100) NOT NULL DEFAULT '' UNIQUE",
     "status": "tinyint(1) NOT NULL DEFAULT 1",
-    "is_course": "int(11) DEFAULT 0"
+    "is_course": "int(11) DEFAULT 0",
+    "is_shared_code": "int(11) DEFAULT 0",
+    "repo_urls": "JSON"
   },
   "product_links": {
     "id": "int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY",
@@ -192,6 +197,7 @@ module.exports = {
     "admin_email": "varchar(255)",
     "ai_config": "text",
     "carddav_config": "text",
+    "mcp_config": "text",
     "site_theme": "varchar(50) DEFAULT 'minimal'",
     "created_at": "timestamp DEFAULT CURRENT_TIMESTAMP",
     "updated_at": "timestamp DEFAULT CURRENT_TIMESTAMP"
@@ -279,5 +285,17 @@ module.exports = {
     "sort_order": "int(11) DEFAULT 0",
     "created_at": "timestamp DEFAULT CURRENT_TIMESTAMP",
     "updated_at": "timestamp DEFAULT CURRENT_TIMESTAMP"
+  },
+  "mcp_tokens": {
+    "id": "int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY",
+    "name": "varchar(100) NOT NULL",
+    "token_hash": "char(64) NOT NULL UNIQUE",
+    "token_prefix": "varchar(20) NOT NULL",
+    "scopes": "varchar(255) NOT NULL DEFAULT 'news:read'",
+    "created_by": "varchar(100) NOT NULL DEFAULT 'admin'",
+    "created_at": "timestamp DEFAULT CURRENT_TIMESTAMP",
+    "expires_at": "timestamp",
+    "last_used_at": "timestamp",
+    "revoked_at": "timestamp"
   }
 };

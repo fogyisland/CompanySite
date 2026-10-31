@@ -43,6 +43,110 @@ function updateDbConfig(newConfig) {
   return newConfig;
 }
 
+/**
+ * 当前生效的数据库配置来自哪里。
+ *   'env'    —— .env 里的 DB_HOST 等环境变量（优先级最高）
+ *   'file'   —— data/db-config.json
+ *   'default'—— 都没配，用的是内置默认值
+ * 安装向导要靠它决定「界面里改连接配置有没有用」——
+ * env 优先时界面保存的配置不会生效，必须提示用户去改 .env。
+ */
+function getDbConfigSource() {
+  if (process.env.DB_HOST) return 'env';
+  if (fs.existsSync(CONFIG_FILE)) return 'file';
+  return 'default';
+}
+
+/**
+ * 用一组独立的连接参数测连通性，不碰全局连接池。
+ * 供安装向导「测试连接」按钮使用 —— 测试失败不能影响正在跑的站点。
+ */
+async function testMySQLConnection(mysqlConfig) {
+  const mysql = require('mysql2/promise');
+  let connection = null;
+  try {
+    connection = await mysql.createConnection({
+      host: mysqlConfig.host,
+      port: mysqlConfig.port || 3306,
+      user: mysqlConfig.user,
+      password: mysqlConfig.password || '',
+      database: mysqlConfig.database,
+      connectTimeout: 8000
+    });
+    await connection.ping();
+    const [rows] = await connection.query('SELECT VERSION() AS version, DATABASE() AS db');
+    return {
+      success: true,
+      version: rows && rows[0] ? rows[0].version : null,
+      database: rows && rows[0] ? rows[0].db : mysqlConfig.database
+    };
+  } finally {
+    if (connection) {
+      try { await connection.end(); } catch (_) { /* 连接关闭失败不影响测试结论 */ }
+    }
+  }
+}
+
+/**
+ * 统计管理员账号数（is_admin = 1）。
+ *
+ * 这是「站点是否已安装」的唯一权威依据。
+ * users 表不存在时会抛 ER_NO_SUCH_TABLE —— 调用方（lib/setup.js）据此
+ * 判定「未安装」；其它异常一律往上抛，由调用方 fail-closed 处理。
+ */
+async function countAdmins() {
+  if (!mysqlPool) {
+    // 连接池没建起来（初始化阶段就失败了）—— 属于「连不上」，
+    // 上层要靠它区分「数据库坏了」和「查询出错」，不能抛 TypeError。
+    const error = new Error('MySQL 连接池尚未初始化');
+    error.code = 'POOL_NOT_READY';
+    throw error;
+  }
+  const [rows] = await mysqlPool.query('SELECT COUNT(*) AS c FROM users WHERE is_admin = 1');
+  return rows.length ? Number(rows[0].c) : 0;
+}
+
+/**
+ * 读取 data/db-config.json 里的原始内容（**不**合并环境变量）。
+ * 没有配置文件或文件损坏时返回 null —— 与 getDbConfig() 的「生效配置」区分开，
+ * 否则回滚时会把环境变量配置写进文件，反而改掉了用户没打算改的东西。
+ */
+function readStoredDbConfig() {
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) return null;
+    const parsed = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (e) {
+    console.error('[db] 读取数据库配置文件失败:', e.message);
+    return null;
+  }
+}
+
+/**
+ * 回滚数据库配置文件。
+ * @param {object|null} storedConfig 旧的文件内容；null 表示「之前没有配置文件」
+ * @returns {boolean} 是否回滚成功
+ */
+function restoreDbConfig(storedConfig) {
+  try {
+    if (storedConfig === null) {
+      if (fs.existsSync(CONFIG_FILE)) fs.unlinkSync(CONFIG_FILE);
+      return true;
+    }
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(storedConfig, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('[db] 回滚数据库配置失败:', error.message);
+    return false;
+  }
+}
+
+/** 表是否存在。SHOW TABLES LIKE 不需要 information_schema 权限。 */
+async function tableExists(tableName) {
+  const [rows] = await mysqlPool.query('SHOW TABLES LIKE ?', [tableName]);
+  return rows.length > 0;
+}
+
 // Transaction helper: runs `fn(conn)` inside a single MySQL connection with
 // begin/commit/rollback. The connection is released back to the pool even on
 // throw. Use this when a code path does multi-statement writes that must be
@@ -95,9 +199,13 @@ async function initDatabase() {
   }
 }
 
-async function initMySQL(mysqlConfig) {
+/**
+ * 连接池参数的唯一事实来源 —— initMySQL 与 reconnectWithConfig 共用，
+ * 避免两份参数漂移（keepalive 之类的调参很容易只改一处）。
+ */
+function createMysqlPool(mysqlConfig) {
   const mysql = require('mysql2/promise');
-  mysqlPool = mysql.createPool({
+  return mysql.createPool({
     host: mysqlConfig.host,
     port: mysqlConfig.port || 3306,
     user: mysqlConfig.user,
@@ -112,9 +220,41 @@ async function initMySQL(mysqlConfig) {
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000
   });
+}
+
+async function initMySQL(mysqlConfig) {
+  mysqlPool = createMysqlPool(mysqlConfig);
   const connection = await mysqlPool.getConnection();
   connection.release();
   console.log('MySQL连接成功');
+  return true;
+}
+
+/**
+ * 用新配置重建连接池 —— 保存数据库配置后立即生效，不必重启服务。
+ *
+ * 关键：新连接先单独建好并验证能连通，再切换；建不起来就原样保留旧连接池，
+ * 不能让一次填错的配置把整个站点带挂。
+ */
+async function reconnectWithConfig(mysqlConfig) {
+  const previousPool = mysqlPool;
+  const newPool = createMysqlPool(mysqlConfig);
+  try {
+    const connection = await newPool.getConnection();
+    connection.release();
+  } catch (error) {
+    try { await newPool.end(); } catch (e) { /* 关闭失败不影响回滚 */ }
+    throw error;
+  }
+  mysqlPool = newPool;
+  if (previousPool) {
+    // 让在途查询跑完再关旧池，避免把正在执行的请求打断
+    const timer = setTimeout(() => {
+      previousPool.end().catch(() => {});
+    }, 3000);
+    if (typeof timer.unref === 'function') timer.unref();
+  }
+  console.log('数据库连接池已切换到新配置');
   return true;
 }
 
@@ -163,6 +303,7 @@ async function createTablesIfNotExist() {
       admin_email VARCHAR(255),
       ai_config TEXT,
       carddav_config TEXT,
+      mcp_config TEXT,
       site_theme VARCHAR(50) DEFAULT 'minimal',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -222,7 +363,8 @@ async function createTablesIfNotExist() {
       phone VARCHAR(50),
       real_name VARCHAR(255),
       company_name VARCHAR(255),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      is_admin TINYINT(1) NOT NULL DEFAULT 0
     )`,
     `CREATE TABLE IF NOT EXISTS orders (
       id INT PRIMARY KEY AUTO_INCREMENT,
@@ -331,6 +473,21 @@ async function createTablesIfNotExist() {
       email VARCHAR(255) NOT NULL UNIQUE,
       subscribed INT DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    // MCP 令牌（后台「系统设置 → MCP」签发）
+    // token_hash 存 sha256 十六进制，明文只在签发那一刻返回一次，库里不留明文。
+    `CREATE TABLE IF NOT EXISTS mcp_tokens (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(100) NOT NULL,
+      token_hash CHAR(64) NOT NULL UNIQUE,
+      token_prefix VARCHAR(20) NOT NULL,
+      scopes VARCHAR(255) NOT NULL DEFAULT 'news:read',
+      created_by VARCHAR(100) NOT NULL DEFAULT 'admin',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      expires_at TIMESTAMP NULL,
+      last_used_at TIMESTAMP NULL,
+      revoked_at TIMESTAMP NULL,
+      INDEX idx_mcp_tokens_active (revoked_at, expires_at)
     )`
   ];
 
@@ -339,10 +496,16 @@ async function createTablesIfNotExist() {
   }
 
   // ALTER statements for users (Task 1)
+  //
+  // is_admin 是「站点是否已安装」的唯一判据（countAdmins() 查 users.is_admin），
+  // 必须在这里补齐：老库可能建表时没有这一列，而新库走上面的 CREATE TABLE。
+  // 少了它，countAdmins() 抛 ER_BAD_FIELD_ERROR → 状态判定变成「无法判定」
+  // → 安装闸门 fail-closed → 全新安装永远建不出第一个管理员。
   const userAlterStatements = [
     "ALTER TABLE users ADD COLUMN email_verified INT DEFAULT 0",
     "ALTER TABLE users ADD COLUMN email_verify_token VARCHAR(128)",
-    "ALTER TABLE users ADD COLUMN email_verify_expires_at TIMESTAMP NULL"
+    "ALTER TABLE users ADD COLUMN email_verify_expires_at TIMESTAMP NULL",
+    "ALTER TABLE users ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0"
   ];
   for (const sql of userAlterStatements) {
     try {
@@ -365,12 +528,28 @@ async function createTablesIfNotExist() {
     }
   }
 
-  // ALTER statements for products (open-source repo URLs + shared-code flag)
+  // ALTER statements for products (open-source repo URLs + shared-code flag + 课程型 + 上架状态)
+  // status：草稿/上架开关。1 = 已上架，0 = 草稿（前台不可见）。
+  // 幂等：列已存在时报 Duplicate column，被下面的 catch 吞掉。
   const productAlterStatements = [
     "ALTER TABLE products ADD COLUMN repo_urls JSON",
-    "ALTER TABLE products ADD COLUMN is_shared_code INT DEFAULT 0"
+    "ALTER TABLE products ADD COLUMN is_shared_code INT DEFAULT 0",
+    "ALTER TABLE products ADD COLUMN is_course INT DEFAULT 0",
+    "ALTER TABLE products ADD COLUMN status TINYINT(1) NOT NULL DEFAULT 1"
   ];
   for (const sql of productAlterStatements) {
+    try {
+      await mysqlPool.query(sql);
+    } catch (e) {
+      if (!e.message.includes('Duplicate column')) throw e;
+    }
+  }
+
+  // ALTER statements for settings (MCP 运行时配置：启用开关 + Host 白名单)
+  const settingsAlterStatements = [
+    "ALTER TABLE settings ADD COLUMN mcp_config TEXT"
+  ];
+  for (const sql of settingsAlterStatements) {
     try {
       await mysqlPool.query(sql);
     } catch (e) {
@@ -451,6 +630,19 @@ async function verifyLogin(username, password) {
 
 // ============ 产品操作 ============
 
+/**
+ * products.status（tinyint）→ API 层的字符串状态。
+ *
+ * 该列此前一直是「死列」：建表时有、索引也在，但没有任何代码读它或按它过滤，
+ * 于是无法区分「草稿」与「已上架」。现在它承担草稿/上架开关：
+ *   1 = 已上架（前台可见）  0 = 草稿 / 已下架（前台不可见）
+ *
+ * 用字符串而非 0/1 对外表达，与 news.status、product_docs.status 保持同一套词汇。
+ */
+function mapProductStatus(value) {
+  return Number(value) === 1 ? 'published' : 'draft';
+}
+
 async function getAllProducts() {
   const [rows] = await mysqlPool.query("SELECT * FROM products ORDER BY id DESC");
   return rows.map(row => ({
@@ -474,12 +666,21 @@ async function getAllProducts() {
     isCourse: row.is_course === 1,
     isSharedCode: row.is_shared_code === 1,
     repoUrls: parseRepoUrls(row.repo_urls),
+    status: mapProductStatus(row.status),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }));
 }
 
-async function getProductsPaginated({ isCourse, search, page, pageSize }) {
+/**
+ * 分页列出产品。
+ *
+ * status 参数（可选）：
+ *   undefined → 不按上架状态过滤（后台用，要看到草稿）
+ *   1        → 只返回已上架（前台用，草稿必须挡住）
+ *   0        → 只返回草稿
+ */
+async function getProductsPaginated({ isCourse, search, category, page, pageSize, status }) {
   const conditions = [];
   const params = [];
 
@@ -492,6 +693,16 @@ async function getProductsPaginated({ isCourse, search, page, pageSize }) {
     conditions.push('(name LIKE ? OR short_name LIKE ?)');
     const like = '%' + search.trim() + '%';
     params.push(like, like);
+  }
+
+  if (category && category.trim() !== '') {
+    conditions.push('category = ?');
+    params.push(category.trim());
+  }
+
+  if (status === 0 || status === 1) {
+    conditions.push('status = ?');
+    params.push(status);
   }
 
   const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
@@ -531,6 +742,7 @@ async function getProductsPaginated({ isCourse, search, page, pageSize }) {
     isCourse: row.is_course === 1,
     isSharedCode: row.is_shared_code === 1,
     repoUrls: parseRepoUrls(row.repo_urls),
+    status: mapProductStatus(row.status),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }));
@@ -569,6 +781,7 @@ async function getProduct(id) {
     isCourse: row.is_course === 1,
     isSharedCode: row.is_shared_code === 1,
     repoUrls: parseRepoUrls(row.repo_urls),
+    status: mapProductStatus(row.status),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -599,6 +812,7 @@ async function getProductByShortName(shortName) {
     isCourse: row.is_course === 1,
     isSharedCode: row.is_shared_code === 1,
     repoUrls: parseRepoUrls(row.repo_urls),
+    status: mapProductStatus(row.status),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -607,13 +821,16 @@ async function getProductByShortName(shortName) {
 async function createProduct(product) {
   const isCourseVal = (product.isCourse === true || product.isCourse === 1) ? 1 : 0;
   const isSharedCodeVal = (product.isSharedCode === true || product.isSharedCode === 1) ? 1 : 0;
+  // status：0 = 草稿（前台不可见），1 = 已上架。
+  // 只有 MCP 建草稿时会显式传 0；后台表单不传 → 默认 1，保持「后台建完即上架」的现状。
+  const statusVal = (product.status === 0 || product.status === 'draft') ? 0 : 1;
   const [result] = await mysqlPool.query(
-    `INSERT INTO products (name, short_name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg, is_course, is_shared_code, repo_urls)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (name, short_name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg, is_course, is_shared_code, repo_urls, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
      product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal, isSharedCodeVal,
-     JSON.stringify(product.repoUrls || [])]
+     JSON.stringify(product.repoUrls || []), statusVal]
   );
   const insertId = result.insertId;
   if (Array.isArray(product.courseLinks) && product.courseLinks.length > 0) {
@@ -641,6 +858,25 @@ async function updateProduct(id, product) {
 async function deleteProduct(id) {
   await mysqlPool.query("DELETE FROM products WHERE id = ?", [id]);
   return { success: true };
+}
+
+/**
+ * 上架 / 下架产品（草稿 ↔ 已上架）。
+ *
+ * 刻意做成**独立于 updateProduct 的单列更新**：
+ * updateProduct 是「全列覆盖」写法，任何没显式带上 status 的更新都会把
+ * 状态写坏。拆成独立函数后，只有明确调用它才会动上架状态。
+ *
+ * @param {number} id     产品 id
+ * @param {boolean} published  true = 上架，false = 下架（转草稿）
+ */
+async function setProductStatus(id, published) {
+  const statusVal = published ? 1 : 0;
+  const [result] = await mysqlPool.query(
+    'UPDATE products SET status = ? WHERE id = ?',
+    [statusVal, id]
+  );
+  return { affectedRows: result.affectedRows };
 }
 
 // ============ 课程型产品链接（product_links） ============
@@ -704,6 +940,7 @@ async function getProductWithLinks(productId) {
     imageDarkBg: product.image_dark_bg === 1,
     isCourse: product.is_course === 1,
     repoUrls: parseRepoUrls(product.repo_urls),
+    status: mapProductStatus(product.status),
     courseLinks: links,
     createdAt: product.created_at,
     updatedAt: product.updated_at
@@ -1800,12 +2037,31 @@ async function getTableCount(tableName) {
   }
 }
 
+/**
+ * 逐表核对数据完整性。
+ *
+ * status 三态要说实话，不能一律报 'ok'：
+ *   ok      —— 表存在，行数正常
+ *   missing —— 表根本不存在（初始化没跑完 / 被手工删了）
+ *   error   —— 表在，但查不出来（连接断了、权限不足）
+ * 「初始化 / 修复表结构」的界面靠它告诉管理员还差什么。
+ */
 async function verifyDataIntegrity() {
   const results = [];
   const tables = getAllTables();
   for (const table of tables) {
-    const count = await getTableCount(table);
-    results.push({ table, count, status: 'ok' });
+    let exists = false;
+    try {
+      exists = await tableExists(table);
+    } catch (error) {
+      results.push({ table, count: 0, status: 'error' });
+      continue;
+    }
+    if (!exists) {
+      results.push({ table, count: 0, status: 'missing' });
+      continue;
+    }
+    results.push({ table, count: await getTableCount(table), status: 'ok' });
   }
   return { success: true, results };
 }
@@ -2144,7 +2400,7 @@ async function getPublishedProductDoc(productSlug, docSlug) {
     `SELECT d.id, d.slug, d.title, d.content_html, d.excerpt, d.published_at
      FROM product_docs d
      INNER JOIN products p ON p.id = d.product_id
-     WHERE p.short_name = ? AND d.slug = ? AND d.status = 'published'
+     WHERE p.short_name = ? AND d.slug = ? AND d.status = 'published' AND p.status = 1
      LIMIT 1`,
     [productSlug, docSlug]
   );
@@ -2230,9 +2486,135 @@ async function incrementNewsView(id) {
   return { ok: true };
 }
 
+// ============ MCP 令牌与运行时配置 ============
+//
+// 令牌明文只在签发时返回一次，库里只存 sha256（token_hash）。
+// 列表接口一律不返回 token_hash —— 它虽然不可逆，但没必要外泄。
+
+/**
+ * 读取后台保存的 MCP 配置。
+ * 返回 null 表示「后台从未保存过」—— 调用方据此回退到环境变量默认值。
+ */
+async function getStoredMcpConfig() {
+  const [rows] = await mysqlPool.query('SELECT mcp_config FROM settings WHERE id = 1 LIMIT 1');
+  if (!rows.length || !rows[0].mcp_config) return null;
+  try {
+    const parsed = JSON.parse(rows[0].mcp_config);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return parsed;
+  } catch (e) {
+    // 配置损坏时不能让整个请求 500 —— 退回「未配置」，由上层用环境变量兜底
+    console.error('[db] mcp_config 解析失败，回退到默认配置:', e.message);
+    return null;
+  }
+}
+
+/**
+ * 保存 MCP 配置（覆盖写整份 JSON）。
+ */
+async function saveMcpConfig(config) {
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  await mysqlPool.query(
+    'UPDATE settings SET mcp_config = ?, updated_at = ? WHERE id = 1',
+    [JSON.stringify(config), now]
+  );
+  return getStoredMcpConfig();
+}
+
+/**
+ * 列出全部 MCP 令牌（不含 token_hash）。
+ */
+async function listMcpTokens() {
+  const [rows] = await mysqlPool.query(
+    `SELECT id, name, token_prefix, scopes, created_by, created_at, expires_at, last_used_at, revoked_at
+     FROM mcp_tokens ORDER BY id DESC`
+  );
+  return rows;
+}
+
+/**
+ * 按 sha256 摘要查令牌（MCP 鉴权的热路径，走 token_hash 唯一索引）。
+ */
+async function findMcpTokenByHash(tokenHash) {
+  const [rows] = await mysqlPool.query(
+    'SELECT * FROM mcp_tokens WHERE token_hash = ? LIMIT 1',
+    [tokenHash]
+  );
+  return rows.length ? rows[0] : null;
+}
+
+/**
+ * 新建一枚令牌记录。token_hash 由调用方算好（lib/mcp/tokens.js）。
+ */
+async function createMcpToken(record) {
+  const [result] = await mysqlPool.query(
+    `INSERT INTO mcp_tokens (name, token_hash, token_prefix, scopes, created_by, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      record.name,
+      record.tokenHash,
+      record.tokenPrefix,
+      record.scopes,
+      record.createdBy || 'admin',
+      record.expiresAt || null
+    ]
+  );
+  const [rows] = await mysqlPool.query(
+    `SELECT id, name, token_prefix, scopes, created_by, created_at, expires_at, last_used_at, revoked_at
+     FROM mcp_tokens WHERE id = ? LIMIT 1`,
+    [result.insertId]
+  );
+  return rows.length ? rows[0] : null;
+}
+
+/**
+ * 吊销令牌（软删除：保留记录以便审计「这个令牌存在过、被谁吊销的」）。
+ */
+async function revokeMcpToken(id) {
+  const [result] = await mysqlPool.query(
+    'UPDATE mcp_tokens SET revoked_at = NOW() WHERE id = ? AND revoked_at IS NULL',
+    [id]
+  );
+  return { affectedRows: result.affectedRows };
+}
+
+/**
+ * 更新令牌最后使用时间。
+ * 节流：5 分钟内重复使用不写库，避免每次 MCP 调用都产生一条 UPDATE。
+ */
+async function touchMcpTokenLastUsed(id) {
+  const [result] = await mysqlPool.query(
+    `UPDATE mcp_tokens SET last_used_at = NOW()
+     WHERE id = ? AND (last_used_at IS NULL OR last_used_at < NOW() - INTERVAL 5 MINUTE)`,
+    [id]
+  );
+  return { affectedRows: result.affectedRows };
+}
+
+/**
+ * 统计当前「有效」的令牌数（未吊销且未过期）——用于判断端点是否处于启用状态。
+ */
+async function countActiveMcpTokens() {
+  const [rows] = await mysqlPool.query(
+    `SELECT COUNT(*) AS c FROM mcp_tokens
+     WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > NOW())`
+  );
+  return rows.length ? Number(rows[0].c) : 0;
+}
+
 module.exports = {
   initDatabase,
+  initMySQL,
+  createTablesIfNotExist,
+  initDefaultData,
   getDbConfig,
+  getDbConfigSource,
+  readStoredDbConfig,
+  restoreDbConfig,
+  reconnectWithConfig,
+  testMySQLConnection,
+  countAdmins,
+  tableExists,
   withTransaction,
   updateDbConfig,
   query,
@@ -2249,6 +2631,7 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
+  setProductStatus,
   getProductLinks,
   setProductLinks,
   getProductWithLinks,
@@ -2379,5 +2762,14 @@ module.exports = {
   deleteNews,
   publishNews,
   unpublishNews,
-  incrementNewsView
+  incrementNewsView,
+  // MCP 令牌与运行时配置
+  getStoredMcpConfig,
+  saveMcpConfig,
+  listMcpTokens,
+  findMcpTokenByHash,
+  createMcpToken,
+  revokeMcpToken,
+  touchMcpTokenLastUsed,
+  countActiveMcpTokens
 };

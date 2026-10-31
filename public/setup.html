@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>博铭科技 - 站点初始化</title>
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/themes/theme-variables.css">
+  <link rel="stylesheet" href="/css/pages/setup.css?v=20261030-1">
+</head>
+<body class="setup-body">
+  <div class="setup-shell">
+    <header class="setup-header">
+      <div class="setup-brand">
+        <span class="setup-logo">BM</span>
+        <div>
+          <h1>站点初始化向导</h1>
+          <p>完成数据库连接、表结构初始化与首个管理员创建</p>
+        </div>
+      </div>
+      <ol class="setup-steps" id="setup-steps">
+        <li data-step="1" class="active"><span class="step-index">1</span><span class="step-label">安装令牌</span></li>
+        <li data-step="2"><span class="step-index">2</span><span class="step-label">数据库连接</span></li>
+        <li data-step="3"><span class="step-index">3</span><span class="step-label">初始化表结构</span></li>
+        <li data-step="4"><span class="step-index">4</span><span class="step-label">管理员账号</span></li>
+        <li data-step="5"><span class="step-index">5</span><span class="step-label">完成</span></li>
+      </ol>
+    </header>
+
+    <main class="setup-card">
+      <div class="setup-alert" id="setup-alert" hidden></div>
+
+      <!-- ============ 步骤 1：安装令牌 ============ -->
+      <section class="setup-panel" id="panel-1">
+        <h2>第 1 步 · 校验安装令牌</h2>
+        <p class="setup-desc">
+          安装令牌用于确认操作者有权初始化本站。它在服务器启动日志里，也在
+          <code>data/setup-token.txt</code>；也可以通过环境变量 <code>SETUP_TOKEN</code> 指定。
+          令牌不会通过任何接口回显。
+        </p>
+        <div class="setup-field">
+          <label for="setup-token">安装令牌</label>
+          <input type="password" id="setup-token" autocomplete="off" spellcheck="false" placeholder="粘贴安装令牌">
+          <p class="field-hint">令牌只保存在当前浏览器标签页（sessionStorage），不会写入 Cookie。</p>
+        </div>
+        <div class="setup-actions">
+          <button type="button" class="setup-btn" id="btn-verify-token">校验并继续</button>
+        </div>
+      </section>
+
+      <!-- ============ 步骤 2：数据库连接 ============ -->
+      <section class="setup-panel" id="panel-2" hidden>
+        <h2>第 2 步 · 数据库连接</h2>
+        <p class="setup-desc">
+          填写 MySQL 连接信息并测试连通性。
+          <span id="config-source-badge"></span>
+        </p>
+        <p class="setup-desc">
+          点「写入 .env 并继续」时，向导会生成 <code>.env</code>（权限 0600），
+          里面包含下面这 5 个数据库参数，以及机器随机生成的
+          <code>SESSION_SECRET</code> 与 <code>CRON_TOKEN</code>。
+          写完当场切换连接池；旧的 <code>.env</code> 会备份成 <code>.env.bak</code>。
+        </p>
+        <p class="setup-desc">
+          注意：向导负责建**表**，不负责建**数据库**。
+          若提示 <code>Unknown database</code>，需要先用 MySQL 客户端把库建出来
+          （参见 <code>DEPLOY.md</code> 第六步）。
+        </p>
+        <p class="setup-desc" id="config-source-note" hidden></p>
+
+        <div class="setup-field">
+          <label for="db-host">主机地址</label>
+          <input type="text" id="db-host" spellcheck="false" placeholder="127.0.0.1">
+        </div>
+        <div class="setup-field-row">
+          <div class="setup-field">
+            <label for="db-port">端口</label>
+            <input type="text" id="db-port" inputmode="numeric" placeholder="3306">
+          </div>
+          <div class="setup-field">
+            <label for="db-database">数据库名</label>
+            <input type="text" id="db-database" spellcheck="false" placeholder="softvault">
+          </div>
+        </div>
+        <div class="setup-field-row">
+          <div class="setup-field">
+            <label for="db-user">用户名</label>
+            <input type="text" id="db-user" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="setup-field">
+            <label for="db-password">密码</label>
+            <input type="password" id="db-password" autocomplete="new-password">
+            <p class="field-hint" id="db-password-hint">留空表示沿用已保存的密码。</p>
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          <button type="button" class="setup-btn secondary" id="btn-test-db">测试连接</button>
+          <button type="button" class="setup-btn secondary" id="btn-next-db">不修改，直接继续</button>
+          <button type="button" class="setup-btn" id="btn-save-db">写入 .env 并继续</button>
+        </div>
+      </section>
+
+      <!-- ============ 步骤 3：初始化表结构 ============ -->
+      <section class="setup-panel" id="panel-3" hidden>
+        <h2>第 3 步 · 初始化表结构</h2>
+        <p class="setup-desc">
+          建表 + 灌入默认数据（站点信息、常见问题）。整个过程是幂等的，可以重复执行。
+        </p>
+        <div id="schema-summary"></div>
+        <div class="setup-actions">
+          <button type="button" class="setup-btn secondary" id="btn-back-db">返回上一步</button>
+          <button type="button" class="setup-btn" id="btn-init-db">开始初始化</button>
+          <button type="button" class="setup-btn" id="btn-next-admin" hidden>继续创建管理员</button>
+        </div>
+        <div id="init-result"></div>
+      </section>
+
+      <!-- ============ 步骤 4：管理员账号 ============ -->
+      <section class="setup-panel" id="panel-4" hidden>
+        <h2>第 4 步 · 创建首个管理员</h2>
+        <p class="setup-desc">
+          创建后即可登录后台。安装令牌会随之销毁，安装接口永久关闭。
+        </p>
+        <div class="setup-field">
+          <label for="admin-username">用户名</label>
+          <input type="text" id="admin-username" spellcheck="false" autocomplete="off" placeholder="admin">
+          <p class="field-hint">3~32 位，可用字母、数字、下划线、点、连字符。</p>
+        </div>
+        <div class="setup-field">
+          <label for="admin-password">密码</label>
+          <input type="password" id="admin-password" autocomplete="new-password">
+          <p class="field-hint">至少 8 位，且必须同时包含字母和数字。</p>
+        </div>
+        <div class="setup-field">
+          <label for="admin-password-confirm">确认密码</label>
+          <input type="password" id="admin-password-confirm" autocomplete="new-password">
+        </div>
+        <div class="setup-field">
+          <label for="admin-email">邮箱（可选）</label>
+          <input type="email" id="admin-email" spellcheck="false" autocomplete="off" placeholder="admin@example.com">
+          <p class="field-hint">用于接收安全通知；填写后仍需自行完成邮箱验证。</p>
+        </div>
+        <div class="setup-actions">
+          <button type="button" class="setup-btn secondary" id="btn-back-init">返回上一步</button>
+          <button type="button" class="setup-btn" id="btn-create-admin">创建管理员并完成安装</button>
+        </div>
+      </section>
+
+      <!-- ============ 步骤 5：完成 ============ -->
+      <section class="setup-panel" id="panel-5" hidden>
+        <div class="setup-done">
+          <div class="done-icon">✓</div>
+          <h2>初始化完成</h2>
+          <p class="setup-desc">
+            管理员账号已创建，安装令牌已销毁，安装接口已永久关闭。<br>
+            现在可以登录后台开始配置产品与内容。
+          </p>
+          <div class="setup-alert warning" id="setup-restart-notice">
+            <strong>请重启一次服务。</strong>
+            <code>.env</code> 里的连接参数已经当场生效，但会话签名密钥与 session 存储池
+            是在进程启动时绑定的 —— 不重启的话，重启后旧密钥失效、存储池还会指向旧库。
+            重启后请重新登录一次。
+          </div>
+          <div class="setup-actions">
+            <a class="setup-btn" href="/login">前往登录</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/js/setup.js?v=20261030-2"></script>
+</body>
+</html>
