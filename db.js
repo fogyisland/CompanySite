@@ -37,7 +37,7 @@ let mysqlPool = null;
  *
  * 未配置时各字段留空（host / user / database 为空串），**不**回落到
  * localhost / root / softvault：
- * 「没配」和「配成了默认值」必须能被区分 —— 前者要走安装向导，
+ * 「没配」和「配成了默认值」必须能被区分 —— 前者要走 Init 向导，
  * 后者是一个真实存在、指向生产库的连接配置。混为一谈会让站点
  * 在全新部署时悄悄连到一个不该碰的库上。
  */
@@ -57,7 +57,7 @@ function getDbConfig() {
 /**
  * 当前生效的数据库配置来自哪里。
  *   'env'    —— .env 里的 DB_HOST 等环境变量（唯一事实来源）
- *   'default'—— 尚未配置，需要走安装向导填写
+ *   'default'—— 尚未配置，需要走 Init 向导填写
  *
  * 旧的 'file'（data/db-config.json）分支已随并行配置源收口而删除。
  */
@@ -67,7 +67,7 @@ function getDbConfigSource() {
 
 /**
  * 用一组独立的连接参数测连通性，不碰全局连接池。
- * 供安装向导「测试连接」按钮使用 —— 测试失败不能影响正在跑的站点。
+ * 供 Init 向导「测试连接」按钮使用 —— 测试失败不能影响正在跑的站点。
  */
 async function testMySQLConnection(mysqlConfig) {
   const mysql = require('mysql2/promise');
@@ -98,8 +98,8 @@ async function testMySQLConnection(mysqlConfig) {
 /**
  * 只连 MySQL **服务器**本身（不指定具体数据库），并列出该账号能看到的库。
  *
- * 为什么需要这个版本：全新安装时目标库**还不存在**，带库名连接会直接回
- * 「未知数据库」—— 那是预期状态，不是配置错误。安装向导的「测试连接」
+ * 为什么需要这个版本：全新初始化时目标库**还不存在**，带库名连接会直接回
+ * 「未知数据库」—— 那是预期状态，不是配置错误。Init 向导的「测试连接」
  * 必须走服务器级连接，否则用户还没走到建库那一步就被告知「连不上」，
  * 流程在这里就断了。
  *
@@ -153,7 +153,7 @@ function isValidDatabaseName(name) {
 }
 
 /**
- * 建库（幂等）—— 全新安装时目标库往往还不存在。
+ * 建库（幂等）—— 全新初始化时目标库往往还不存在。
  *
  * 库名来自用户输入，必须严防 SQL 注入。这里用两道防线：
  *   1. 白名单校验（isValidDatabaseName）：只放行字母、数字、下划线、连字符，
@@ -213,9 +213,9 @@ async function createDatabaseIfNotExists(mysqlConfig, databaseName) {
 /**
  * 统计管理员账号数（is_admin = 1）。
  *
- * 这是「站点是否已安装」的唯一权威依据。
- * users 表不存在时会抛 ER_NO_SUCH_TABLE —— 调用方（lib/setup.js）据此
- * 判定「未安装」；其它异常一律往上抛，由调用方 fail-closed 处理。
+ * 这是「是否已完成初始化」的权威依据之一（另一环是 .env 里的 INITIALIZED 标志）。
+ * users 表不存在时会抛 ER_NO_SUCH_TABLE —— 调用方（lib/init.js）据此
+ * 判定「未初始化」；其它异常一律往上抛，由调用方 fail-closed 处理。
  */
 async function countAdmins() {
   if (!mysqlPool) {
@@ -270,19 +270,39 @@ async function withTransaction(fn) {
   }
 }
 
-async function initDatabase() {
+/**
+ * 只建立连接池 —— 不建表、不灌种子。
+ *
+ * 启动期用这个。理由：站点启动时**不做任何初始化**，
+ * 「建表 + 灌默认数据 + 建管理员」全部由 /init 向导一次做完。
+ * 已经在运行的站点（已初始化）才会走 createTablesIfNotExist() 做 schema 维护 ——
+ * 那是升级路径，不是初始化。
+ */
+async function connectDatabase() {
   const config = getDbConfig();
   if (!config.mysql.host || !config.mysql.user || !config.mysql.database) {
     // 「没配」不是错误 —— 它就是「站点还没装好」的状态。
-    // 抛出带明确指引的错误，让调用方降级启动并引导到 /setup。
+    // 抛出带明确指引的错误，让调用方降级启动并引导到 /init。
     const error = new Error(
-      '未配置数据库连接参数（.env 缺少 DB_HOST / DB_USER / DB_NAME）—— 请打开 /setup 完成初始化'
+      '未配置数据库连接参数（.env 缺少 DB_HOST / DB_USER / DB_NAME）—— 请打开 /init 完成初始化'
     );
     error.code = 'DB_NOT_CONFIGURED';
     throw error;
   }
+  await initMySQL(config.mysql);
+  return true;
+}
+
+/**
+ * 连接 + 建表 + 灌默认数据（幂等）。
+ *
+ * 只有「已经初始化好的站点」才用得上它 —— 那是 schema 维护 + 补种子。
+ * 全新部署由 /init 向导的 complete-install 走同样的三步，
+ * 但那三步是在**用户确认过连接参数之后**才执行的。
+ */
+async function initDatabase() {
   try {
-    await initMySQL(config.mysql);
+    await connectDatabase();
     await createTablesIfNotExist();
     await initDefaultData();
     console.log('Database initialized (MySQL)');
@@ -590,10 +610,10 @@ async function createTablesIfNotExist() {
 
   // ALTER statements for users (Task 1)
   //
-  // is_admin 是「站点是否已安装」的唯一判据（countAdmins() 查 users.is_admin），
+  // is_admin 是「是否已完成初始化」的权威依据之一（countAdmins() 查 users.is_admin），
   // 必须在这里补齐：老库可能建表时没有这一列，而新库走上面的 CREATE TABLE。
   // 少了它，countAdmins() 抛 ER_BAD_FIELD_ERROR → 状态判定变成「无法判定」
-  // → 安装闸门 fail-closed → 全新安装永远建不出第一个管理员。
+  // → Init 闸门 fail-closed → 全新初始化永远建不出第一个管理员。
   const userAlterStatements = [
     "ALTER TABLE users ADD COLUMN email_verified INT DEFAULT 0",
     "ALTER TABLE users ADD COLUMN email_verify_token VARCHAR(128)",
@@ -1228,7 +1248,9 @@ async function getUserByUsername(username) {
   const [rows] = await mysqlPool.query("SELECT * FROM users WHERE username = ?", [username]);
   if (rows.length === 0) return null;
   const row = rows[0];
-  return { id: row.id, username: row.username, email: row.email, phone: row.phone, realName: row.real_name, company: row.company_name, createdAt: row.created_at };
+  // isAdmin 一并带出来 —— Init 向导要靠它区分「重名的是管理员（幂等重跑）」
+  // 与「重名的是普通用户（真冲突）」。
+  return { id: row.id, username: row.username, email: row.email, phone: row.phone, realName: row.real_name, company: row.company_name, createdAt: row.created_at, isAdmin: Boolean(row.is_admin) };
 }
 
 async function createUser(user) {
@@ -2757,6 +2779,7 @@ async function countActiveMcpTokens() {
 
 module.exports = {
   initDatabase,
+  connectDatabase,
   initMySQL,
   createTablesIfNotExist,
   initDefaultData,

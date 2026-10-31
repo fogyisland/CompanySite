@@ -30,8 +30,8 @@ const { ContentPolicyError, validateNewsIdentity } = require('./lib/content-poli
 const { SettingsPolicyError, normalizeSupportPriority } = require('./lib/settings-policy');
 const { resolveProductType } = require('./lib/product-policy');
 const { resolveAndValidateOrderItem } = require('./lib/order-policy');
-const setupPolicy = require('./lib/setup-policy');
-const setupService = require('./lib/setup');
+const initPolicy = require('./lib/init-policy');
+const initService = require('./lib/init');
 const envFile = require('./lib/env-file');
 const envConfigService = require('./lib/env-config-service');
 const {
@@ -817,7 +817,7 @@ const PLACEHOLDER_SECRETS = new Set([
   'change-me-in-production-2026'
 ]);
 
-// .env 现在是**安装向导的产物**（仓库里只留 .env.example）。
+// .env 现在是**Init 向导的产物**（仓库里只留 .env.example）。
 // 于是「密钥没配好」有两种截然不同的含义，必须分开处理：
 //
 //   A. 缺失 —— 全新部署还没跑过向导，或部署坏了但还没修。
@@ -845,17 +845,17 @@ if (PLACEHOLDER_SECRETS.has(rawCronToken)) {
 }
 
 if (!rawSessionSecret) {
-  // 临时密钥只在内存里，不落盘 —— 正式密钥由安装向导生成后写进 .env
+  // 临时密钥只在内存里，不落盘 —— 正式密钥由 Init 向导生成后写进 .env
   process.env.SESSION_SECRET = envFile.generateSecret();
   console.warn('  ⚠ 未配置 SESSION_SECRET —— 使用本次启动的临时密钥（重启后失效）。');
-  console.warn('    请在 /setup 或后台「系统设置 → 数据库」保存配置，正式密钥会写进 .env。');
+  console.warn('    请在 /init 或后台「系统设置 → 数据库」保存配置，正式密钥会写进 .env。');
 }
 if (!rawCronToken) {
   process.env.CRON_TOKEN = envFile.generateHexToken();
   console.warn('  ⚠ 未配置 CRON_TOKEN —— 使用本次启动的临时令牌（重启后失效）。');
 }
 if (!envFilePresent) {
-  console.warn('  ⚠ 未找到 .env —— 站点尚未完成初始化，请访问 /setup 完成安装。');
+  console.warn('  ⚠ 未找到 .env —— 站点尚未完成初始化，请访问 /init 继续。');
 }
 // MCP_TOKEN 不再是「启动前置条件」—— 主令牌改由后台「系统设置 → MCP」生成/轮换。
 //
@@ -982,17 +982,17 @@ async function resolveMcpConfig() {
   };
 }
 
-// /mcp 挂载在全局安装闸门之前（闸门在静态资源之后），所以这里单独加一道：
+// /mcp 挂载在全局 Init 闸门之前（闸门在静态资源之后），所以这里单独加一道：
 // 站点没装好时 MCP 端点不参与服务。
 app.use('/mcp', async (req, res, next) => {
   try {
-    const state = await setupService.getSetupState(db);
+    const state = await initService.getInitState(db);
     if (!state.installed && !state.undetermined) {
       return res.status(503).json({ error: '系统尚未完成初始化' });
     }
   } catch (error) {
     // 状态查不到就放行，交给 MCP 路由自己的错误处理
-    console.error('[setup] MCP 安装状态检查失败:', error.message);
+    console.error('[init] MCP 安装状态检查失败:', error.message);
   }
   next();
 }, createMcpRouter({
@@ -1011,6 +1011,34 @@ app.use(express.json({
   verify: (req, res, buf) => { req.rawBody = buf; }
 }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+// 未初始化时，public/ 目录里的「页面」也要引导到 /init。
+//
+// 为什么需要这一段：express.static 排在全局未初始化闸门**之前**，
+// 它会直接把 index.html 发出去 —— 用户看到一个所有接口都 503 的空壳首页，
+// 以为站点坏了，而不是被引导去完成初始化。
+// （存量站点升级时忘了补 .env 的 INITIALIZED=True，就会落进这个状态。）
+//
+// 只拦「页面」（根路径或以 .html 结尾），静态资源一律放行 ——
+// /init 页面自己也要用 css/js/图片，把它们拦掉，向导就变成一张白纸。
+//
+// 放行口径与全局闸门保持一致：已初始化 / 判不出来（DB 异常）→ 放行，
+// 「数据库当前不可用」或「确定未初始化」→ 引导到 /init。
+app.use(async (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (req.path !== '/' && !/\.html?$/i.test(req.path)) return next();
+  try {
+    const state = await initService.getInitState(db);
+    if (state.dbUnreachable) return res.redirect('/init');
+    if (state.installed || state.undetermined) return next();
+    return res.redirect('/init');
+  } catch (error) {
+    // 判定失败时不拦 —— 页面照样给出去，让用户看到真实的错误而不是被弹去 /init
+    console.error('[init] 页面闸门判定失败，放行:', error.message);
+    return next();
+  }
+});
+
 // 静态资源：dev / 直连时按扩展名分发缓存头
 // HTML → no-cache（每次 revalidate，确保改了能拿到）
 // JS/CSS/图片/字体 → 7d immutable（生产 Nginx 接管后这一层只兜底 dev）
@@ -1046,33 +1074,37 @@ app.use((req, res, next) => {
 app.use('/api/', checkApiRateLimit);
 
 // ============================================================================
-// 安装 / 初始化向导
+// Init 向导
 //
-// 「站点装没装好」的唯一权威判据是 users 表里有没有 is_admin=1 的账号。
-// 建表、灌默认数据都是幂等的，不能拿来当闸门 —— 否则「表建好了但管理员还没
-// 创建」的窗口期内闸门会重新打开，被人抢先建管理员接管站点。
+// 「站点初始化完没有」是**双保险**判定，两个条件必须同时成立：
+//   ① .env 里有 INITIALIZED=True（向导最后一步写进去的标志）
+//   ② users 表里确实有 is_admin=1 的账号
+// 单看①不行（.env 会被复制、被手工改），单看②也不行（建表、灌默认数据
+// 都是幂等的，「表建好了但管理员还没创建」的窗口期内闸门会重新打开，
+// 被人抢先建管理员接管站点）。
 //
 // 三道闸：
-//   1. 安装令牌 —— SETUP_TOKEN 环境变量，或服务器自动生成并写进
-//      data/setup-token.txt（只打在服务器控制台，不经任何 HTTP 响应回显）。
-//   2. 「确实未安装」判定 —— DB 异常时 fail-closed，拒绝写操作。
-//   3. 管理员创建成功后销毁令牌文件，所有安装接口永久关闭。
+//   1. Init 令牌 —— INIT_TOKEN 环境变量，或服务器自动生成并写进
+//      data/init-token.txt（只打在服务器控制台，不经任何 HTTP 响应回显）。
+//   2. 「确实未初始化」判定 —— DB 异常时 fail-closed，拒绝写操作。
+//   3. 管理员创建成功且 INITIALIZED=True 写入 .env 之后销毁令牌文件，
+//      所有 Init 接口永久关闭。
 // ============================================================================
 
-const SETUP_ERROR_MESSAGES = {
-  [setupPolicy.SETUP_ERROR_CODES.TOKEN_REQUIRED]: '安装令牌不可用，请检查服务器是否已生成 data/setup-token.txt',
-  [setupPolicy.SETUP_ERROR_CODES.TOKEN_INVALID]: '安装令牌不正确',
-  [setupPolicy.SETUP_ERROR_CODES.ALREADY_INSTALLED]: '站点已完成安装，安装接口已关闭',
-  [setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE]: '数据库当前不可用（连接失败或账号认证失败），请先在第 2 步完成数据库连接配置',
-  [setupPolicy.SETUP_ERROR_CODES.DB_CONFIG_INVALID]: '数据库连接配置不完整，请填写主机、用户名和数据库名',
-  [setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_INVALID]: '用户名需为 3~32 位字母、数字、下划线、点或连字符',
-  [setupPolicy.SETUP_ERROR_CODES.ADMIN_PASSWORD_WEAK]: '密码至少 8 位，且必须同时包含字母和数字',
-  [setupPolicy.SETUP_ERROR_CODES.ADMIN_EMAIL_INVALID]: '邮箱格式无效',
-  [setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN]: '用户名或邮箱已被占用'
+const INIT_ERROR_MESSAGES = {
+  [initPolicy.INIT_ERROR_CODES.TOKEN_REQUIRED]: 'Init 令牌不可用，请检查服务器是否已生成 data/init-token.txt',
+  [initPolicy.INIT_ERROR_CODES.TOKEN_INVALID]: 'Init 令牌不正确',
+  [initPolicy.INIT_ERROR_CODES.ALREADY_INSTALLED]: '站点已完成初始化，Init 接口已关闭',
+  [initPolicy.INIT_ERROR_CODES.DB_UNREACHABLE]: '数据库当前不可用（连接失败或账号认证失败），请先在第 2 步完成数据库连接配置',
+  [initPolicy.INIT_ERROR_CODES.DB_CONFIG_INVALID]: '数据库连接配置不完整，请填写主机、用户名和数据库名',
+  [initPolicy.INIT_ERROR_CODES.ADMIN_USERNAME_INVALID]: '用户名需为 3~32 位字母、数字、下划线、点或连字符',
+  [initPolicy.INIT_ERROR_CODES.ADMIN_PASSWORD_WEAK]: '密码至少 8 位，且必须同时包含字母和数字',
+  [initPolicy.INIT_ERROR_CODES.ADMIN_EMAIL_INVALID]: '邮箱格式无效',
+  [initPolicy.INIT_ERROR_CODES.ADMIN_USERNAME_TAKEN]: '用户名或邮箱已被占用'
 };
 
-function setupErrorMessage(code) {
-  return SETUP_ERROR_MESSAGES[code] || '安装流程出错';
+function initErrorMessage(code) {
+  return INIT_ERROR_MESSAGES[code] || 'Init 流程出错';
 }
 
 /**
@@ -1081,80 +1113,80 @@ function setupErrorMessage(code) {
  * 「数据库当前不可用」这句提示太笼统：实际操作者要分清的是
  * 「连不上 / 账号认证不过」还是「连上了但判定 SQL 跑不通」，只有原始错误能说明白。
  */
-function setupGateMessage(gate) {
+function initGateMessage(gate) {
   const state = (gate && gate.state) || {};
-  let base = setupErrorMessage(gate && gate.code);
+  let base = initErrorMessage(gate && gate.code);
 
   // 状态是「无法判定」且数据库并不是「不可用」→ 数据库其实是通的，
   // 失败的是那条判定 SQL（例如列缺失、SQL 写错）。
   // 这时让操作者去「第 2 步改连接配置」是带偏的 —— 改配置解决不了 SQL 报错。
-  if (gate && gate.code === setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE
+  if (gate && gate.code === initPolicy.INIT_ERROR_CODES.DB_UNREACHABLE
     && state.undetermined === true && state.dbUnreachable === false) {
-    base = '数据库已连接，但判定安装状态失败，已暂停安装写操作';
+    base = '数据库已连接，但判定初始化状态失败，已暂停 Init 写操作';
   }
 
   const detail = state.error ? state.error : '';
   return detail ? base + '（' + detail + '）' : base;
 }
 
-/** 提取请求里的安装令牌（优先 header，避免令牌出现在会被记录的 body 里） */
-function readSetupTokenFromRequest(req) {
-  const fromHeader = req.get('X-Setup-Token');
+/** 提取请求里的 Init 令牌（优先 header，避免令牌出现在会被记录的 body 里） */
+function readInitTokenFromRequest(req) {
+  const fromHeader = req.get('X-Init-Token');
   if (typeof fromHeader === 'string' && fromHeader.trim()) return fromHeader.trim();
-  if (req.body && typeof req.body.setupToken === 'string') return req.body.setupToken.trim();
+  if (req.body && typeof req.body.initToken === 'string') return req.body.initToken.trim();
   return '';
 }
 
 /**
- * 安装写操作的公共前置。
- * 顺序：先判「确实未安装」，再校验令牌 —— 已安装的站点不该再消耗令牌校验。
+ * Init 写操作的公共前置。
+ * 顺序：先判「确实未初始化」，再校验令牌 —— 已初始化的站点不该再消耗令牌校验。
  */
-async function requireSetupAccess(req, res, next) {
+async function requireInitAccess(req, res, next) {
   try {
-    const gate = await setupService.checkSetupWritable(db);
+    const gate = await initService.checkInitWritable(db);
     if (!gate.ok) {
-      return res.status(403).json({ error: gate.code, message: setupGateMessage(gate) });
+      return res.status(403).json({ error: gate.code, message: initGateMessage(gate) });
     }
-    const tokenResult = setupService.verifySetupToken(readSetupTokenFromRequest(req));
+    const tokenResult = initService.verifyInitToken(readInitTokenFromRequest(req));
     if (!tokenResult.ok) {
-      return res.status(403).json({ error: tokenResult.code, message: setupErrorMessage(tokenResult.code) });
+      return res.status(403).json({ error: tokenResult.code, message: initErrorMessage(tokenResult.code) });
     }
     next();
   } catch (error) {
-    console.error('[setup] 安装闸门异常:', error.message);
-    res.status(500).json({ error: 'SETUP_GATE_ERROR', message: '安装闸门异常: ' + error.message });
+    console.error('[init] Init 闸门异常:', error.message);
+    res.status(500).json({ error: 'INIT_GATE_ERROR', message: 'Init 闸门异常: ' + error.message });
   }
 }
 
 /**
  * 「改数据库配置」类操作的前置。
  *
- * 与 requireSetupAccess 的区别：数据库连不上时也放行 —— 数据库坏了恰恰是
+ * 与 requireInitAccess 的区别：数据库连不上时也放行 —— 数据库坏了恰恰是
  * 操作者需要用向导改配置来修的时刻，一刀切 fail-closed 会让向导在唯一该
  * 生效的场景里彻底没用。
  */
-async function requireSetupConfig(req, res, next) {
+async function requireInitConfig(req, res, next) {
   try {
-    const gate = await setupService.checkSetupConfigWritable(db);
+    const gate = await initService.checkInitConfigWritable(db);
     if (!gate.ok) {
-      return res.status(403).json({ error: gate.code, message: setupGateMessage(gate) });
+      return res.status(403).json({ error: gate.code, message: initGateMessage(gate) });
     }
-    const tokenResult = setupService.verifySetupToken(readSetupTokenFromRequest(req));
+    const tokenResult = initService.verifyInitToken(readInitTokenFromRequest(req));
     if (!tokenResult.ok) {
-      return res.status(403).json({ error: tokenResult.code, message: setupErrorMessage(tokenResult.code) });
+      return res.status(403).json({ error: tokenResult.code, message: initErrorMessage(tokenResult.code) });
     }
     next();
   } catch (error) {
-    console.error('[setup] 配置闸门异常:', error.message);
-    res.status(500).json({ error: 'SETUP_GATE_ERROR', message: '安装闸门异常: ' + error.message });
+    console.error('[init] 配置闸门异常:', error.message);
+    res.status(500).json({ error: 'INIT_GATE_ERROR', message: 'Init 闸门异常: ' + error.message });
   }
 }
 
 /** 只校验令牌（用于只读的状态查询） */
-function requireSetupToken(req, res, next) {
-  const tokenResult = setupService.verifySetupToken(readSetupTokenFromRequest(req));
+function requireInitToken(req, res, next) {
+  const tokenResult = initService.verifyInitToken(readInitTokenFromRequest(req));
   if (!tokenResult.ok) {
-    return res.status(403).json({ error: tokenResult.code, message: setupErrorMessage(tokenResult.code) });
+    return res.status(403).json({ error: tokenResult.code, message: initErrorMessage(tokenResult.code) });
   }
   next();
 }
@@ -1175,11 +1207,14 @@ function sanitizeDbConfig(config) {
 }
 
 /** 组装给界面的安装状态 */
-async function buildSetupPayload(state) {
-  const schema = await setupService.describeSchema(db);
+async function buildInitPayload(state) {
+  const schema = await initService.describeSchema(db);
   const envState = envFile.readEnvFile();
   return {
     installed: state.installed,
+    // .env 里 INITIALIZED 标志的状态 —— 与 adminCount 一起构成判定链，
+    // 界面要能分别显示，否则运维看到「未初始化」却不知道该补哪一头
+    initializedFlag: state.initializedFlag === true,
     dbReachable: state.dbReachable,
     undetermined: state.undetermined,
     dbUnreachable: state.dbUnreachable === true,
@@ -1200,49 +1235,49 @@ async function buildSetupPayload(state) {
   };
 }
 
-// 安装向导页面
-app.get('/setup', async (req, res) => {
+// Init 向导页面
+app.get('/init', async (req, res) => {
   try {
-    const state = await setupService.getSetupState(db, { force: true });
+    const state = await initService.getInitState(db, { force: true });
     if (state.installed) {
       return res.redirect(req.session && req.session.isAdmin ? '/admin-overview' : '/login');
     }
   } catch (error) {
     // 状态查不出来时仍然展示向导 —— 由页面的「测试连接」环节兜底
-    console.error('[setup] 读取安装状态失败:', error.message);
+    console.error('[init] 读取安装状态失败:', error.message);
   }
-  res.sendFile(path.join(__dirname, 'public', 'setup.html'));
+  res.sendFile(path.join(__dirname, 'public', 'init.html'));
 });
 
-// 校验安装令牌 —— 令牌正确才返回安装状态
-app.post('/api/setup/verify-token', async (req, res) => {
+// 校验 Init 令牌 —— 令牌正确才返回初始化状态
+app.post('/api/init/verify-token', async (req, res) => {
   try {
-    const tokenResult = setupService.verifySetupToken(readSetupTokenFromRequest(req));
+    const tokenResult = initService.verifyInitToken(readInitTokenFromRequest(req));
     if (!tokenResult.ok) {
-      return res.status(403).json({ error: tokenResult.code, message: setupErrorMessage(tokenResult.code) });
+      return res.status(403).json({ error: tokenResult.code, message: initErrorMessage(tokenResult.code) });
     }
-    const state = await setupService.getSetupState(db, { force: true });
+    const state = await initService.getInitState(db, { force: true });
     if (state.installed) {
       return res.status(403).json({
-        error: setupPolicy.SETUP_ERROR_CODES.ALREADY_INSTALLED,
-        message: setupErrorMessage(setupPolicy.SETUP_ERROR_CODES.ALREADY_INSTALLED)
+        error: initPolicy.INIT_ERROR_CODES.ALREADY_INSTALLED,
+        message: initErrorMessage(initPolicy.INIT_ERROR_CODES.ALREADY_INSTALLED)
       });
     }
-    res.json({ success: true, state: await buildSetupPayload(state) });
+    res.json({ success: true, state: await buildInitPayload(state) });
   } catch (error) {
-    console.error('[setup] 校验令牌失败:', error.message);
-    res.status(500).json({ error: 'SETUP_VERIFY_FAILED', message: error.message });
+    console.error('[init] 校验令牌失败:', error.message);
+    res.status(500).json({ error: 'INIT_VERIFY_FAILED', message: error.message });
   }
 });
 
 // 安装状态（需要令牌）
-app.get('/api/setup/status', requireSetupToken, async (req, res) => {
+app.get('/api/init/status', requireInitToken, async (req, res) => {
   try {
-    const state = await setupService.getSetupState(db, { force: true });
-    res.json({ success: true, state: await buildSetupPayload(state) });
+    const state = await initService.getInitState(db, { force: true });
+    res.json({ success: true, state: await buildInitPayload(state) });
   } catch (error) {
-    console.error('[setup] 读取状态失败:', error.message);
-    res.status(500).json({ error: 'SETUP_STATUS_FAILED', message: error.message });
+    console.error('[init] 读取状态失败:', error.message);
+    res.status(500).json({ error: 'INIT_STATUS_FAILED', message: error.message });
   }
 });
 
@@ -1251,10 +1286,10 @@ app.get('/api/setup/status', requireSetupToken, async (req, res) => {
 // 用服务器级连接而不是带库名的连接：全新安装时目标库**还不存在**，
 // 带库名连接会直接回「未知数据库」—— 那是预期状态，不是配置错误。
 // 用户还没走到建库那一步就被告知「连不上」，流程就在这里断了。
-app.post('/api/setup/test-db', requireSetupConfig, async (req, res) => {
-  const validated = setupPolicy.validateDbConfig(req.body);
+app.post('/api/init/test-db', requireInitConfig, async (req, res) => {
+  const validated = initPolicy.validateDbConfig(req.body);
   if (validated.error) {
-    return res.status(400).json({ error: validated.error, message: setupErrorMessage(validated.error) });
+    return res.status(400).json({ error: validated.error, message: initErrorMessage(validated.error) });
   }
   const mysqlConfig = validated.config.mysql;
   if (!mysqlConfig.password) {
@@ -1277,21 +1312,21 @@ app.post('/api/setup/test-db', requireSetupConfig, async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
-      error: setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE,
+      error: initPolicy.INIT_ERROR_CODES.DB_UNREACHABLE,
       message: '连接失败: ' + error.message
     });
   }
 });
 
-// 保存数据库连接配置 —— 写进 .env（.env 是安装向导的产物）
+// 保存数据库连接配置 —— 写进 .env（.env 是 Init 向导的产物）
 //
 // 这里**没有**「env 已接管就不让改」的锁：向导的目标本来就是 .env。
 // 旧逻辑的 DB_CONFIG_ENV_LOCKED 是为了防止「界面改了不生效」，
 // 现在界面改的就是 .env 本体，锁反而会让向导在修复场景下无路可走。
-app.post('/api/setup/save-db-config', requireSetupConfig, async (req, res) => {
-  const validated = setupPolicy.validateDbConfig(req.body);
+app.post('/api/init/save-db-config', requireInitConfig, async (req, res) => {
+  const validated = initPolicy.validateDbConfig(req.body);
   if (validated.error) {
-    return res.status(400).json({ error: validated.error, message: setupErrorMessage(validated.error) });
+    return res.status(400).json({ error: validated.error, message: initErrorMessage(validated.error) });
   }
 
   const mysqlConfig = validated.config.mysql;
@@ -1305,7 +1340,7 @@ app.post('/api/setup/save-db-config', requireSetupConfig, async (req, res) => {
 
   const saved = envConfigService.saveDbConfigToEnv({ mysql: mysqlConfig });
   if (!saved.ok) {
-    console.error('[setup] 写入 .env 失败:', saved.error);
+    console.error('[init] 写入 .env 失败:', saved.error);
     return res.status(500).json({ error: 'ENV_WRITE_FAILED', message: saved.error });
   }
 
@@ -1315,15 +1350,15 @@ app.post('/api/setup/save-db-config', requireSetupConfig, async (req, res) => {
   } catch (error) {
     // 新配置连不上 → 回滚 .env 与进程 env，保留旧连接池，不能把站点带挂
     const rolled = envConfigService.rollbackDbConfigToEnv(saved);
-    console.error('[setup] 保存数据库配置失败:', error.message);
+    console.error('[init] 保存数据库配置失败:', error.message);
     return res.status(400).json({
-      error: setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE,
+      error: initPolicy.INIT_ERROR_CODES.DB_UNREACHABLE,
       message: '保存失败，新配置无法连接数据库（已保留原配置）: ' + error.message
         + (rolled.ok ? '' : '；并且 .env 回滚也失败了，请手工检查 ' + envFile.ENV_FILE)
     });
   }
 
-  setupService.invalidateState();
+  initService.invalidateState();
   res.json({
     success: true,
     message: '数据库配置已写入 .env 并生效',
@@ -1332,48 +1367,48 @@ app.post('/api/setup/save-db-config', requireSetupConfig, async (req, res) => {
     // 会话密钥与 sessionPool 在启动时绑定 —— 连接参数当场生效，
     // 但要彻底对齐（含已登录会话）仍需重启。
     restartRequired: true,
-    state: await buildSetupPayload(await setupService.getSetupState(db, { force: true }))
+    state: await buildInitPayload(await initService.getInitState(db, { force: true }))
   });
 });
 
 // 初始化数据库 —— 建表 + 灌默认数据（全部幂等，可重复执行）
-app.post('/api/setup/init-db', requireSetupAccess, async (req, res) => {
+app.post('/api/init/init-db', requireInitAccess, async (req, res) => {
   try {
     await db.createTablesIfNotExist();
     await db.initDefaultData();
-    setupService.invalidateState();
-    const state = await setupService.getSetupState(db, { force: true });
+    initService.invalidateState();
+    const state = await initService.getInitState(db, { force: true });
     const integrity = await db.verifyDataIntegrity();
     res.json({
       success: true,
       message: '数据库初始化完成',
-      state: await buildSetupPayload(state),
+      state: await buildInitPayload(state),
       tables: integrity.results
     });
   } catch (error) {
-    console.error('[setup] 初始化数据库失败:', error.message);
-    res.status(500).json({ error: 'SETUP_INIT_FAILED', message: '初始化失败: ' + error.message });
+    console.error('[init] 初始化数据库失败:', error.message);
+    res.status(500).json({ error: 'INIT_INIT_FAILED', message: '初始化失败: ' + error.message });
   }
 });
 
 // 创建首个管理员 —— 成功后销毁令牌，安装接口永久关闭
-app.post('/api/setup/create-admin', requireSetupAccess, async (req, res) => {
-  const validated = setupPolicy.validateAdminInput(req.body);
+app.post('/api/init/create-admin', requireInitAccess, async (req, res) => {
+  const validated = initPolicy.validateAdminInput(req.body);
   if (validated.error) {
-    return res.status(400).json({ error: validated.error, message: setupErrorMessage(validated.error) });
+    return res.status(400).json({ error: validated.error, message: initErrorMessage(validated.error) });
   }
   const { username, password, email } = validated.admin;
 
   try {
     if (await db.getUserByUsername(username)) {
       return res.status(409).json({
-        error: setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+        error: initPolicy.INIT_ERROR_CODES.ADMIN_USERNAME_TAKEN,
         message: '用户名已被占用'
       });
     }
     if (email && await db.getUserByEmail(email)) {
       return res.status(409).json({
-        error: setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+        error: initPolicy.INIT_ERROR_CODES.ADMIN_USERNAME_TAKEN,
         message: '邮箱已被注册'
       });
     }
@@ -1391,42 +1426,44 @@ app.post('/api/setup/create-admin', requireSetupAccess, async (req, res) => {
     });
 
     // 令牌销毁 + 状态缓存失效 —— 之后所有安装接口都返回 403
-    setupService.consumeSetupToken();
+    initService.consumeInitToken();
     res.json({ success: true, message: '管理员创建成功', userId });
   } catch (error) {
-    console.error('[setup] 创建管理员失败:', error.message);
-    res.status(500).json({ error: 'SETUP_ADMIN_FAILED', message: '创建失败: ' + error.message });
+    console.error('[init] 创建管理员失败:', error.message);
+    res.status(500).json({ error: 'INIT_ADMIN_FAILED', message: '创建失败: ' + error.message });
   }
 });
 
 /**
- * 一次性完成安装 —— 建库 → 写 .env → 建表 → 建管理员 → 销毁令牌。
+ * 一次性完成初始化 —— 建库 → 写 .env → 建表 → 建管理员 → 写 INITIALIZED 标志 → 销毁令牌。
  *
  * 为什么做成一个接口而不是分三步：
  *   1. 分步的话，前一步成功、后一步失败，站点就卡在「配置写了但没装完」的
- *      中间态。而安装状态的判定只看「有没有管理员」，中间态会被判成「未安装」，
- *      闸门重新打开 —— 等于留了一个能被抢先建管理员接管站点的窗口期。
+ *      中间态。而初始化状态的判定是双保险（.env 标志 + 管理员账号），
+ *      中间态会被判成「未初始化」，闸门重新打开 —— 等于留了一个能被抢先
+ *      建管理员接管站点的窗口期。
  *   2. 一次性提交能保证「要么装完，要么只差最后一步」，不产生半成品状态。
  *
  * 中途失败可以重试（幂等）：
- *   - .env 已写但表没建 → countAdmins 抛「表不存在」→ 判定「确定未安装」
+ *   - .env 已写但表没建 → countAdmins 抛「表不存在」→ 判定「确定未初始化」
  *     → 闸门放行 → 可以直接重试本接口；
- *   - 管理员用户名冲突 → 管理员行数仍为 0 → 同样放行，换个用户名重试即可。
+ *   - 管理员已建但 INITIALIZED 标志没写成功 → 重跑时用户名撞上一个已是
+ *     管理员的账号会被跳过（幂等），直接把标志补上。
  *
  * 失败时**不回滚 .env**（连不上除外）：连接参数已经填对了，回滚只会让用户
- * 白填一遍；留着它，站点下次启动就会把表建好。只有「连不上」这种配置本身
- * 就是错的场景才回滚 —— 那时候留着它等于让站点下次启动就带着坏配置。
+ * 白填一遍。只有「连不上」这种配置本身就是错的场景才回滚 ——
+ * 那时候留着它等于让站点下次启动就带着坏配置。
  */
-app.post('/api/setup/complete-install', requireSetupConfig, async (req, res) => {
+app.post('/api/init/complete-install', requireInitConfig, async (req, res) => {
   const body = req.body && typeof req.body === 'object' ? req.body : {};
 
-  const dbValidated = setupPolicy.validateDbConfig(body.db);
+  const dbValidated = initPolicy.validateDbConfig(body.db);
   if (dbValidated.error) {
-    return res.status(400).json({ error: dbValidated.error, message: setupErrorMessage(dbValidated.error) });
+    return res.status(400).json({ error: dbValidated.error, message: initErrorMessage(dbValidated.error) });
   }
-  const adminValidated = setupPolicy.validateAdminInput(body.admin);
+  const adminValidated = initPolicy.validateAdminInput(body.admin);
   if (adminValidated.error) {
-    return res.status(400).json({ error: adminValidated.error, message: setupErrorMessage(adminValidated.error) });
+    return res.status(400).json({ error: adminValidated.error, message: initErrorMessage(adminValidated.error) });
   }
 
   const mysqlConfig = dbValidated.config.mysql;
@@ -1445,7 +1482,7 @@ app.post('/api/setup/complete-install', requireSetupConfig, async (req, res) => 
     serverInfo = await db.testMySQLServerConnection(mysqlConfig);
   } catch (error) {
     return res.status(400).json({
-      error: setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE,
+      error: initPolicy.INIT_ERROR_CODES.DB_UNREACHABLE,
       message: '无法连接数据库服务器: ' + error.message
     });
   }
@@ -1456,9 +1493,9 @@ app.post('/api/setup/complete-install', requireSetupConfig, async (req, res) => 
     const created = await db.createDatabaseIfNotExists(mysqlConfig, mysqlConfig.database);
     databaseExisted = created.existed;
   } catch (error) {
-    console.error('[setup] 创建数据库失败:', error.message);
+    console.error('[init] 创建数据库失败:', error.message);
     return res.status(400).json({
-      error: 'SETUP_CREATE_DB_FAILED',
+      error: 'INIT_CREATE_DB_FAILED',
       message: '创建数据库失败: ' + error.message
         + '（若提示权限不足，请用管理员账号在 MySQL 上执行 CREATE DATABASE 并把权限授予该账号）'
     });
@@ -1467,7 +1504,7 @@ app.post('/api/setup/complete-install', requireSetupConfig, async (req, res) => 
   // ③ 写 .env —— 数据库连接参数从此只有这一个来源
   const saved = envConfigService.saveDbConfigToEnv({ mysql: mysqlConfig });
   if (!saved.ok) {
-    console.error('[setup] 写入 .env 失败:', saved.error);
+    console.error('[init] 写入 .env 失败:', saved.error);
     return res.status(500).json({ error: 'ENV_WRITE_FAILED', message: saved.error });
   }
 
@@ -1477,58 +1514,98 @@ app.post('/api/setup/complete-install', requireSetupConfig, async (req, res) => 
     await db.createTablesIfNotExist();
     await db.initDefaultData();
   } catch (error) {
-    if (setupPolicy.isConnectionError(error) || setupPolicy.isAuthError(error)) {
+    if (initPolicy.isConnectionError(error) || initPolicy.isAuthError(error)) {
       // 配置本身就是错的（连不上 / 认证不过）→ 必须回滚，
       // 否则站点下次启动就带着这份坏配置
       const rolled = envConfigService.rollbackDbConfigToEnv(saved);
-      console.error('[setup] 切换数据库连接失败，已回滚 .env:', error.message);
+      console.error('[init] 切换数据库连接失败，已回滚 .env:', error.message);
       return res.status(400).json({
-        error: setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE,
+        error: initPolicy.INIT_ERROR_CODES.DB_UNREACHABLE,
         message: '无法连接新数据库（已保留原配置）: ' + error.message
           + (rolled.ok ? '' : '；并且 .env 回滚也失败了，请手工检查 ' + envFile.ENV_FILE)
       });
     }
     // 表结构 / 权限问题 —— 配置是对的，留着 .env，修正后重试本接口即可
-    console.error('[setup] 初始化表结构失败:', error.message);
+    console.error('[init] 初始化表结构失败:', error.message);
     return res.status(400).json({
-      error: 'SETUP_INIT_FAILED',
+      error: 'INIT_INIT_FAILED',
       message: '初始化表结构失败（连接参数已写入 .env，修正后可直接重试）: ' + error.message
     });
   }
 
   // ⑤ 创建首个管理员
+  //
+  // 幂等：用户名撞上一个**已经是管理员**的账号时，不报错、不重复创建，
+  // 直接往下走写标志。这是「上次跑到最后一步没写成」的恢复路径 ——
+  // 标志写失败时管理员已经建好了，重跑必须能收敛到同一个结果，
+  // 否则重跑会撞上「用户名已被占用」而卡死。
   try {
-    if (await db.getUserByUsername(username)) {
-      return res.status(409).json({
-        error: setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN,
-        message: '用户名已被占用，请换一个'
+    const existingUser = await db.getUserByUsername(username);
+    if (existingUser) {
+      if (!existingUser.isAdmin) {
+        return res.status(409).json({
+          error: initPolicy.INIT_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+          message: '用户名已被占用，请换一个'
+        });
+      }
+      console.log('[init] 该用户名已是管理员账号，跳过创建（幂等重跑）');
+    } else {
+      // 恢复路径的保护：库里已经有管理员了，说明站点其实已经上线过，
+      // 现在只是缺 .env 里的标志。这时**只允许认领已有管理员**，
+      // 不允许借 Init 接口再造一个新管理员 ——
+      // 否则任何拿到令牌的人都能往一个运行中的站点里塞一个管理员账号，
+      // 与「判定用管理员行数而不是表是否存在」同一条原则（见 lib/init-policy.js）。
+      const adminCount = await db.countAdmins();
+      if (adminCount > 0) {
+        return res.status(409).json({
+          error: initPolicy.INIT_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+          message: '站点里已经有管理员账号了，不能再新建管理员。'
+            + '请填你现有的管理员用户名（会跳过创建、只补 INITIALIZED 标志），'
+            + '或直接在 .env 里补一行 INITIALIZED=True 后重启服务。'
+        });
+      }
+      if (email && await db.getUserByEmail(email)) {
+        return res.status(409).json({
+          error: initPolicy.INIT_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+          message: '邮箱已被注册，请换一个'
+        });
+      }
+      await db.addUser({
+        username,
+        password,
+        email,
+        phone: '',
+        realName: '系统管理员',
+        company: '',
+        isAdmin: true,
+        // 管理员是本机安装者本人创建的，不走邮箱验证流程
+        emailVerified: 1
       });
     }
-    if (email && await db.getUserByEmail(email)) {
-      return res.status(409).json({
-        error: setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN,
-        message: '邮箱已被注册，请换一个'
-      });
-    }
-    await db.addUser({
-      username,
-      password,
-      email,
-      phone: '',
-      realName: '系统管理员',
-      company: '',
-      isAdmin: true,
-      // 管理员是本机安装者本人创建的，不走邮箱验证流程
-      emailVerified: 1
-    });
   } catch (error) {
-    console.error('[setup] 创建管理员失败:', error.message);
-    return res.status(500).json({ error: 'SETUP_ADMIN_FAILED', message: '创建管理员失败: ' + error.message });
+    console.error('[init] 创建管理员失败:', error.message);
+    return res.status(500).json({ error: 'INIT_ADMIN_FAILED', message: '创建管理员失败: ' + error.message });
   }
 
-  // ⑥ 令牌销毁 —— 之后所有安装接口永久返回 403
-  setupService.consumeSetupToken();
-  setupService.invalidateState();
+  // ⑥ 写 INITIALIZED=True 进 .env —— 「初始化完成」的标志
+  //
+  // 放在最后一步：管理员真的建好了，才算初始化完成。
+  // 写失败**不回滚管理员** —— 回滚等于把已经建好的账号抹掉，
+  // 那比标志缺失严重得多（标志可以用向导补写，账号没了要重来）。
+  // 令牌也**不**销毁：让运维能原样再跑一次，走幂等路径补上标志。
+  const flagged = envConfigService.saveDbConfigToEnv({ mysql: mysqlConfig, initialized: true });
+  if (!flagged.ok) {
+    console.error('[init] 写入 INITIALIZED 标志失败:', flagged.error);
+    return res.status(500).json({
+      error: 'ENV_WRITE_FAILED',
+      message: '管理员已创建，但写入 .env 的 INITIALIZED 标志失败: ' + flagged.error
+        + '。请在 .env 里手工补一行 INITIALIZED=True 后重启服务。'
+    });
+  }
+
+  // ⑦ 令牌销毁 —— 之后所有 Init 接口永久返回 403
+  initService.consumeInitToken();
+  initService.invalidateState();
 
   res.json({
     success: true,
@@ -1538,40 +1615,40 @@ app.post('/api/setup/complete-install', requireSetupConfig, async (req, res) => 
     serverVersion: serverInfo ? serverInfo.version : null,
     // 会话签名密钥与 session 存储池在启动时绑定 —— 重启才彻底对齐
     restartRequired: true,
-    state: await buildSetupPayload(await setupService.getSetupState(db, { force: true }))
+    state: await buildInitPayload(await initService.getInitState(db, { force: true }))
   });
 });
 
 /**
- * 未安装闸门 —— 站点还没装好时，除安装相关路径外一律引导去 /setup。
+ * 未初始化闸门 —— 站点还没初始化时，除 Init 相关路径外一律引导去 /init。
  *
  * fail-open 还是 fail-closed：
- *   - 确定未安装 → 拦截（这正是要拦的情况）
- *   - 已安装     → 放行
+ *   - 确定未初始化 → 拦截（这正是要拦的情况）
+ *   - 已初始化     → 放行
  *   - 无法判定（DB 异常）→ 放行。DB 挂了站点本来也用不了，如果这里
  *     fail-closed，DB 抖一下整个站点跟着挂，可运维性太差。
- *     安装**写操作**另有 requireSetupAccess 闸门，那里的 fail-closed 才是关键。
+ *     安装**写操作**另有 requireInitAccess 闸门，那里的 fail-closed 才是关键。
  *
  * 「数据库连不上」单独处理：这时站点所有依赖数据库的功能都不可用，
- * 与其让每个接口各自抛 500，不如统一返回 503 并指向 /setup ——
+ * 与其让每个接口各自抛 500，不如统一返回 503 并指向 /init ——
  * 向导就是为「把数据库连回去」准备的。
  */
 app.use(async (req, res, next) => {
   try {
-    const state = await setupService.getSetupState(db);
+    const state = await initService.getInitState(db);
     if (state.dbUnreachable) {
       if (req.path.startsWith('/api/')) {
-        return res.status(503).json({ error: '数据库当前不可用', setupUrl: '/setup' });
+        return res.status(503).json({ error: '数据库当前不可用', initUrl: '/init' });
       }
-      return res.redirect('/setup');
+      return res.redirect('/init');
     }
     if (state.installed || state.undetermined) return next();
     if (req.path.startsWith('/api/')) {
-      return res.status(503).json({ error: '系统尚未完成初始化', setupUrl: '/setup' });
+      return res.status(503).json({ error: '系统尚未完成初始化', initUrl: '/init' });
     }
-    return res.redirect('/setup');
+    return res.redirect('/init');
   } catch (error) {
-    console.error('[setup] 安装状态检查失败:', error.message);
+    console.error('[init] 安装状态检查失败:', error.message);
     return next();
   }
 });
@@ -5876,7 +5953,7 @@ app.get('/api/db-config', requireAuth, (req, res) => {
 
 // 更新数据库配置 —— 写进 .env
 //
-// .env 是数据库连接参数的唯一事实来源（安装向导生成的，0600 权限）。
+// .env 是数据库连接参数的唯一事实来源（Init 向导生成的，0600 权限）。
 // 旧逻辑在 source==='env' 时直接 409 拒绝，那是因为当时界面写的是
 // data/db-config.json、会被 env 静默吃掉；现在界面写的就是 .env 本体，
 // 锁只会让管理员改不动。
@@ -6694,67 +6771,89 @@ app.use((err, req, res, next) => {
 // 启动服务器
 async function startServer() {
   try {
-    // 旧部署遗留的 data/db-config.json → 并入 .env 后删除。
+    // ── 启动时不做任何初始化 ────────────────────────────────────────
     //
-    // 数据库连接参数现在只有 .env 一个来源。那份 json 是明文密码文件
-    // （权限 0644，比 .env 的 0600 差一档），留着等于把生产凭据多存一份。
-    // 必须在 initDatabase() **之前**做 —— 迁移会写 .env 并同步到进程 env，
-    // 之后 initDatabase() 就能用上迁移过来的参数。
-    try {
-      const migration = envConfigService.migrateLegacyDbConfig();
-      if (migration.migrated) {
-        console.log('[startup] 遗留的 data/db-config.json 已并入 .env，原文件已删除');
-      } else if (migration.removed) {
-        console.log('[startup] 过期的 data/db-config.json 已删除（.env 是唯一配置来源）');
-      } else if (migration.error) {
-        console.warn('[startup] 遗留数据库配置文件处理失败:', migration.error);
-      }
-    } catch (migrationError) {
-      console.warn('[startup] 遗留数据库配置文件处理失败:', migrationError.message);
-    }
+    // 站点启动只做两件事：把数据库连上、判断「初始化过没有」。
+    //
+    // 刻意不做的事：
+    //   - 不接管旧部署遗留的 data/db-config.json —— 数据库参数只有 .env
+    //     一个来源，要不要搬、怎么搬，由运维自己决定（文件里是明文密码，
+    //     搬完请删掉原文件）。
+    //   - 不建表、不灌种子 —— 全新站点的表结构、默认数据、管理员账号，
+    //     全部由 /init 向导一次做完（原子、可重试）。
+    //
+    // 唯一保留的是**已初始化站点的 schema 维护**（幂等补列 + 补种子）：
+    // 那是升级路径，不是初始化。判据是双保险 —— .env 里的 INITIALIZED=True
+    // 且 users 表里确实有管理员。
 
-    // 初始化数据库。
+    // ① 连数据库（只连，不碰表）
     //
     // 关键：**不能**因为数据库连不上就退出进程。
-    // 「数据库连不上」恰恰是最需要安装向导的场景 —— 向导要是跟着进程一起没了，
+    // 「数据库连不上」恰恰是最需要 Init 向导的场景 —— 向导要是跟着进程一起没了，
     // 操作者就只能去服务器上手改 .env 再重启，界面化初始化就失去了意义。
-    // 这里降级启动：/setup 与 /api/setup/* 照常可用，
-    // 其余依赖数据库的接口由安装闸门统一返回 503 并指向 /setup。
+    // 这里降级启动：/init 与 /api/init/* 照常可用，
+    // 其余依赖数据库的接口由 Init 闸门统一返回 503 并指向 /init。
     let databaseReady = true;
     try {
-      await db.initDatabase();
-      console.log('Database initialized');
+      await db.connectDatabase();
     } catch (error) {
       databaseReady = false;
       console.error('');
-      console.error('  ✖ 数据库初始化失败:', error.message);
-      console.error('    服务以降级模式启动：/setup 安装向导可用，其余依赖数据库的接口返回 503。');
-      console.error('    请打开 /setup 按提示修正数据库连接配置。');
+      console.error('  ✖ 数据库连接失败:', error.message);
+      console.error('    服务以降级模式启动：/init 向导可用，其余依赖数据库的接口返回 503。');
+      console.error('    请打开 /init 按提示修正数据库连接配置。');
       console.error('');
     }
 
-    // 安装闸门：站点还没装好（没有管理员账号）时，生成安装令牌并打进控制台
+    // ② 判定初始化状态（.env 的 INITIALIZED 标志 + users 表的管理员账号）
+    let initState = null;
     try {
-      const setupState = await setupService.getSetupState(db, { force: true });
-      if (!setupState.installed && (!setupState.undetermined || setupState.dbUnreachable)) {
+      initState = await initService.getInitState(db, { force: true });
+    } catch (initError) {
+      console.error('[init] 初始化状态检查失败:', initError.message);
+    }
+
+    // ③ 已初始化的站点 → 做 schema 维护（幂等补列 + 补种子）
+    if (initState && initState.installed) {
+      try {
+        await db.createTablesIfNotExist();
+        await db.initDefaultData();
+        console.log('Database initialized');
+      } catch (error) {
+        // 表结构维护失败不影响进程 —— 站点照常跑，缺的东西下次重启再补
+        console.error('[startup] 表结构维护失败:', error.message);
+      }
+    }
+
+    // ④ 令牌与告警
+    if (initState) {
+      if (!initState.installed && (!initState.undetermined || initState.dbUnreachable)) {
         // 两种情况都要令牌：
-        //   - 确定未安装（全新部署）
+        //   - 确定未初始化（全新部署）
         //   - 数据库连不上（站点是坏的，需要向导改配置来救）
-        // 后者此时无法判断站点是否已安装，但令牌只打进控制台、
-        // 数据库恢复后若站点已安装，闸门会立刻把安装接口关掉。
-        setupService.ensureSetupToken(
-          setupState.dbUnreachable ? { reason: 'db-unreachable' } : undefined
+        // 后者此时无法判断站点初始化过没有，但令牌只打进控制台、
+        // 数据库恢复后若站点已完成初始化，闸门会立刻把 Init 接口关掉。
+        initService.ensureInitToken(
+          initState.dbUnreachable ? { reason: 'db-unreachable' } : undefined
         );
-      } else if (setupState.installed && process.env.SETUP_TOKEN) {
-        // 站点已装好，但 .env 里还留着安装令牌 —— 进程环境变量删不掉，
-        // 这个令牌会一直有效，安装接口也就一直开着。必须提醒运维处理。
+      } else if (initState.installed && initService.readEnvToken()) {
+        // 站点已初始化，但 .env 里还留着 Init 令牌 —— 进程环境变量删不掉，
+        // 这个令牌会一直有效，Init 接口也就一直开着。必须提醒运维处理。
         console.warn('');
-        console.warn('  ⚠ 站点已完成安装，但 .env 里仍设置了 SETUP_TOKEN。');
-        console.warn('    安装接口将持续可用。请从 .env 中删除 SETUP_TOKEN 并重启服务。');
+        console.warn('  ⚠ 站点已完成初始化，但 .env 里仍设置了 Init 令牌（INIT_TOKEN / 旧名 SETUP_TOKEN）。');
+        console.warn('    Init 接口将持续可用。请从 .env 中删除该行后重启服务。');
         console.warn('');
       }
-    } catch (setupError) {
-      console.error('[setup] 安装状态检查失败:', setupError.message);
+
+      // 有管理员、但 .env 里没有 INITIALIZED=True —— 站点会被判定成「未初始化」：
+      // 全站跳 /init、Init 接口打开。必须明确告诉运维怎么修。
+      if (initState.adminCount > 0 && !initState.initializedFlag && !initState.undetermined) {
+        console.warn('');
+        console.warn('  ⚠ 数据库里已有管理员账号，但 .env 里没有 INITIALIZED=True。');
+        console.warn('    站点会被判定为「未初始化」，全站将跳转到 /init，Init 接口也会打开。');
+        console.warn('    请在 .env 里补一行 INITIALIZED=True 后重启服务。');
+        console.warn('');
+      }
     }
 
     // trust proxy: loopback — 仅信任来自 127.0.0.1 的 X-Forwarded-For（nginx 反代场景）
@@ -6779,7 +6878,7 @@ async function startServer() {
     const server = app.listen(HTTP_PORT, '127.0.0.1', () => {
       console.log(`HTTP Server running at http://127.0.0.1:${HTTP_PORT} (behind nginx)`);
       if (!databaseReady) {
-        console.log('  注意：数据库当前不可用，请打开 /setup 修正连接配置。');
+        console.log('  注意：数据库当前不可用，请打开 /init 修正连接配置。');
       }
     });
     // 显式处理 listen 错误(EADDRINUSE 等不会进入 try/catch,会触发 'error' 事件)

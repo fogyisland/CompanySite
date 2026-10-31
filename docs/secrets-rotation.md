@@ -7,11 +7,11 @@
 
 ## 概述
 
-> ⚠️ **`.env` 现在是安装向导的产物**，仓库里只留 `.env.example`（模板）。
-> 首次部署时由 `/setup` 向导生成 `.env`（权限 0600），里面的 `SESSION_SECRET` /
+> ⚠️ **`.env` 现在是 Init 向导的产物**，仓库里只留 `.env.example`（模板）。
+> 首次部署时由 `/init` 向导生成 `.env`（权限 0600），里面的 `SESSION_SECRET` /
 > `CRON_TOKEN` 是**机器随机生成**的；`DB_*` 是你在向导里填的。
 > 后续也可以在后台「系统设置 → 数据库」里改 —— 那条路径写的是同一个 `.env`。
-> 详见 [README · 安装向导](README.md#安装向导首次部署用)。
+> 详见 [README · Init 向导](README.md#init-向导首次部署用)。
 
 服务器依赖以下密钥（详见 `.env.example`）：
 
@@ -31,7 +31,7 @@
 `.env` 缺失有两种完全不同的含义，必须分开处理：
 
 - **占位值**（如 `change-me-in-production`）—— 公开可猜，任何人都能伪造会话 Cookie，**必须** fail-closed 拒启动；
-- **完全没有值** —— 全新部署还没跑过向导，或部署坏了还没修。此时 `process.exit(1)` 会让 `/setup` 一起消失，初始化界面就失去了意义（和「数据库连不上就退出」是同一类错误）。所以改用**进程内临时随机密钥**顶住，等向导把正式密钥写进 `.env`。
+- **完全没有值** —— 全新部署还没跑过向导，或部署坏了还没修。此时 `process.exit(1)` 会让 `/init` 一起消失，初始化界面就失去了意义（和「数据库连不上就退出」是同一类错误）。所以改用**进程内临时随机密钥**顶住，等向导把正式密钥写进 `.env`。
 
 分界是「有没有值」而不是「`.env` 在不在」：docker 部署常用环境变量注入密钥、不落 `.env`，那属于「配好了」，不该被拦。
 
@@ -178,15 +178,15 @@ pm2 logs booming --lines 50
 
 **密码改错了怎么办**：服务器**不会退出进程**，而是降级启动：
 
-- 启动日志出现 `✖ 数据库初始化失败: Access denied for user 'xxx'@'yyy' (using password: YES)`；
-- 业务接口统一返回 **503** `{ error: '数据库当前不可用', setupUrl: '/setup' }`；
-- `/setup` 照常可用，安装令牌会重新打进控制台（并写回 `data/setup-token.txt`）；
+- 启动日志出现 `✖ 数据库连接失败: Access denied for user 'xxx'@'yyy' (using password: YES)`；
+- 业务接口统一返回 **503** `{ error: '数据库当前不可用', initUrl: '/init' }`；
+- `/init` 照常可用，Init 令牌会重新打进控制台（并写回 `data/init-token.txt`）；
 - 在向导第 2 步填回正确凭据 → 保存 → 连接池当场切换 → 站点立即恢复。
 
 > 「数据库不可用」= **连不上** 或 **认证不过**（账号密码错 / 账号对该库没权限）。
 > 认证失败必须算在内 —— 否则全新部署（仓库不带 `.env`，进程按默认值连
 > `root@localhost` 且不带密码）会卡在向导第 2 步，连 `.env` 都写不出来。
-> 判定实现见 `lib/setup-policy.js` 的 `isDbUnavailableError()`。
+> 判定实现见 `lib/init-policy.js` 的 `isDbUnavailableError()`。
 
 ### 2.4 MCP 凭据
 
@@ -391,9 +391,9 @@ Get-ChildItem -Path . -Recurse -File -ErrorAction SilentlyContinue |
 
 | 症状 | 原因 | 修复 |
 |------|------|------|
-| 启动报 `FATAL: SESSION_SECRET is a known placeholder value` | 用了 `booming-tech-secret-key-change-in-production` 等占位值 | 替换为真随机密钥（或直接跑 `/setup` 让向导生成） |
+| 启动报 `FATAL: SESSION_SECRET is a known placeholder value` | 用了 `booming-tech-secret-key-change-in-production` 等占位值 | 替换为真随机密钥（或直接跑 `/init` 让向导生成） |
 | 启动报 `FATAL: CRON_TOKEN is a known placeholder value` | 同上，`CRON_TOKEN` 用了占位值 | 同上 |
-| 启动只**警告**「未配置 SESSION_SECRET —— 使用本次启动的临时密钥」 | `.env` 缺失（还没跑过向导）或变量名拼错 | 访问 `/setup` 完成安装，或手工补齐 `.env` |
+| 启动只**警告**「未配置 SESSION_SECRET —— 使用本次启动的临时密钥」 | `.env` 缺失（还没跑过向导）或变量名拼错 | 访问 `/init` 完成初始化，或手工补齐 `.env` |
 | 每次重启都要重新登录 | `.env` 里没有 `SESSION_SECRET`，每次启动都生成临时密钥 | 把正式密钥写进 `.env`（向导会自动做） |
 | 登录后立即掉线 | SESSION_SECRET 刚轮换，旧 session 全部失效 | 正常现象，用户重登即可 |
 | Cron 任务 401 | CRON_TOKEN 刚轮换，外部调用方未更新 | 同步更新所有调用方的 `X-CRON_TOKEN` |
@@ -404,10 +404,10 @@ Get-ChildItem -Path . -Recurse -File -ErrorAction SilentlyContinue |
 | MCP 客户端 503 | ① 后台把 MCP 关了；② 没有主令牌且后台没有有效令牌 | 后台「系统设置 → MCP」打开开关 / 生成主令牌 / 签发一枚令牌 |
 | MCP 客户端 401，但后台显示主令牌已配置 | 后台改过别的设置，把主令牌冲掉了 | `PUT /api/admin/mcp/config` 现在会保留主令牌；重新生成一枚并分发 |
 | DB 连接 `ECONNREFUSED` | DB_PASSWORD 轮换时新密码未生效 | 检查 MySQL `FLUSH PRIVILEGES` 是否执行 |
-| 启动日志 `✖ 数据库初始化失败: Access denied for user 'xxx'@'yyy'` | 凭据不对（`.env` 缺失时会连 `root@localhost` 且不带密码） | 站点已降级启动、业务接口 503；打开 `/setup` 用控制台打印的新令牌填正确凭据保存 |
-| 启动日志 `✖ 数据库初始化失败`，但用的是 `Access denied` 之外的错误 | 账号对该库没权限（`ER_DBACCESS_DENIED_ERROR`） | 补 `GRANT ALL ON <库名>.* TO '<账号>'@'%'`；同样可在 `/setup` 里改配置 |
-| 状态显示「数据库已连接，但判定安装状态失败（Unknown column 'is_admin'）」 | 老库的 `users` 表建表时没有 `is_admin` 列 | 启动时的幂等补列会自动加上；确认 `db.js` 的 `userAlterStatements` 里保留了 `ADD COLUMN is_admin` |
-| 全新安装卡在「建不出第一个管理员」 | 同上：`is_admin` 缺失 → 状态判定退化成「无法判定」→ 安装写操作一律 403 | 同上；补列后重跑 `/setup` 第 3、4 步 |
+| 启动日志 `✖ 数据库连接失败: Access denied for user 'xxx'@'yyy'` | 凭据不对（`.env` 缺失时会连 `root@localhost` 且不带密码） | 站点已降级启动、业务接口 503；打开 `/init` 用控制台打印的新令牌填正确凭据保存 |
+| 启动日志 `✖ 数据库连接失败`，但用的是 `Access denied` 之外的错误 | 账号对该库没权限（`ER_DBACCESS_DENIED_ERROR`） | 补 `GRANT ALL ON <库名>.* TO '<账号>'@'%'`；同样可在 `/init` 里改配置 |
+| 状态显示「数据库已连接，但判定初始化状态失败（Unknown column 'is_admin'）」 | 老库的 `users` 表建表时没有 `is_admin` 列 | 启动时的幂等补列会自动加上；确认 `db.js` 的 `userAlterStatements` 里保留了 `ADD COLUMN is_admin` |
+| 全新初始化卡在「建不出第一个管理员」 | 同上：`is_admin` 缺失 → 状态判定退化成「无法判定」→ Init 写操作一律 403 | 同上；补列后重跑 `/init` 第 3、4 步 |
 | 保存数据库配置后提示要重启 | `.env` 写好了，连接池已当场切换，但 session 存储池在启动时绑定 | 重启一次服务（向导最后一步也会提示） |
 | 保存数据库配置失败，`.env` 变回原样 | 新配置连不上库，代码自动回滚了 `.env` 与进程环境变量 | 核对连接参数（库名 / 权限 / 白名单）后重试 |
 
@@ -418,7 +418,7 @@ Get-ChildItem -Path . -Recurse -File -ErrorAction SilentlyContinue |
 - `.env.example` — 模板（已 git 追踪）；`.env` 由向导生成，**不在版本库**
 - `lib/env-file.js` — `.env` 的唯一读写入口（原子写 + 转义 + 备份 + 回滚）
 - `lib/env-config-service.js` — 「数据库配置 → `.env`」落盘服务（向导与后台共用同一条路径）
-- `lib/setup-policy.js` — 安装时写哪些键、每条键配什么注释；以及「数据库不可用」的判定（连不上 / 认证不过 / 判定 SQL 跑不通三分）
+- `lib/init-policy.js` — 初始化时写哪些键、每条键配什么注释；以及「数据库不可用」的判定（连不上 / 认证不过 / 判定 SQL 跑不通三分）
 - `server.js:769-814` — 占位密钥黑名单 + 启动校验（占位 → 拒启动；缺失 → 临时密钥 + 警告）
 - `server.js:815-829` — `MCP_TOKEN` 启动检查（缺失只警告）
 - `server.js:4086-4099` — `resolveAdminMasterToken()`（数据库优先于环境变量）
@@ -428,8 +428,8 @@ Get-ChildItem -Path . -Recurse -File -ErrorAction SilentlyContinue |
 - `lib/mcp/tokens.js` — 令牌生成 / 哈希 / 作用域
 - `public/admin-mcp.html` — 后台「MCP 设置及 Tokens 申请」页面（含主令牌生成 / 轮换 / 复制）
 - `public/admin-dbsettings.html` — 后台「系统设置 → 数据库」页面（写 `.env`）
-- `public/setup.html` — 安装向导（生成 `.env`）
+- `public/init.html` — Init 向导（生成 `.env`）
 - `docs/mcp-endpoint.md` — MCP 端点使用说明（令牌申请、工具清单、客户端接入、错误码）
-- `docs/README.md` — 安装向导说明（`.env` 的生成与生效方式）
+- `docs/README.md` — Init 向导说明（`.env` 的生成与生效方式、初始化判定链）
 - `docs/launch-2026-06-24.md` — 上线清单（含密钥轮换项）
 - `docs/review-2026-06-24-full-audit.md` — 审计报告 C1 项

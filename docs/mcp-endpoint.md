@@ -459,10 +459,10 @@ Host 白名单留空 = 不启用 DNS 重绑定防护（默认）。原因：ngin
 
 ### 8.1 环境变量
 
-> ⚠️ **`.env` 现在是安装向导的产物**，仓库里只留 `.env.example`。
+> ⚠️ **`.env` 现在是 Init 向导的产物**，仓库里只留 `.env.example`。
 > 向导生成的 `.env` **不包含** `MCP_TOKEN`（主令牌改由后台生成/轮换，存在数据库里），
-> 也不包含 `SETUP_TOKEN`（写了就永久有效）。
-> 详见 [README · 安装向导](README.md#安装向导首次部署用)。
+> 也不包含 `INIT_TOKEN`（写了就永久有效）。
+> 详见 [README · Init 向导](README.md#init-向导首次部署用)。
 
 ```bash
 # .env.example（仅模板，不会被自动读取）

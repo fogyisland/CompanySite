@@ -1,9 +1,9 @@
 /* ========================================
-   安装 / 初始化向导样式
+   Init 向导样式
    沿用 login.html 的视觉语言：深蓝渐变背景 + 白色卡片
    ======================================== */
 
-body.setup-body {
+body.init-body {
   min-height: 100vh;
   margin: 0;
   padding: 32px 20px 48px;
@@ -15,7 +15,7 @@ body.setup-body {
   line-height: 1.6;
 }
 
-body.setup-body::before {
+body.init-body::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -25,34 +25,34 @@ body.setup-body::before {
   pointer-events: none;
 }
 
-.setup-shell {
+.init-shell {
   position: relative;
   width: 100%;
   max-width: 780px;
 }
 
 /* ---------- 头部 ---------- */
-.setup-header {
+.init-header {
   color: #fff;
   margin-bottom: 24px;
 }
 
 /* 覆盖 style.css 里全局 header 的 sticky + 白底 —— 向导页是渐变背景 */
-body.setup-body header.setup-header {
+body.init-body header.init-header {
   position: static;
   background: transparent;
   border-bottom: none;
   color: #fff;
 }
 
-.setup-brand {
+.init-brand {
   display: flex;
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;
 }
 
-.setup-logo {
+.init-logo {
   width: 52px;
   height: 52px;
   flex: 0 0 52px;
@@ -67,20 +67,20 @@ body.setup-body header.setup-header {
   letter-spacing: 0.5px;
 }
 
-.setup-header h1 {
+.init-header h1 {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
 }
 
-.setup-header p {
+.init-header p {
   margin: 4px 0 0;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.75);
 }
 
 /* ---------- 步骤条 ---------- */
-.setup-steps {
+.init-steps {
   display: flex;
   list-style: none;
   margin: 0;
@@ -88,7 +88,7 @@ body.setup-body header.setup-header {
   gap: 6px;
 }
 
-.setup-steps li {
+.init-steps li {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
@@ -103,7 +103,7 @@ body.setup-body header.setup-header {
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-.setup-steps .step-index {
+.init-steps .step-index {
   width: 22px;
   height: 22px;
   flex: 0 0 22px;
@@ -116,58 +116,58 @@ body.setup-body header.setup-header {
   font-weight: 600;
 }
 
-.setup-steps .step-label {
+.init-steps .step-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.setup-steps li.active {
+.init-steps li.active {
   background: rgba(255, 255, 255, 0.18);
   border-color: rgba(255, 255, 255, 0.4);
   color: #fff;
 }
 
-.setup-steps li.active .step-index {
+.init-steps li.active .step-index {
   background: #fff;
   color: var(--primary);
 }
 
-.setup-steps li.done {
+.init-steps li.done {
   color: rgba(255, 255, 255, 0.85);
 }
 
-.setup-steps li.done .step-index {
+.init-steps li.done .step-index {
   background: #22c55e;
   color: #fff;
 }
 
 /* ---------- 卡片 ---------- */
-.setup-card {
+.init-card {
   background: #fff;
   border-radius: 20px;
   padding: 36px 40px;
   box-shadow: 0 25px 80px rgba(0, 0, 0, 0.35);
 }
 
-.setup-panel[hidden] {
+.init-panel[hidden] {
   display: none;
 }
 
-.setup-panel h2 {
+.init-panel h2 {
   margin: 0 0 6px;
   font-size: 20px;
   font-weight: 600;
 }
 
-.setup-desc {
+.init-desc {
   margin: 0 0 24px;
   font-size: 14px;
   color: var(--text-light, #64748b);
 }
 
-.setup-desc code,
-.setup-card code {
+.init-desc code,
+.init-card code {
   background: var(--light-bg, #f8f9fa);
   border: 1px solid var(--border, #e0e0e0);
   border-radius: 4px;
@@ -177,18 +177,18 @@ body.setup-body header.setup-header {
 }
 
 /* ---------- 表单 ---------- */
-.setup-field {
+.init-field {
   margin-bottom: 18px;
 }
 
-.setup-field label {
+.init-field label {
   display: block;
   margin-bottom: 6px;
   font-size: 14px;
   font-weight: 500;
 }
 
-.setup-field input {
+.init-field input {
   width: 100%;
   box-sizing: border-box;
   padding: 11px 14px;
@@ -200,42 +200,42 @@ body.setup-body header.setup-header {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.setup-field input:focus {
+.init-field input:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-tint-10);
 }
 
-.setup-field input[readonly] {
+.init-field input[readonly] {
   background: var(--light-bg, #f8f9fa);
   color: var(--text-light, #64748b);
 }
 
-.setup-field .field-hint {
+.init-field .field-hint {
   margin: 6px 0 0;
   font-size: 12px;
   color: var(--text-light, #64748b);
 }
 
-.setup-field-row {
+.init-field-row {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
 }
 
-.setup-field-row > .setup-field {
+.init-field-row > .init-field {
   flex: 1 1 160px;
 }
 
 /* ---------- 按钮 ---------- */
-.setup-actions {
+.init-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 28px;
 }
 
-.setup-btn {
+.init-btn {
   padding: 12px 26px;
   border: none;
   border-radius: 8px;
@@ -249,48 +249,48 @@ body.setup-body header.setup-header {
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
-.setup-btn:hover:not(:disabled) {
+.init-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px var(--primary-tint-40);
 }
 
 /* 按钮也用在 <a> 上（完成页的「前往登录」） */
-a.setup-btn {
+a.init-btn {
   display: inline-block;
   text-decoration: none;
 }
 
-.setup-btn[hidden] {
+.init-btn[hidden] {
   display: none;
 }
 
-.setup-btn:disabled {
+.init-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-.setup-btn.secondary {
+.init-btn.secondary {
   background: var(--secondary, #f5f5f5);
   color: var(--text, #333);
   box-shadow: none;
   border: 1px solid var(--border, #e0e0e0);
 }
 
-.setup-btn.secondary:hover:not(:disabled) {
+.init-btn.secondary:hover:not(:disabled) {
   transform: none;
   box-shadow: none;
   background: #ebebeb;
 }
 
-.setup-btn.danger {
+.init-btn.danger {
   background: linear-gradient(135deg, #cf222e 0%, #a40e26 100%);
   box-shadow: 0 4px 12px rgba(207, 34, 46, 0.3);
 }
 
 /* ---------- 提示条 ---------- */
-.setup-alert {
+.init-alert {
   margin-bottom: 20px;
   padding: 12px 16px;
   border-radius: 8px;
@@ -299,87 +299,87 @@ a.setup-btn {
   word-break: break-word;
 }
 
-.setup-alert[hidden] {
+.init-alert[hidden] {
   display: none;
 }
 
-.setup-alert.success {
+.init-alert.success {
   background: #e8f5e9;
   border-color: #a5d6a7;
   color: #1b5e20;
 }
 
-.setup-alert.error {
+.init-alert.error {
   background: #fef2f2;
   border-color: #fecaca;
   color: #991b1b;
 }
 
-.setup-alert.info {
+.init-alert.info {
   background: #e3f2fd;
   border-color: #90caf9;
   color: #0d47a1;
 }
 
-.setup-alert.warning {
+.init-alert.warning {
   background: #fff8e1;
   border-color: #ffe082;
   color: #8d6e00;
 }
 
 /* ---------- 表清单 ---------- */
-.setup-table-wrap {
+.init-table-wrap {
   margin-top: 16px;
   border: 1px solid var(--border, #e0e0e0);
   border-radius: 10px;
   overflow: hidden;
 }
 
-.setup-table {
+.init-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.setup-table th,
-.setup-table td {
+.init-table th,
+.init-table td {
   padding: 8px 14px;
   text-align: left;
   border-bottom: 1px solid var(--border, #e0e0e0);
 }
 
-.setup-table th {
+.init-table th {
   background: var(--light-bg, #f8f9fa);
   font-weight: 600;
   color: var(--text-light, #64748b);
 }
 
-.setup-table tr:last-child td {
+.init-table tr:last-child td {
   border-bottom: none;
 }
 
-.setup-table td.num {
+.init-table td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.setup-table .tag {
+.init-table .tag {
   display: inline-block;
   padding: 1px 8px;
   border-radius: 10px;
   font-size: 12px;
 }
 
-.setup-table .tag.ok { background: #e8f5e9; color: #1b5e20; }
-.setup-table .tag.missing { background: #fef2f2; color: #991b1b; }
+.init-table .tag.ok { background: #e8f5e9; color: #1b5e20; }
+.init-table .tag.missing { background: #fef2f2; color: #991b1b; }
 
 /* ---------- 完成页 ---------- */
-.setup-done {
+.init-done {
   text-align: center;
   padding: 16px 0 8px;
 }
 
-.setup-done .done-icon {
+.init-done .done-icon {
   width: 64px;
   height: 64px;
   margin: 0 auto 18px;
@@ -393,36 +393,36 @@ a.setup-btn {
   font-weight: 700;
 }
 
-.setup-done h2 {
+.init-done h2 {
   margin-bottom: 8px;
 }
 
-.setup-done .setup-actions {
+.init-done .init-actions {
   justify-content: center;
 }
 
 @media (max-width: 640px) {
-  body.setup-body {
+  body.init-body {
     padding: 20px 14px 32px;
   }
 
-  .setup-card {
+  .init-card {
     padding: 26px 22px;
     border-radius: 16px;
   }
 
-  .setup-steps li {
+  .init-steps li {
     flex-direction: column;
     gap: 4px;
     padding: 8px 4px;
     text-align: center;
   }
 
-  .setup-steps .step-label {
+  .init-steps .step-label {
     font-size: 11px;
   }
 
-  .setup-actions .setup-btn {
+  .init-actions .init-btn {
     flex: 1 1 100%;
   }
 }

@@ -4,165 +4,166 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>博铭科技 - 站点初始化</title>
+  <title>博铭科技 - Init</title>
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
-  <link rel="stylesheet" href="/css/pages/setup.css?v=20261030-1">
+  <link rel="stylesheet" href="/css/pages/init.css?v=20261030-1">
 </head>
-<body class="setup-body">
-  <div class="setup-shell">
-    <header class="setup-header">
-      <div class="setup-brand">
-        <span class="setup-logo">BM</span>
+<body class="init-body">
+  <div class="init-shell">
+    <header class="init-header">
+      <div class="init-brand">
+        <span class="init-logo">BM</span>
         <div>
-          <h1>站点初始化向导</h1>
-          <p>数据库凭据、管理员账号与建库初始化，全部在这里完成</p>
+          <h1>Init</h1>
+          <p>站点初始化向导 —— 数据库凭据、管理员账号与建库初始化，全部在这里完成</p>
         </div>
       </div>
-      <ol class="setup-steps" id="setup-steps">
-        <li data-step="1" class="active"><span class="step-index">1</span><span class="step-label">安装令牌</span></li>
+      <ol class="init-steps" id="init-steps">
+        <li data-step="1" class="active"><span class="step-index">1</span><span class="step-label">Init 令牌</span></li>
         <li data-step="2"><span class="step-index">2</span><span class="step-label">数据库</span></li>
         <li data-step="3"><span class="step-index">3</span><span class="step-label">管理员</span></li>
         <li data-step="4"><span class="step-index">4</span><span class="step-label">完成</span></li>
       </ol>
     </header>
 
-    <main class="setup-card">
-      <div class="setup-alert" id="setup-alert" hidden></div>
+    <main class="init-card">
+      <div class="init-alert" id="init-alert" hidden></div>
 
-      <!-- ============ 令牌页：安装令牌 ============ -->
-      <section class="setup-panel" id="panel-1">
-        <h2>安装令牌</h2>
-        <p class="setup-desc">
-          安装令牌用于确认操作者有权初始化本站。它在服务器启动日志里，也在
-          <code>data/setup-token.txt</code>；也可以通过环境变量 <code>SETUP_TOKEN</code> 指定。
+      <!-- ============ 令牌页：Init 令牌 ============ -->
+      <section class="init-panel" id="panel-1">
+        <h2>Init 令牌</h2>
+        <p class="init-desc">
+          Init 令牌用于确认操作者有权初始化本站。它在服务器启动日志里，也在
+          <code>data/init-token.txt</code>；也可以通过环境变量 <code>INIT_TOKEN</code> 指定。
           令牌不会通过任何接口回显。
         </p>
-        <div class="setup-field">
-          <label for="setup-token">安装令牌</label>
-          <input type="password" id="setup-token" autocomplete="off" spellcheck="false" placeholder="粘贴安装令牌">
+        <div class="init-field">
+          <label for="init-token">Init 令牌</label>
+          <input type="password" id="init-token" autocomplete="off" spellcheck="false" placeholder="粘贴 Init 令牌">
           <p class="field-hint">令牌只保存在当前浏览器标签页（sessionStorage），不会写入 Cookie。</p>
         </div>
-        <div class="setup-actions">
-          <button type="button" class="setup-btn" id="btn-verify-token">校验并继续</button>
+        <div class="init-actions">
+          <button type="button" class="init-btn" id="btn-verify-token">校验并继续</button>
         </div>
       </section>
 
       <!-- ============ 第 1 页：数据库 ============ -->
-      <section class="setup-panel" id="panel-2" hidden>
+      <section class="init-panel" id="panel-2" hidden>
         <h2>第 1 步 · 数据库连接</h2>
-        <p class="setup-desc">
+        <p class="init-desc">
           填写 MySQL 服务器的连接信息。点「测试连接」会连到**服务器本身**（不选具体库），
           所以库还没建出来也能测得通。
         </p>
-        <p class="setup-desc">
+        <p class="init-desc">
           这些参数会在最后一步被写进 <code>.env</code>（权限 0600），
           里面同时包含机器随机生成的 <code>SESSION_SECRET</code> 与 <code>CRON_TOKEN</code>。
           <code>.env</code> 是数据库连接参数的唯一存放处 —— 旧的
           <code>data/db-config.json</code> 会在启动时被并入 <code>.env</code> 并删除。
         </p>
-        <p class="setup-desc" id="config-source-note" hidden></p>
+        <p class="init-desc" id="config-source-note" hidden></p>
 
-        <div class="setup-field">
+        <div class="init-field">
           <label for="db-host">主机地址</label>
           <input type="text" id="db-host" spellcheck="false" placeholder="127.0.0.1">
         </div>
-        <div class="setup-field-row">
-          <div class="setup-field">
+        <div class="init-field-row">
+          <div class="init-field">
             <label for="db-port">端口</label>
             <input type="text" id="db-port" inputmode="numeric" placeholder="3306">
           </div>
-          <div class="setup-field">
+          <div class="init-field">
             <label for="db-database">数据库名</label>
             <input type="text" id="db-database" spellcheck="false" placeholder="softvault">
             <p class="field-hint">最后一步会创建它（不存在才创建，已存在则直接用）。</p>
           </div>
         </div>
-        <div class="setup-field-row">
-          <div class="setup-field">
+        <div class="init-field-row">
+          <div class="init-field">
             <label for="db-user">用户名</label>
             <input type="text" id="db-user" spellcheck="false" autocomplete="off">
           </div>
-          <div class="setup-field">
+          <div class="init-field">
             <label for="db-password">密码</label>
             <input type="password" id="db-password" autocomplete="new-password">
             <p class="field-hint" id="db-password-hint">留空表示沿用已保存的密码。</p>
           </div>
         </div>
 
-        <div class="setup-actions">
-          <button type="button" class="setup-btn secondary" id="btn-test-db">测试连接</button>
-          <button type="button" class="setup-btn" id="btn-next-db">下一步</button>
+        <div class="init-actions">
+          <button type="button" class="init-btn secondary" id="btn-test-db">测试连接</button>
+          <button type="button" class="init-btn" id="btn-next-db">下一步</button>
         </div>
       </section>
 
       <!-- ============ 第 2 页：管理员 ============ -->
-      <section class="setup-panel" id="panel-3" hidden>
+      <section class="init-panel" id="panel-3" hidden>
         <h2>第 2 步 · 管理员账号</h2>
-        <p class="setup-desc">
+        <p class="init-desc">
           这是本站的第一个管理员账号，创建后即可登录后台。
-          最后一步完成后安装令牌会被销毁，安装接口随之永久关闭。
+          最后一步完成后 Init 令牌会被销毁，Init 接口随之永久关闭。
         </p>
-        <div class="setup-field">
+        <div class="init-field">
           <label for="admin-username">用户名</label>
           <input type="text" id="admin-username" spellcheck="false" autocomplete="off" placeholder="admin">
           <p class="field-hint">3~32 位，可用字母、数字、下划线、点、连字符。</p>
         </div>
-        <div class="setup-field">
+        <div class="init-field">
           <label for="admin-password">密码</label>
           <input type="password" id="admin-password" autocomplete="new-password">
           <p class="field-hint">至少 8 位，且必须同时包含字母和数字。</p>
         </div>
-        <div class="setup-field">
+        <div class="init-field">
           <label for="admin-password-confirm">确认密码</label>
           <input type="password" id="admin-password-confirm" autocomplete="new-password">
         </div>
-        <div class="setup-field">
+        <div class="init-field">
           <label for="admin-email">邮箱（可选）</label>
           <input type="email" id="admin-email" spellcheck="false" autocomplete="off" placeholder="admin@example.com">
           <p class="field-hint">用于接收安全通知；填写后仍需自行完成邮箱验证。</p>
         </div>
-        <div class="setup-actions">
-          <button type="button" class="setup-btn secondary" id="btn-back-db">返回上一步</button>
-          <button type="button" class="setup-btn" id="btn-next-admin">下一步</button>
+        <div class="init-actions">
+          <button type="button" class="init-btn secondary" id="btn-back-db">返回上一步</button>
+          <button type="button" class="init-btn" id="btn-next-admin">下一步</button>
         </div>
       </section>
 
       <!-- ============ 第 3 页：创建数据库并完成初始化 ============ -->
-      <section class="setup-panel" id="panel-4" hidden>
+      <section class="init-panel" id="panel-4" hidden>
         <div id="install-form-part">
           <h2>第 3 步 · 创建数据库并完成初始化</h2>
-          <p class="setup-desc">
+          <p class="init-desc">
             点下面的按钮会一次性做完这些事：创建数据库（不存在才创建）→ 把连接参数写入
-            <code>.env</code> → 建表并灌入默认数据 → 创建管理员 → 销毁安装令牌。
+            <code>.env</code> → 建表并灌入默认数据 → 创建管理员 → 销毁 Init 令牌。
           </p>
-          <p class="setup-desc">
+          <p class="init-desc">
             中途失败可以原地重试，不会留下半成品状态。
           </p>
           <div id="install-summary"></div>
-          <div class="setup-actions">
-            <button type="button" class="setup-btn secondary" id="btn-back-admin">返回上一步</button>
-            <button type="button" class="setup-btn" id="btn-complete-install">创建数据库并完成初始化</button>
+          <div class="init-actions">
+            <button type="button" class="init-btn secondary" id="btn-back-admin">返回上一步</button>
+            <button type="button" class="init-btn" id="btn-complete-install">创建数据库并完成初始化</button>
           </div>
         </div>
 
         <div id="install-done" hidden>
-          <div class="setup-done">
+          <div class="init-done">
             <div class="done-icon">✓</div>
             <h2>初始化完成</h2>
-            <p class="setup-desc">
-              数据库已就绪，管理员账号已创建，安装令牌已销毁，安装接口已永久关闭。<br>
+            <p class="init-desc">
+              数据库已就绪，管理员账号已创建，<code>.env</code> 里已写入
+              <code>INITIALIZED=True</code>，Init 令牌已销毁，Init 接口已永久关闭。<br>
               现在可以登录后台开始配置产品与内容。
             </p>
-            <div class="setup-alert warning" id="setup-restart-notice">
+            <div class="init-alert warning" id="init-restart-notice">
               <strong>请重启一次服务。</strong>
               <code>.env</code> 里的连接参数已经当场生效，但会话签名密钥与 session 存储池
               是在进程启动时绑定的 —— 不重启的话，重启后旧密钥失效、存储池还会指向旧库。
               重启后请重新登录一次。
             </div>
-            <div class="setup-actions">
-              <a class="setup-btn" href="/login">前往登录</a>
+            <div class="init-actions">
+              <a class="init-btn" href="/login">前往登录</a>
             </div>
           </div>
         </div>
@@ -170,6 +171,6 @@
     </main>
   </div>
 
-  <script src="/js/setup.js?v=20261031-1"></script>
+  <script src="/js/init.js?v=20261031-1"></script>
 </body>
 </html>

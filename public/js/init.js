@@ -1,33 +1,34 @@
 /**
- * 安装 / 初始化向导的前端逻辑。
+ * Init 向导的前端逻辑。
  *
  * 设计要点：
- *   1. 安装令牌只存在 sessionStorage，并放在 X-Setup-Token 请求头里 ——
+ *   1. Init 令牌只存在 sessionStorage，并放在 X-Init-Token 请求头里 ——
  *      不写 Cookie，也不混进会被日志记录的请求体。
  *   2. 所有请求都走 apiRequest()，统一带令牌、统一解析错误文案。
  *   3. 任何一步失败都停在当前步，并把服务端返回的中文原因直接显示出来，
  *      不做「静默失败」。
  *   4. 三页结构：数据库 → 管理员 → 创建并完成。
- *      最后一步只发一次请求（/api/setup/complete-install），
- *      由服务端原子地做完「建库 → 写 .env → 建表 → 建管理员 → 销毁令牌」。
+ *      最后一步只发一次请求（/api/init/complete-install），
+ *      由服务端原子地做完「建库 → 写 .env → 建表 → 建管理员 → 写 INITIALIZED=True → 销毁令牌」。
  *      客户端不再拆成多次调用 —— 那样会留下「配置写了但没装完」的中间态，
- *      而安装状态的判定只看管理员是否存在，中间态等于把闸门重新打开。
+ *      而初始化状态的判定是双保险（.env 标志 + 管理员账号），
+ *      中间态会被判成「未初始化」，等于把闸门重新打开。
  */
 (function () {
   'use strict';
 
-  const TOKEN_STORAGE_KEY = 'booming_setup_token';
+  const TOKEN_STORAGE_KEY = 'booming_init_token';
   const TOTAL_STEPS = 4;
 
   /** 库名合法字符集 —— 必须与服务端一致，否则最后一步才报错就太晚了 */
   const DATABASE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
   const MAX_DATABASE_NAME_LENGTH = 64;
-  /** 服务端 lib/setup-policy.js 的同一套规则 */
+  /** 服务端 lib/init-policy.js 的同一套规则 */
   const ADMIN_USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,32}$/;
   const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
   let currentStep = 1;
-  let setupState = null;
+  let initState = null;
 
   // ------------------------------------------------------------------ 工具
   function byId(id) {
@@ -41,14 +42,14 @@
   }
 
   function showAlert(message, kind) {
-    const element = byId('setup-alert');
+    const element = byId('init-alert');
     element.textContent = message;
-    element.className = 'setup-alert ' + (kind || 'info');
+    element.className = 'init-alert ' + (kind || 'info');
     element.hidden = false;
   }
 
   function hideAlert() {
-    const element = byId('setup-alert');
+    const element = byId('init-alert');
     element.hidden = true;
     element.textContent = '';
   }
@@ -71,7 +72,7 @@
     for (let index = 1; index <= TOTAL_STEPS; index += 1) {
       const panel = byId('panel-' + index);
       if (panel) panel.hidden = (index !== step);
-      const item = document.querySelector('#setup-steps li[data-step="' + index + '"]');
+      const item = document.querySelector('#init-steps li[data-step="' + index + '"]');
       if (!item) continue;
       item.classList.toggle('active', index === step);
       item.classList.toggle('done', index < step);
@@ -109,7 +110,7 @@
   async function apiRequest(path, options) {
     const settings = Object.assign({ credentials: 'include' }, options || {});
     const headers = Object.assign({}, settings.headers || {});
-    headers['X-Setup-Token'] = getToken();
+    headers['X-Init-Token'] = getToken();
     if (settings.body !== undefined && typeof settings.body !== 'string') {
       headers['Content-Type'] = 'application/json';
       settings.body = JSON.stringify(settings.body);
@@ -178,7 +179,7 @@
   }
 
   /**
-   * 管理员表单的前端校验（与服务端 lib/setup-policy.js 同一套规则）。
+   * 管理员表单的前端校验（与服务端 lib/init-policy.js 同一套规则）。
    * @returns {string|null} 出错原因；null 表示通过
    */
   function validateAdminForm() {
@@ -197,31 +198,31 @@
 
   // ------------------------------------------------------------------ 令牌页
   async function handleVerifyToken() {
-    const input = byId('setup-token');
+    const input = byId('init-token');
     const value = input.value.trim();
     if (!value) {
-      showAlert('请输入安装令牌', 'error');
+      showAlert('请输入 Init 令牌', 'error');
       return;
     }
 
     const button = byId('btn-verify-token');
     setBusy(button, true, '校验中...');
-    // 先写入 sessionStorage：后续所有请求都通过 X-Setup-Token 头携带令牌，
+    // 先写入 sessionStorage：后续所有请求都通过 X-Init-Token 头携带令牌，
     // 令牌不会出现在会被服务器记录的请求体里。
     setToken(value);
     try {
-      const data = await apiRequest('/api/setup/verify-token', {
+      const data = await apiRequest('/api/init/verify-token', {
         method: 'POST',
         body: {}
       });
       input.value = '';
-      setupState = data.state || null;
-      applyDbConfig(setupState);
+      initState = data.state || null;
+      applyDbConfig(initState);
       goToStep(2);
     } catch (error) {
       clearToken();
       if (error.code === 'ALREADY_INSTALLED') {
-        showAlert('站点已完成安装，正在跳转到登录页…', 'info');
+        showAlert('站点已完成初始化，正在跳转到登录页…', 'info');
         window.setTimeout(function () {
           window.location.href = '/login';
         }, 1200);
@@ -267,9 +268,20 @@
         + '最后一步会把它们写进 .env —— 数据库连接参数从此只有这一个存放处。');
     }
 
+    // 判定链的两个条件分开显示 —— 运维看到「未初始化」时需要知道缺的是哪一头
+    const hasAdmin = Number(state.adminCount) > 0;
+    if (hasAdmin && state.initializedFlag !== true) {
+      notes.push('数据库里已经有管理员账号，但 .env 里还没有 INITIALIZED=True —— '
+        + '两个条件缺一不可，站点会被判定为「未初始化」。走完最后一步会把标志补上；'
+        + '只想补标志的话，也可以直接在 .env 里加一行 INITIALIZED=True 后重启服务。');
+    } else if (state.initializedFlag === true) {
+      notes.push('.env 里已有 INITIALIZED=True —— 完成最后一步后，'
+        + '「标志」与「管理员账号」两个条件同时成立，站点才算初始化完成。');
+    }
+
     if (notes.length) {
       note.hidden = false;
-      note.className = 'setup-alert warning';
+      note.className = 'init-alert warning';
       note.textContent = notes.join(' ');
     } else {
       note.hidden = true;
@@ -287,7 +299,7 @@
       return null;
     }
     try {
-      return await apiRequest('/api/setup/test-db', {
+      return await apiRequest('/api/init/test-db', {
         method: 'POST',
         body: collectDbConfig()
       });
@@ -356,11 +368,11 @@
       return '<tr><td>' + escapeHtml(row[0]) + '</td><td>' + escapeHtml(row[1]) + '</td></tr>';
     }).join('');
 
-    container.innerHTML = '<div class="setup-table-wrap"><table class="setup-table"><thead><tr>'
+    container.innerHTML = '<div class="init-table-wrap"><table class="init-table"><thead><tr>'
       + '<th>项目</th><th>值</th></tr></thead><tbody>' + body + '</tbody></table></div>';
   }
 
-  // ------------------------------------------------------------------ 第 3 页：完成安装
+  // ------------------------------------------------------------------ 第 3 页：完成初始化
   async function handleCompleteInstall() {
     const dbInvalid = validateDbForm();
     if (dbInvalid) {
@@ -378,7 +390,7 @@
     const button = byId('btn-complete-install');
     setBusy(button, true, '初始化中...');
     try {
-      const data = await apiRequest('/api/setup/complete-install', {
+      const data = await apiRequest('/api/init/complete-install', {
         method: 'POST',
         body: {
           db: collectDbConfig(),
@@ -389,7 +401,7 @@
       clearToken();
       byId('admin-password').value = '';
       byId('admin-password-confirm').value = '';
-      byId('setup-token').value = '';
+      byId('init-token').value = '';
 
       byId('install-form-part').hidden = true;
       byId('install-done').hidden = false;
@@ -401,7 +413,7 @@
       );
     } catch (error) {
       if (error.code === 'ALREADY_INSTALLED') {
-        showAlert('站点已完成安装，正在跳转到登录页…', 'info');
+        showAlert('站点已完成初始化，正在跳转到登录页…', 'info');
         window.setTimeout(function () {
           window.location.href = '/login';
         }, 1200);
@@ -427,7 +439,7 @@
     });
     byId('btn-complete-install').addEventListener('click', handleCompleteInstall);
 
-    byId('setup-token').addEventListener('keydown', function (event) {
+    byId('init-token').addEventListener('keydown', function (event) {
       if (event.key === 'Enter') handleVerifyToken();
     });
     byId('admin-password-confirm').addEventListener('keydown', function (event) {
@@ -443,12 +455,12 @@
     const token = getToken();
     if (!token) return;
     try {
-      const data = await apiRequest('/api/setup/verify-token', {
+      const data = await apiRequest('/api/init/verify-token', {
         method: 'POST',
         body: {}
       });
-      setupState = data.state || null;
-      applyDbConfig(setupState);
+      initState = data.state || null;
+      applyDbConfig(initState);
       goToStep(2);
     } catch (error) {
       clearToken();
