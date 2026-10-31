@@ -293,7 +293,11 @@ async function loadProducts() {
     renderProducts(products);
   } catch (error) {
     console.error('Error loading products:', error);
-    document.getElementById('products-grid').innerHTML = `
+    // 这个区块并非每个页面都有：首页只有 hero 轮播，没有产品网格。
+    // 缺元素时直接返回，别在错误处理里再抛一次 null 的异常。
+    const grid = document.getElementById('products-grid');
+    if (!grid) return;
+    grid.innerHTML = `
       <div class="empty-state">
         <h3>加载产品失败</h3>
         <p>请刷新页面或稍后再试。</p>
