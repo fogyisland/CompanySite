@@ -36,3 +36,7 @@ build/
 # Superpowers 插件的运行时产物（brainstorm 服务的 pid / 端口 / 临时页面等）
 # 属于本地状态，不是项目资源，不该进版本库
 .superpowers/
+
+# Claude Code 的本机配置：权限白名单按机器定制，且历史上混进过明文口令，
+# 只留本地、不进版本库
+.claude/settings.local.json
