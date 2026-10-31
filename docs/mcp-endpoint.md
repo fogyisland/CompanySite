@@ -460,8 +460,8 @@ Host 白名单留空 = 不启用 DNS 重绑定防护（默认）。原因：ngin
 ### 8.1 环境变量
 
 > ⚠️ **`.env` 现在是 Init 向导的产物**，仓库里只留 `.env.example`。
-> 向导生成的 `.env` **不包含** `MCP_TOKEN`（主令牌改由后台生成/轮换，存在数据库里），
-> 也不包含 `INIT_TOKEN`（写了就永久有效）。
+> 向导生成的 `.env` **不包含** `MCP_TOKEN`（主令牌改由后台生成/轮换，存在数据库里）。
+> Init 令牌机制已整体移除，`.env` 里也不再有 `INIT_TOKEN`。
 > 详见 [README · Init 向导](README.md#init-向导首次部署用)。
 
 ```bash

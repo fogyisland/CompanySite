@@ -373,6 +373,109 @@ a.init-btn {
 .init-table .tag.ok { background: #e8f5e9; color: #1b5e20; }
 .init-table .tag.missing { background: #fef2f2; color: #991b1b; }
 
+/* ---------- 小标题 ---------- */
+.init-subtitle {
+  margin: 26px 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---------- Logo 上传 ---------- */
+.init-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* 文件选择框不吃通用 input 的 100% 宽度 —— 那会把预览框挤到下一行 */
+.init-logo-row input[type='file'] {
+  flex: 1 1 240px;
+  width: auto;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.init-logo-preview {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 10px;
+  background: var(--light-bg, #f8f9fa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.init-logo-preview[hidden] {
+  display: none;
+}
+
+.init-logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* ---------- 初始化过程清单 ---------- */
+.init-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.init-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  color: var(--text-light, #64748b);
+}
+
+.init-progress-item:last-child {
+  border-bottom: none;
+}
+
+.init-progress-item .progress-mark {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--light-bg, #f8f9fa);
+  color: var(--text-light, #64748b);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.init-progress-item.done {
+  color: #1b5e20;
+}
+
+.init-progress-item.done .progress-mark {
+  background: #22c55e;
+  color: #fff;
+}
+
+.init-progress-item.failed {
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.init-progress-item.failed .progress-mark {
+  background: #dc2626;
+  color: #fff;
+}
+
 /* ---------- 完成页 ---------- */
 .init-done {
   text-align: center;

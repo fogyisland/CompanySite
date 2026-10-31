@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
-  <link rel="stylesheet" href="/css/pages/init.css?v=20261030-1">
+  <link rel="stylesheet" href="/css/pages/init.css?v=20261031-2">
 </head>
 <body class="init-body">
   <div class="init-shell">
@@ -17,43 +17,25 @@
         <span class="init-logo">BM</span>
         <div>
           <h1>Init</h1>
-          <p>站点初始化向导 —— 数据库凭据、管理员账号与建库初始化，全部在这里完成</p>
+          <p>站点初始化向导 —— 数据库、管理员、网站设定与初始化执行，全部在这里完成</p>
         </div>
       </div>
       <ol class="init-steps" id="init-steps">
-        <li data-step="1" class="active"><span class="step-index">1</span><span class="step-label">Init 令牌</span></li>
-        <li data-step="2"><span class="step-index">2</span><span class="step-label">数据库</span></li>
-        <li data-step="3"><span class="step-index">3</span><span class="step-label">管理员</span></li>
-        <li data-step="4"><span class="step-index">4</span><span class="step-label">完成</span></li>
+        <li data-step="1" class="active"><span class="step-index">1</span><span class="step-label">数据库</span></li>
+        <li data-step="2"><span class="step-index">2</span><span class="step-label">管理员</span></li>
+        <li data-step="3"><span class="step-index">3</span><span class="step-label">网站设定</span></li>
+        <li data-step="4"><span class="step-index">4</span><span class="step-label">初始化</span></li>
       </ol>
     </header>
 
     <main class="init-card">
       <div class="init-alert" id="init-alert" hidden></div>
 
-      <!-- ============ 令牌页：Init 令牌 ============ -->
-      <section class="init-panel" id="panel-1">
-        <h2>Init 令牌</h2>
-        <p class="init-desc">
-          Init 令牌用于确认操作者有权初始化本站。它在服务器启动日志里，也在
-          <code>data/init-token.txt</code>；也可以通过环境变量 <code>INIT_TOKEN</code> 指定。
-          令牌不会通过任何接口回显。
-        </p>
-        <div class="init-field">
-          <label for="init-token">Init 令牌</label>
-          <input type="password" id="init-token" autocomplete="off" spellcheck="false" placeholder="粘贴 Init 令牌">
-          <p class="field-hint">令牌只保存在当前浏览器标签页（sessionStorage），不会写入 Cookie。</p>
-        </div>
-        <div class="init-actions">
-          <button type="button" class="init-btn" id="btn-verify-token">校验并继续</button>
-        </div>
-      </section>
-
       <!-- ============ 第 1 页：数据库 ============ -->
-      <section class="init-panel" id="panel-2" hidden>
+      <section class="init-panel" id="panel-1">
         <h2>第 1 步 · 数据库连接</h2>
         <p class="init-desc">
-          填写 MySQL 服务器的连接信息。点「测试连接」会连到**服务器本身**（不选具体库），
+          填写 MySQL 服务器的连接信息。点「测试连接」会连到<strong>服务器本身</strong>（不选具体库），
           所以库还没建出来也能测得通。
         </p>
         <p class="init-desc">
@@ -98,11 +80,11 @@
       </section>
 
       <!-- ============ 第 2 页：管理员 ============ -->
-      <section class="init-panel" id="panel-3" hidden>
+      <section class="init-panel" id="panel-2" hidden>
         <h2>第 2 步 · 管理员账号</h2>
         <p class="init-desc">
           这是本站的第一个管理员账号，创建后即可登录后台。
-          最后一步完成后 Init 令牌会被销毁，Init 接口随之永久关闭。
+          最后一步完成后 Init 接口会永久关闭。
         </p>
         <div class="init-field">
           <label for="admin-username">用户名</label>
@@ -129,21 +111,60 @@
         </div>
       </section>
 
-      <!-- ============ 第 3 页：创建数据库并完成初始化 ============ -->
+      <!-- ============ 第 3 页：网站设定 ============ -->
+      <section class="init-panel" id="panel-3" hidden>
+        <h2>第 3 步 · 网站设定</h2>
+        <p class="init-desc">
+          站点名称会显示在页头、页脚与浏览器标题里。Logo 可以现在上传，
+          也可以留空 —— 之后随时能在后台「系统设置」里改。
+        </p>
+
+        <div class="init-field">
+          <label for="site-name">站点名称</label>
+          <input type="text" id="site-name" spellcheck="false" maxlength="255" placeholder="博铭科技">
+          <p class="field-hint">不能为空，最多 255 个字符。</p>
+        </div>
+
+        <div class="init-field">
+          <label for="logo-file">Logo 图片</label>
+          <div class="init-logo-row">
+            <input type="file" id="logo-file" accept="image/png,image/jpeg,image/gif,image/webp">
+            <div class="init-logo-preview" id="logo-preview" hidden>
+              <img id="logo-preview-img" src="" alt="Logo 预览">
+            </div>
+          </div>
+          <p class="field-hint">
+            支持 png / jpg / gif / webp，最大 2MB。上传后由服务器重新命名并落盘，
+            文件名固定为 <code>logo.扩展名</code>。
+          </p>
+          <p class="field-hint" id="logo-status"></p>
+        </div>
+
+        <div class="init-actions">
+          <button type="button" class="init-btn secondary" id="btn-back-admin">返回上一步</button>
+          <button type="button" class="init-btn" id="btn-next-site">下一步</button>
+        </div>
+      </section>
+
+      <!-- ============ 第 4 页：执行初始化 ============ -->
       <section class="init-panel" id="panel-4" hidden>
         <div id="install-form-part">
-          <h2>第 3 步 · 创建数据库并完成初始化</h2>
+          <h2>第 4 步 · 执行初始化</h2>
           <p class="init-desc">
-            点下面的按钮会一次性做完这些事：创建数据库（不存在才创建）→ 把连接参数写入
-            <code>.env</code> → 建表并灌入默认数据 → 创建管理员 → 销毁 Init 令牌。
+            确认下面的内容没问题，点「开始初始化」会一次性做完这些事：
+            创建数据库（不存在才创建）→ 把连接参数写入 <code>.env</code> →
+            建表并灌入默认数据 → 创建管理员 → 写入网站设定 → 写入
+            <code>INITIALIZED=True</code>。
           </p>
           <p class="init-desc">
             中途失败可以原地重试，不会留下半成品状态。
           </p>
           <div id="install-summary"></div>
+          <h3 class="init-subtitle">初始化过程</h3>
+          <ol class="init-progress" id="install-progress"></ol>
           <div class="init-actions">
-            <button type="button" class="init-btn secondary" id="btn-back-admin">返回上一步</button>
-            <button type="button" class="init-btn" id="btn-complete-install">创建数据库并完成初始化</button>
+            <button type="button" class="init-btn secondary" id="btn-back-site">返回上一步</button>
+            <button type="button" class="init-btn" id="btn-complete-install">开始初始化</button>
           </div>
         </div>
 
@@ -152,8 +173,8 @@
             <div class="done-icon">✓</div>
             <h2>初始化完成</h2>
             <p class="init-desc">
-              数据库已就绪，管理员账号已创建，<code>.env</code> 里已写入
-              <code>INITIALIZED=True</code>，Init 令牌已销毁，Init 接口已永久关闭。<br>
+              数据库已就绪，管理员账号已创建，网站设定已写入，
+              <code>.env</code> 里已写入 <code>INITIALIZED=True</code>，Init 接口已永久关闭。<br>
               现在可以登录后台开始配置产品与内容。
             </p>
             <div class="init-alert warning" id="init-restart-notice">
@@ -171,6 +192,6 @@
     </main>
   </div>
 
-  <script src="/js/init.js?v=20261031-1"></script>
+  <script src="/js/init.js?v=20261031-2"></script>
 </body>
 </html>

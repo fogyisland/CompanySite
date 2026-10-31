@@ -2,22 +2,23 @@
  * Init 向导的前端逻辑。
  *
  * 设计要点：
- *   1. Init 令牌只存在 sessionStorage，并放在 X-Init-Token 请求头里 ——
- *      不写 Cookie，也不混进会被日志记录的请求体。
- *   2. 所有请求都走 apiRequest()，统一带令牌、统一解析错误文案。
- *   3. 任何一步失败都停在当前步，并把服务端返回的中文原因直接显示出来，
- *      不做「静默失败」。
- *   4. 三页结构：数据库 → 管理员 → 创建并完成。
+ *   1. 没有令牌 —— Init 令牌机制已整体移除。准入由服务端的初始化状态判定
+ *      （.env 的 INITIALIZED 标志 + users 表的管理员账号）负责，
+ *      站点一旦初始化完成，Init 接口就永久关闭。
+ *   2. 所有请求都走 apiRequest()，统一解析错误文案；失败时把服务端返回的
+ *      中文原因直接显示出来，不做「静默失败」。
+ *   3. 四页结构：数据库 → 管理员 → 网站设定 → 执行初始化。
  *      最后一步只发一次请求（/api/init/complete-install），
- *      由服务端原子地做完「建库 → 写 .env → 建表 → 建管理员 → 写 INITIALIZED=True → 销毁令牌」。
- *      客户端不再拆成多次调用 —— 那样会留下「配置写了但没装完」的中间态，
- *      而初始化状态的判定是双保险（.env 标志 + 管理员账号），
+ *      由服务端原子地做完「建库 → 写 .env → 建表 → 建管理员 → 写网站设定 →
+ *      写 INITIALIZED=True」。客户端不再拆成多次调用 —— 那样会留下
+ *      「配置写了但没装完」的中间态，而初始化状态的判定是双保险，
  *      中间态会被判成「未初始化」，等于把闸门重新打开。
+ *   4. 第 4 页的「初始化过程」清单与服务端返回的 steps 一一对应 ——
+ *      跑完哪几步、卡在哪一步，照着服务端说的显示，不用猜。
  */
 (function () {
   'use strict';
 
-  const TOKEN_STORAGE_KEY = 'booming_init_token';
   const TOTAL_STEPS = 4;
 
   /** 库名合法字符集 —— 必须与服务端一致，否则最后一步才报错就太晚了 */
@@ -26,9 +27,30 @@
   /** 服务端 lib/init-policy.js 的同一套规则 */
   const ADMIN_USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,32}$/;
   const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const MAX_SITE_NAME_LENGTH = 255;
+  /** Logo 上限与服务端 uploadLogo 的 limits.fileSize 一致（2MB） */
+  const MAX_LOGO_SIZE = 2 * 1024 * 1024;
+  /** 与服务端 lib/init-policy.js 的 DEFAULT_SITE_NAME 保持一致 */
+  const DEFAULT_SITE_NAME = '博铭科技';
+
+  /**
+   * 初始化过程清单 —— 键与服务端 complete-install 返回的 steps[].key 对应。
+   * 服务端只回「跑完了哪几步」，这里的文案负责把没跑的步骤也列出来。
+   */
+  const INSTALL_STEPS = [
+    { key: 'connect', label: '测试数据库服务器连接' },
+    { key: 'create-db', label: '创建数据库' },
+    { key: 'write-env', label: '写入 .env 数据库连接参数' },
+    { key: 'create-tables', label: '建立数据表并灌入默认数据' },
+    { key: 'create-admin', label: '创建管理员账号' },
+    { key: 'site-settings', label: '写入网站设定（名称与 Logo）' },
+    { key: 'write-flag', label: '写入 INITIALIZED 完成标志' }
+  ];
 
   let currentStep = 1;
   let initState = null;
+  /** 已上传的 Logo 地址（服务端生成，形如 /uploads/logo.png）；空串表示不设 Logo */
+  let uploadedLogo = '';
 
   // ------------------------------------------------------------------ 工具
   function byId(id) {
@@ -81,36 +103,10 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ------------------------------------------------------------------ 令牌
-  function getToken() {
-    try {
-      return sessionStorage.getItem(TOKEN_STORAGE_KEY) || '';
-    } catch (error) {
-      return '';
-    }
-  }
-
-  function setToken(value) {
-    try {
-      sessionStorage.setItem(TOKEN_STORAGE_KEY, value);
-    } catch (error) {
-      // 隐私模式下 sessionStorage 可能不可写 —— 令牌退化为只存在于内存
-    }
-  }
-
-  function clearToken() {
-    try {
-      sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-    } catch (error) {
-      /* 忽略 */
-    }
-  }
-
   // ------------------------------------------------------------------ 请求
   async function apiRequest(path, options) {
     const settings = Object.assign({ credentials: 'include' }, options || {});
     const headers = Object.assign({}, settings.headers || {});
-    headers['X-Init-Token'] = getToken();
     if (settings.body !== undefined && typeof settings.body !== 'string') {
       headers['Content-Type'] = 'application/json';
       settings.body = JSON.stringify(settings.body);
@@ -130,6 +126,8 @@
       const failure = new Error(message);
       failure.code = data && data.error;
       failure.status = response.status;
+      // 服务端的 steps / failedStep 一并带出来 —— 第 4 页要靠它渲染过程清单
+      failure.data = data || {};
       throw failure;
     }
     return data || {};
@@ -154,6 +152,13 @@
       username: byId('admin-username').value.trim(),
       password: byId('admin-password').value,
       email: byId('admin-email').value.trim()
+    };
+  }
+
+  function collectSiteSettings() {
+    return {
+      companyName: byId('site-name').value.trim(),
+      logo: uploadedLogo
     };
   }
 
@@ -196,42 +201,17 @@
     return null;
   }
 
-  // ------------------------------------------------------------------ 令牌页
-  async function handleVerifyToken() {
-    const input = byId('init-token');
-    const value = input.value.trim();
-    if (!value) {
-      showAlert('请输入 Init 令牌', 'error');
-      return;
+  /**
+   * 网站设定表单的前端校验。
+   * @returns {string|null} 出错原因；null 表示通过
+   */
+  function validateSiteForm() {
+    const site = collectSiteSettings();
+    if (!site.companyName) return '请填写站点名称';
+    if (site.companyName.length > MAX_SITE_NAME_LENGTH) {
+      return '站点名称不能超过 ' + MAX_SITE_NAME_LENGTH + ' 个字符';
     }
-
-    const button = byId('btn-verify-token');
-    setBusy(button, true, '校验中...');
-    // 先写入 sessionStorage：后续所有请求都通过 X-Init-Token 头携带令牌，
-    // 令牌不会出现在会被服务器记录的请求体里。
-    setToken(value);
-    try {
-      const data = await apiRequest('/api/init/verify-token', {
-        method: 'POST',
-        body: {}
-      });
-      input.value = '';
-      initState = data.state || null;
-      applyDbConfig(initState);
-      goToStep(2);
-    } catch (error) {
-      clearToken();
-      if (error.code === 'ALREADY_INSTALLED') {
-        showAlert('站点已完成初始化，正在跳转到登录页…', 'info');
-        window.setTimeout(function () {
-          window.location.href = '/login';
-        }, 1200);
-        return;
-      }
-      showAlert(error.message, 'error');
-    } finally {
-      setBusy(button, false);
-    }
+    return null;
   }
 
   // ------------------------------------------------------------------ 第 1 页：数据库
@@ -332,7 +312,7 @@
       // 「下一步」会先测一次 —— 不必让用户自己记得点「测试连接」
       const data = await runConnectionTest();
       if (!data) return;
-      goToStep(3);
+      goToStep(2);
     } finally {
       setBusy(button, false);
     }
@@ -345,23 +325,104 @@
       showAlert(invalid, 'error');
       return;
     }
+    goToStep(3);
+  }
+
+  // ------------------------------------------------------------------ 第 3 页：网站设定
+  /**
+   * Logo 上传 —— 走 Init 专用的上传接口。
+   *
+   * 不能用后台那个 /api/upload-logo：它要登录态，而初始化时管理员还不存在。
+   * 上传成功后服务端只回地址，落库由 complete-install 一次性完成。
+   */
+  async function handleLogoSelected(event) {
+    const input = event.target;
+    const file = input.files && input.files[0];
+    const status = byId('logo-status');
+    if (!file) return;
+
+    if (file.size > MAX_LOGO_SIZE) {
+      uploadedLogo = '';
+      status.textContent = '文件超过 2MB，请换一张小一点的图片';
+      return;
+    }
+
+    status.textContent = '上传中...';
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    try {
+      const response = await fetch('/api/init/upload-logo', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (error) {
+        data = null;
+      }
+      if (!response.ok) {
+        throw new Error((data && (data.message || data.error)) || ('上传失败（HTTP ' + response.status + '）'));
+      }
+      uploadedLogo = (data && data.logo) || '';
+      renderLogoPreview(uploadedLogo);
+      status.textContent = '上传成功：' + uploadedLogo;
+    } catch (error) {
+      uploadedLogo = '';
+      hideLogoPreview();
+      status.textContent = error.message;
+    }
+  }
+
+  function renderLogoPreview(logoPath) {
+    const preview = byId('logo-preview');
+    const image = byId('logo-preview-img');
+    if (!preview || !image) return;
+    if (!logoPath) {
+      hideLogoPreview();
+      return;
+    }
+    image.src = logoPath;
+    preview.hidden = false;
+  }
+
+  function hideLogoPreview() {
+    const preview = byId('logo-preview');
+    const image = byId('logo-preview-img');
+    if (preview) preview.hidden = true;
+    if (image) image.removeAttribute('src');
+  }
+
+  function handleNextSite() {
+    const invalid = validateSiteForm();
+    if (invalid) {
+      showAlert(invalid, 'error');
+      return;
+    }
     renderInstallSummary();
+    renderInstallProgress([], null);
     goToStep(4);
   }
 
-  /** 第 3 页的汇总 —— 显示即将落地的内容，避免「点了才知道填错了」 */
+  // ------------------------------------------------------------------ 第 4 页：执行初始化
+  /** 第 4 页的汇总 —— 显示即将落地的内容，避免「点了才知道填错了」 */
   function renderInstallSummary() {
     const container = byId('install-summary');
     if (!container) return;
     const dbConfig = collectDbConfig().mysql;
     const admin = collectAdminInput();
+    const site = collectSiteSettings();
 
     const rows = [
       ['数据库主机', dbConfig.host + ':' + dbConfig.port],
       ['数据库名', dbConfig.database],
       ['数据库用户', dbConfig.user],
       ['管理员账号', admin.username],
-      ['管理员邮箱', admin.email || '（未填写）']
+      ['管理员邮箱', admin.email || '（未填写）'],
+      ['站点名称', site.companyName],
+      ['站点 Logo', site.logo || '（不设置）']
     ];
 
     const body = rows.map(function (row) {
@@ -372,36 +433,76 @@
       + '<th>项目</th><th>值</th></tr></thead><tbody>' + body + '</tbody></table></div>';
   }
 
-  // ------------------------------------------------------------------ 第 3 页：完成初始化
+  /**
+   * 渲染「初始化过程」清单。
+   *
+   * @param {Array<{key: string, label: string}>} doneSteps 服务端确认跑完的步骤
+   * @param {string|null} failedKey  卡住的那一步的 key
+   */
+  function renderInstallProgress(doneSteps, failedKey) {
+    const container = byId('install-progress');
+    if (!container) return;
+    const done = {};
+    (doneSteps || []).forEach(function (step) {
+      if (step && step.key) done[step.key] = step.label || step.key;
+    });
+
+    const items = INSTALL_STEPS.map(function (step) {
+      let status = 'pending';
+      let mark = '·';
+      if (done[step.key]) {
+        status = 'done';
+        mark = '✓';
+      } else if (failedKey === step.key) {
+        status = 'failed';
+        mark = '✗';
+      }
+      const label = done[step.key] || step.label;
+      return '<li class="init-progress-item ' + status + '">'
+        + '<span class="progress-mark">' + mark + '</span>'
+        + '<span class="progress-label">' + escapeHtml(label) + '</span>'
+        + '</li>';
+    });
+
+    container.innerHTML = items.join('');
+  }
+
   async function handleCompleteInstall() {
     const dbInvalid = validateDbForm();
     if (dbInvalid) {
       showAlert(dbInvalid, 'error');
-      goToStep(2);
+      goToStep(1);
       return;
     }
     const adminInvalid = validateAdminForm();
     if (adminInvalid) {
       showAlert(adminInvalid, 'error');
+      goToStep(2);
+      return;
+    }
+    const siteInvalid = validateSiteForm();
+    if (siteInvalid) {
+      showAlert(siteInvalid, 'error');
       goToStep(3);
       return;
     }
 
     const button = byId('btn-complete-install');
     setBusy(button, true, '初始化中...');
+    renderInstallProgress([], null);
     try {
       const data = await apiRequest('/api/init/complete-install', {
         method: 'POST',
         body: {
           db: collectDbConfig(),
-          admin: collectAdminInput()
+          admin: collectAdminInput(),
+          site: collectSiteSettings()
         }
       });
-      // 令牌已被服务端销毁，本地也要清掉
-      clearToken();
+      renderInstallProgress(data.steps || [], null);
+
       byId('admin-password').value = '';
       byId('admin-password-confirm').value = '';
-      byId('init-token').value = '';
 
       byId('install-form-part').hidden = true;
       byId('install-done').hidden = false;
@@ -412,6 +513,8 @@
         'success'
       );
     } catch (error) {
+      const payload = error.data || {};
+      renderInstallProgress(payload.steps || [], payload.failedStep || null);
       if (error.code === 'ALREADY_INSTALLED') {
         showAlert('站点已完成初始化，正在跳转到登录页…', 'info');
         window.setTimeout(function () {
@@ -427,48 +530,55 @@
 
   // ------------------------------------------------------------------ 事件绑定
   function bindEvents() {
-    byId('btn-verify-token').addEventListener('click', handleVerifyToken);
     byId('btn-test-db').addEventListener('click', handleTestDb);
     byId('btn-next-db').addEventListener('click', handleNextDb);
     byId('btn-back-db').addEventListener('click', function () {
-      goToStep(2);
+      goToStep(1);
     });
     byId('btn-next-admin').addEventListener('click', handleNextAdmin);
     byId('btn-back-admin').addEventListener('click', function () {
+      goToStep(2);
+    });
+    byId('btn-next-site').addEventListener('click', handleNextSite);
+    byId('btn-back-site').addEventListener('click', function () {
       goToStep(3);
     });
     byId('btn-complete-install').addEventListener('click', handleCompleteInstall);
+    byId('logo-file').addEventListener('change', handleLogoSelected);
 
-    byId('init-token').addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') handleVerifyToken();
-    });
     byId('admin-password-confirm').addEventListener('keydown', function (event) {
       if (event.key === 'Enter') handleNextAdmin();
     });
   }
 
   /**
-   * 页面加载：若 sessionStorage 里还留着令牌（刷新页面），
-   * 自动重校验并恢复到第 1 页，避免用户重新粘贴令牌。
+   * 页面加载：拉一次安装状态，把已知信息填进表单。
+   *
+   * 已经初始化完的站点，这个接口会返回 403 ALREADY_INSTALLED ——
+   * 直接跳登录页即可（服务端本来也不会再放行任何 Init 写操作）。
    */
-  async function resumeIfTokenPresent() {
-    const token = getToken();
-    if (!token) return;
+  async function loadInitialState() {
     try {
-      const data = await apiRequest('/api/init/verify-token', {
-        method: 'POST',
-        body: {}
-      });
+      const data = await apiRequest('/api/init/status', { method: 'GET' });
       initState = data.state || null;
       applyDbConfig(initState);
-      goToStep(2);
     } catch (error) {
-      clearToken();
+      if (error.code === 'ALREADY_INSTALLED') {
+        showAlert('站点已完成初始化，正在跳转到登录页…', 'info');
+        window.setTimeout(function () {
+          window.location.href = '/login';
+        }, 1200);
+        return;
+      }
+      // 状态读不出来不挡路 —— 「测试连接」环节会兜底
+      showAlert('读取安装状态失败：' + error.message + '（可以先点「测试连接」确认数据库参数）', 'warning');
     }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
     bindEvents();
-    resumeIfTokenPresent();
+    byId('site-name').value = DEFAULT_SITE_NAME;
+    goToStep(1);
+    loadInitialState();
   });
 })();

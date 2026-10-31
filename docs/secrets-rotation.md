@@ -180,7 +180,7 @@ pm2 logs booming --lines 50
 
 - 启动日志出现 `✖ 数据库连接失败: Access denied for user 'xxx'@'yyy' (using password: YES)`；
 - 业务接口统一返回 **503** `{ error: '数据库当前不可用', initUrl: '/init' }`；
-- `/init` 照常可用，Init 令牌会重新打进控制台（并写回 `data/init-token.txt`）；
+- `/init` 照常可用，控制台会提示「站点尚未完成初始化，请打开 /init 继续」；
 - 在向导第 2 步填回正确凭据 → 保存 → 连接池当场切换 → 站点立即恢复。
 
 > 「数据库不可用」= **连不上** 或 **认证不过**（账号密码错 / 账号对该库没权限）。
