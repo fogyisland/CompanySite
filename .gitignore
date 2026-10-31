@@ -32,4 +32,7 @@ build/
 *.backup
 *.tmp
 .test-upload.txt
-.superpowers/sdd/
+
+# Superpowers 插件的运行时产物（brainstorm 服务的 pid / 端口 / 临时页面等）
+# 属于本地状态，不是项目资源，不该进版本库
+.superpowers/
