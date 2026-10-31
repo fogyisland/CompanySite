@@ -59,7 +59,53 @@
 
 ---
 
-## 1. 前置条件
+## 1. 先确认状态，再动手
+
+### 1.1 「需要初始化」怎么判定
+
+**唯一权威判据：`users` 表里 `is_admin = 1` 的行数。**
+
+| 查库结果 | 判定 |
+|---|---|
+| `is_admin = 1` 的行数 **> 0** | **已安装** —— 不需要初始化 |
+| `is_admin = 1` 的行数 **= 0** | **需要初始化** |
+| `users` 表根本不存在 | **需要初始化** |
+
+> 判定只看管理员行，**不看表建好了没有、不看默认数据灌了没有** —— 那两件事都是幂等的，
+> 拿它们当闸门会在「表建好 → 管理员还没建」这个窗口期把闸门重新打开，别人能抢先建管理员接管站点。
+
+**不碰库也能看的四个信号：**
+
+| 信号 | 判「需要初始化」 |
+|---|---|
+| `GET /setup` 的响应 | **200** = 未安装；**302** 到 `/login` 或 `/admin-overview` = 已安装 |
+| 首页 `/` 的响应 | **302 → /setup** = 未安装；**200** = 已安装 |
+| `data/setup-token.txt` | **存在** = 未安装（或数据库不可达）；不存在 = 已安装 |
+| 启动日志 | 出现「站点尚未完成安装，请打开 /setup 完成初始化」= 未安装 |
+
+> `/setup` 在已安装状态下 **302 到 `/login` 是设计如此**，不是页面坏了 ——
+> 它在防止一个已经装好的站点被重新初始化。
+
+服务器上现在就能跑：
+
+```bash
+cd /var/www/booming
+
+# ① 令牌文件（未安装时才会生成）
+ls -l data/setup-token.txt 2>/dev/null || echo "无令牌文件 → 大概率已安装"
+
+# ② /setup 现在给什么
+curl -s -o /dev/null -w '/setup: %{http_code} %{redirect_url}\n' https://www.booming.one/setup
+
+# ③ 首页现在给什么
+curl -s -o /dev/null -w '/     : %{http_code} %{redirect_url}\n' https://www.booming.one/
+
+# ④ 权威判据（密码交互式输入）
+mysql -h <DB_HOST> -P <DB_PORT> -u <DB_USER> -p <DB_NAME> \
+  -e "SELECT COUNT(*) AS admins FROM users WHERE is_admin = 1;"
+```
+
+### 1.2 前置条件
 
 - [ ] 服务器 SSH 可用（`ssh user@booming.one`）
 - [ ] 有 MySQL 管理员权限（能 `CREATE DATABASE`）—— 我没有生产库凭据，这一步只能你来
