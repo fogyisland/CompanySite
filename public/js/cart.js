@@ -1,15 +1,67 @@
 // 购物车管理
 const CART_KEY = 'booming_cart';
 
-// 获取购物车
-function getCart() {
-  const cart = localStorage.getItem(CART_KEY);
-  return cart ? JSON.parse(cart) : [];
+/**
+ * 直接写 localStorage，不触发徽章刷新。
+ *
+ * 单独拆出来是为了让 getCart() 的「数据损坏」分支能安全地重置存储：
+ * saveCart() 会调 updateCartBadge()，而 updateCartBadge() 又调 getCart() ——
+ * 在 getCart 内部调 saveCart 会绕成递归。
+ */
+function writeCartStorage(cart) {
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  } catch (error) {
+    // 隐私模式 / 配额满 / 存储被禁用 —— 不能让读操作把整页搞崩
+    console.error('购物车写入失败:', error);
+  }
 }
+
+/**
+ * 获取购物车。
+ *
+ * localStorage 是用户可写的：内容可能不是合法 JSON（别的脚本写了半截字符串、
+ * 用户手动改过），也可能压根不是数组（写进去的是对象或数字）。
+ * 这里必须自己兜住 —— 否则 JSON.parse 一抛，addToCart / updateCartBadge /
+ * 结算页整条链路全挂，页面直接白屏。
+ *
+ * 损坏时按「空购物车」处理并顺手把坏数据清掉，避免每次刷新都报错。
+ */
+function getCart() {
+  let raw;
+  try {
+    raw = localStorage.getItem(CART_KEY);
+  } catch (error) {
+    // 存储被禁用（隐私模式等）：当作空购物车，不抛
+    console.error('无法读取购物车（存储不可用）:', error);
+    return [];
+  }
+
+  if (!raw) return [];
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    console.error('购物车数据损坏（JSON 解析失败），已重置为空购物车:', error);
+    writeCartStorage([]);
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) {
+    console.error('购物车数据格式错误（不是数组），已重置为空购物车');
+    writeCartStorage([]);
+    return [];
+  }
+
+  // 逐项过滤：null / 基础类型 / 嵌套数组都不能参与后面的 item.xxx 运算
+  return parsed.filter(item => item !== null && typeof item === 'object' && !Array.isArray(item));
+}
+
 
 // 保存购物车
 function saveCart(cart) {
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  writeCartStorage(cart);
   updateCartBadge();
 }
 
@@ -64,9 +116,13 @@ function updateQuantity(productId, tierIndex, delta) {
   );
 
   if (index >= 0) {
-    cart[index].quantity += delta;
-    if (cart[index].quantity <= 0) {
+    // quantity 可能缺失或是字符串 —— 先归一成数字再加减
+    const current = Number(cart[index].quantity) || 0;
+    const next = current + delta;
+    if (next <= 0) {
       cart.splice(index, 1);
+    } else {
+      cart[index].quantity = next;
     }
     saveCart(cart);
     renderCartModal();
@@ -82,7 +138,13 @@ function clearCart() {
 // 计算总价
 function getCartTotal() {
   const cart = getCart();
-  return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // price / quantity 都来自 localStorage，可能缺字段或类型不对 —— 兜成 0，
+  // 否则一个坏项会让整个合计变成 NaN，页面上显示「¥NaN」
+  return cart.reduce((sum, item) => {
+    const price = Number(item.price) || 0;
+    const quantity = Number(item.quantity) || 0;
+    return sum + price * quantity;
+  }, 0);
 }
 
 // 更新购物车徽章
@@ -90,7 +152,7 @@ function updateCartBadge() {
   const cart = getCart();
   const badge = document.getElementById('cart-badge');
   if (badge) {
-    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const count = cart.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     badge.textContent = count;
     badge.style.display = count > 0 ? 'flex' : 'none';
   }

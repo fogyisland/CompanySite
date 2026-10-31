@@ -237,6 +237,7 @@ setInterval(() => {
   pruneRateMap(apiRateLimitMap, v => v.resetTime && v.resetTime < Date.now() - 60000);
   pruneRateMap(apiBlockedIPs, v => v.until && v.until < Date.now());
   pruneRateMap(publicEndpointRateLimit, v => v.resetTime && v.resetTime < Date.now() - 60000);
+  pruneRateMap(registerAttempts, v => v.windowStart && v.windowStart < Date.now() - REGISTER_RATE_WINDOW);
 }, RATE_MAP_CLEAN_INTERVAL).unref(); // .unref() 让定时器不阻止进程退出
 
 // 修复 I12: 每日清理 7+ 天的 data/emails/email-*.json(邮件内容存档)
@@ -355,6 +356,49 @@ function checkPublicEndpointRateLimit(req, res, next) {
     });
   }
   next();
+}
+
+// 注册限流（I4：/api/user/register 原本只受全局 apiRateLimit 约束 ——
+// 100 次/秒，对「建号 + 写 registration_logs + 发验证邮件」这种写操作等于不设防）。
+//
+// 单独计数，不和登录共用一张表：登录失败触发的封禁是针对登录的，
+// 复用同一张表会出现「你登录失败得多 → 你连注册都不让做」的连坐。
+//
+// 只限「成功建号」：失败的请求不建号、不发邮件，不该占额度 ——
+// 否则恶意请求能把同 IP 的正常用户额度耗光（限流本身反而变成 DoS 手段）。
+// 但占位在校验入口就做，避免并发的多个请求同时通过检查各建一个号。
+//
+// 阈值 5 个/小时：办公网 NAT 后可能有几十个同事注册，5 个/小时够用；
+// 而邮件轰炸（用 +别名 变体绕过邮箱唯一性，反复给同一个收件人发验证信）
+// 需要的是比 30 次/分钟紧得多的阈值。
+const registerAttempts = new Map(); // ip -> { count, windowStart }
+const REGISTER_RATE_LIMIT = Number(process.env.REGISTER_RATE_LIMIT || 5);
+const REGISTER_RATE_WINDOW = 60 * 60 * 1000; // 1 小时
+
+/**
+ * 注册限流检查 —— 通过时**先占一个额度**。
+ *
+ * @returns {{allowed: boolean, retryAfter?: number}} allowed=false 时 retryAfter 是秒
+ */
+function checkRegisterRateLimit(ip) {
+  const now = Date.now();
+  let record = registerAttempts.get(ip);
+  if (!record || now - record.windowStart >= REGISTER_RATE_WINDOW) {
+    record = { count: 0, windowStart: now };
+    registerAttempts.set(ip, record);
+  }
+  if (record.count >= REGISTER_RATE_LIMIT) {
+    const retryAfter = Math.ceil((record.windowStart + REGISTER_RATE_WINDOW - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+  record.count += 1; // 占位：失败时要还回去（见 releaseRegisterRateLimit）
+  return { allowed: true };
+}
+
+/** 注册没走到「建号成功」那一步时，把占用的额度还回去。 */
+function releaseRegisterRateLimit(ip) {
+  const record = registerAttempts.get(ip);
+  if (record && record.count > 0) record.count -= 1;
 }
 
 // 发送邮件函数
@@ -1451,6 +1495,19 @@ const SOFTWARE_UPLOAD_RULES = Object.freeze({
   '.xlsx': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip', 'application/octet-stream']
 });
 
+/**
+ * 允许删除的软件包扩展名 —— 直接由上传白名单推导。
+ *
+ * 上传白名单是权威：能传上去的文件必须删得掉。
+ * 之前这里手写了一份更短的列表（只有 9 种），于是 .rar / .7z / .rpm /
+ * .appimage / .jar / .war / .pdf / .txt / .doc / .docx / .xls / .xlsx
+ * 这些类型传得上却删不掉 —— 传错的文件只能留在磁盘上，运营只能 SSH 上去手删。
+ */
+const SOFTWARE_DELETABLE_EXTENSIONS = Object.freeze(Object.keys(SOFTWARE_UPLOAD_RULES));
+
+/** 允许删除的图片扩展名 —— 同样由上传白名单推导，避免两份列表各改各的。 */
+const IMAGE_DELETABLE_EXTENSIONS = Object.freeze(Object.keys(IMAGE_UPLOAD_RULES));
+
 /** 生成一个 fileFilter，失败时返回可读的 400 文案。 */
 function buildUploadFilter(rules, rejectMessage) {
   return (req, file, cb) => {
@@ -1785,14 +1842,27 @@ app.post('/api/user/register', async (req, res) => {
     return res.status(400).json({ error: '邮箱格式无效' });
   }
 
+  // 注册限流：全局 apiRateLimit 是 100 次/秒，对建号这种写操作形同虚设。
+  // 检查放在任何 DB 访问之前 —— 被限流的请求不碰库，也不写 registration_logs
+  // （否则限流器自己就能被拿来放大写库）。
+  const registerRate = checkRegisterRateLimit(clientIp);
+  if (!registerRate.allowed) {
+    return res.status(429).json({
+      error: '注册过于频繁，请稍后再试',
+      retryAfter: registerRate.retryAfter
+    });
+  }
+
   // 检查用户名是否已存在
   if (await db.getUserByUsername(username)) {
+    releaseRegisterRateLimit(clientIp);
     await db.addRegistrationLog(username, clientIp, req.headers['user-agent'] || '', 'FAILED:用户名已存在');
     return res.status(400).json({ error: '用户名已存在' });
   }
 
   // 检查邮箱是否已存在
   if (email && await db.getUserByEmail(email)) {
+    releaseRegisterRateLimit(clientIp);
     await db.addRegistrationLog(username, clientIp, req.headers['user-agent'] || '', 'FAILED:邮箱已被注册');
     return res.status(400).json({ error: '邮箱已被注册' });
   }
@@ -3937,7 +4007,7 @@ app.delete('/api/upload-product-image', requireAuth, (req, res) => {
   const result = safeUnlinkInDir(
     path.join(__dirname, 'public', 'uploads', 'products'),
     filename,
-    ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+    IMAGE_DELETABLE_EXTENSIONS
   );
 
   if (result.error === 'INVALID_NAME') {
@@ -3981,7 +4051,7 @@ app.delete('/api/upload-software', requireAuth, (req, res) => {
   const result = safeUnlinkInDir(
     path.join(__dirname, 'public', 'uploads', 'software'),
     filename,
-    ['.exe', '.msi', '.dmg', '.deb', '.zip', '.tar', '.gz', '.pkg', '.apk']
+    SOFTWARE_DELETABLE_EXTENSIONS
   );
 
   if (result.error === 'INVALID_NAME') {

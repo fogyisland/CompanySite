@@ -476,22 +476,30 @@
         </div>
 
         <div class="order-list">
-          ${currentOrders.map(order => `
+          ${currentOrders.map(order => {
+            // item 来自 localStorage 购物车（用户可改写），每个字段都要转义；
+            // 数值字段先归一成数字，缺字段时显示 0 而不是 NaN
+            const item = order.item || {};
+            const price = Number(item.price) || 0;
+            const quantity = Number(item.quantity) || 0;
+            const icon = String(item.icon || (item.name || '').charAt(0) || '📦');
+            return `
             <div class="order-card">
               <div class="order-card-header">
-                <span class="order-id">${order.orderNumber || '订单 #' + order.id}</span>
+                <span class="order-id">${escapeHtml(order.orderNumber || ('订单 #' + order.id))}</span>
                 <span class="order-status">待支付</span>
               </div>
               <div class="order-item">
-                <div class="order-item-icon">${order.item.icon || order.item.name.charAt(0)}</div>
+                <div class="order-item-icon">${escapeHtml(icon)}</div>
                 <div class="order-item-info">
-                  <div class="order-item-name">${order.item.name}</div>
-                  <div class="order-item-meta">${order.item.duration}</div>
+                  <div class="order-item-name">${escapeHtml(item.name)}</div>
+                  <div class="order-item-meta">${escapeHtml(item.duration)}</div>
                 </div>
-                <div class="order-item-price">¥${order.item.price * order.item.quantity}</div>
+                <div class="order-item-price">¥${price * quantity}</div>
               </div>
             </div>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
 
         <div class="checkout-grid">
