@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>博铭科技 - 结算中心</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <style>
@@ -354,6 +354,9 @@
 
       // 为每个购物车项创建订单
       currentOrders = [];
+      // 下单失败的项：产品可能已被下架（草稿）或价格方案已变更。
+      // 不能静默丢弃 —— 否则用户会看到「购物车清空了但一个订单都没生成」。
+      const failedItems = [];
       for (const item of cartItems) {
         try {
           const orderResponse = await fetch('/api/orders', {
@@ -375,24 +378,93 @@
           const order = await orderResponse.json();
           if (order.id) {
             currentOrders.push({ ...order, item });
+          } else {
+            failedItems.push({ item, reason: order.error || '下单失败，请稍后重试' });
           }
         } catch (error) {
           console.error('Error creating order:', error);
+          failedItems.push({ item, reason: '网络错误，请稍后重试' });
         }
       }
 
-      // 清空购物车
-      clearCart();
+      // 只清掉成功下单的项；失败的项留在购物车里，用户可以重试或自行移除
+      if (currentOrders.length > 0) {
+        removeSucceededFromCart(
+          currentOrders.map((order) => ({ productId: order.item.productId, tierIndex: order.item.tierIndex }))
+        );
+      }
 
       // 渲染结算页面
-      renderCheckoutPage();
+      renderCheckoutPage(failedItems);
     }
 
-    function renderCheckoutPage() {
+    /**
+     * HTML 转义。
+     * 商品名来自 localStorage 购物车（可被用户改写），拼进 innerHTML 前必须转义。
+     */
+    function escapeHtml(text) {
+      return String(text === null || text === undefined ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * 从购物车里移除已成功下单的项。
+     * 失败的项必须留着 —— 否则用户会看到购物车凭空清空。
+     * getCart 的 JSON.parse 也要兜底：localStorage 被写坏时不能整页崩掉。
+     */
+    function removeSucceededFromCart(succeededList) {
+      const succeeded = new Set(succeededList.map((item) => `${item.productId}:${item.tierIndex}`));
+      let cart = [];
+      try {
+        cart = getCart();
+      } catch (parseError) {
+        console.error('购物车数据损坏，已按空购物车处理:', parseError);
+        saveCart([]);
+        return;
+      }
+      const remaining = cart.filter((item) => !succeeded.has(`${item.productId}:${item.tierIndex}`));
+      saveCart(remaining);
+    }
+
+    function renderCheckoutPage(failedItems) {
+      const failures = Array.isArray(failedItems) ? failedItems : [];
       const totalAmount = currentOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+
+      // 后端返回的是稳定错误码（便于日志聚合），这里翻成用户看得懂的话
+      const ERROR_TEXT = {
+        PRODUCT_NOT_FOUND: '产品不存在',
+        PRODUCT_NOT_AVAILABLE: '产品已下架，暂时无法购买',
+        PRICE_NOT_AVAILABLE: '价格信息有误，请联系客服',
+        TIER_NOT_AVAILABLE: '价格方案已调整，请重新选择',
+        TIER_OUT_OF_RANGE: '价格方案已调整，请重新选择',
+        INVALID_TIER_INDEX: '价格方案已调整，请重新选择'
+      };
+
+      const failureBlock = failures.length > 0 ? `
+        <div class="checkout-card" style="border-left:4px solid #ef4444;margin-bottom:20px;">
+          <h3 style="color:#ef4444;margin-bottom:10px;">以下商品未能下单</h3>
+          <ul style="list-style:none;padding:0;margin:0;">
+            ${failures.map(({ item, reason }) => `
+              <li style="padding:8px 0;border-bottom:1px solid rgba(148,163,184,.15);">
+                <strong>${escapeHtml(item.name)}</strong>
+                <span style="color:#ef4444;margin-left:8px;">${escapeHtml(ERROR_TEXT[reason] || reason)}</span>
+              </li>
+            `).join('')}
+          </ul>
+          <p style="margin-top:12px;color:var(--text-light);font-size:13px;">
+            这些商品仍保留在购物车中，可移除后重新结算。
+          </p>
+        </div>
+      ` : '';
 
       document.getElementById('checkout-content').innerHTML = `
         <h1 class="checkout-title">结算中心</h1>
+
+        ${failureBlock}
 
         <div class="cart-summary">
           <div class="cart-summary-items">
@@ -472,6 +544,7 @@
       // 验证所有订单
       let verifiedCount = 0;
       let failedCount = 0;
+      const verifiedItems = [];
 
       for (const order of currentOrders) {
         try {
@@ -484,6 +557,10 @@
 
           if (response.ok) {
             verifiedCount++;
+            verifiedItems.push({
+              productId: order.item.productId,
+              tierIndex: order.item.tierIndex
+            });
           } else {
             failedCount++;
           }
@@ -493,8 +570,8 @@
       }
 
       if (verifiedCount > 0) {
-        // 清空购物车
-        clearCart();
+        // 只移除已支付的项；下单失败而留下的项继续留在购物车里
+        removeSucceededFromCart(verifiedItems);
         showMessage(`验证成功！${verifiedCount}个订单已支付！`, 'success');
         setTimeout(() => {
           window.location.href = '/user-center';

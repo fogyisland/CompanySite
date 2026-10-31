@@ -501,7 +501,8 @@
       return;
     }
     try {
-      const response = await fetch('/api/products/' + opts.productId, { credentials: 'include' });
+      // 用后台接口：草稿产品（前台不可见）也要能在后台打开编辑
+      const response = await fetch('/api/admin/products/' + opts.productId, { credentials: 'include' });
       const product = await response.json();
       state.currentProduct = product;
 

@@ -224,7 +224,7 @@ function buildSinglePriceCard(product) {
   price.className = 'product-price';
   price.appendChild(document.createTextNode(`¥${product.price}`));
   const suffix = document.createElement('span');
-  suffix.textContent = ' 一次购买';
+  suffix.textContent = ' / 年';
   price.appendChild(suffix);
   footer.appendChild(price);
 
@@ -361,6 +361,13 @@ function showPrice(btn, tierIndex) {
 async function addProductToCart(productId, cardRef) {
   try {
     const response = await fetch('/api/products/' + productId);
+    // 产品可能已下架（草稿）→ /api/products/:id 返回 404。
+    // 不检查 response.ok 的话，response.json() 拿到的是 { error: ... }，
+    // 会被当成商品塞进购物车（id / price 全是 undefined）。
+    if (!response.ok) {
+      alert('该产品已下架，无法加入购物车');
+      return;
+    }
     const product = await response.json();
 
     // Find the card: prefer explicit ref, else walk from event target

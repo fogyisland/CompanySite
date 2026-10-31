@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>博铭科技 - 服务条款</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <style>
@@ -143,26 +143,28 @@
       </ul>
 
       <h2>4. 购买和支付</h2>
-      <p>软件产品采用一次性购买模式：</p>
+      <p>软件产品采用按年订阅模式：</p>
       <ul>
-        <li>一次付费，终身使用</li>
-        <li>无需订阅，无隐藏费用</li>
+        <li>订阅周期为一年，自付款之日起计算</li>
+        <li>订阅有效期内可获得产品更新、技术支持与使用授权</li>
+        <li>无长期合约，可随时取消，取消后不再自动续费</li>
         <li>价格以人民币计价，含增值税</li>
-        <li>支付成功后即可下载和使用</li>
+        <li>付款成功后即可下载和使用</li>
       </ul>
 
       <h2>5. 退款政策</h2>
-      <p>我们提供30天退款保障：</p>
+      <p>我们提供订阅退款保障：</p>
       <ul>
-        <li>自购买之日起30天内可申请全额退款</li>
+        <li>自订阅生效之日起7天内可申请全额退款</li>
+        <li>超过7天的订阅，已使用的周期不予退还，未使用周期可按比例退还</li>
         <li>退款申请需提供购买凭证</li>
-        <li>以下情况不接受退款：软件使用超过30天、违反许可协议</li>
+        <li>以下情况不接受退款：违反许可协议、用于非法目的</li>
       </ul>
 
       <h2>6. 技术支持</h2>
-      <p>购买我们的软件产品后，您将获得：</p>
+      <p>订阅我们的软件产品后，您将获得：</p>
       <ul>
-        <li>免费的版本更新（在版本周期内）</li>
+        <li>订阅有效期内的版本更新</li>
         <li>在线技术支持</li>
         <li>产品使用文档和教程</li>
       </ul>
@@ -303,16 +305,16 @@
 
             if (response.ok) {
               messageEl.textContent = data.message;
-              messageEl.style.color = '#22c55e';
+              messageEl.style.color = 'var(--success)';
               document.getElementById('subscribe-email-modal').value = '';
               setTimeout(() => closeSubscribeModal(), 2000);
             } else {
               messageEl.textContent = data.error || '订阅失败';
-              messageEl.style.color = '#ef4444';
+              messageEl.style.color = 'var(--danger)';
             }
           } catch (error) {
             messageEl.textContent = '订阅失败，请稍后重试';
-            messageEl.style.color = '#ef4444';
+            messageEl.style.color = 'var(--danger)';
           }
         });
       }

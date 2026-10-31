@@ -57,7 +57,8 @@
             { label: '安全', href: '/admin-security' },
             { label: '邮件', href: '/admin-email' },
             { label: 'AI设置', href: '/admin-ai' },
-            { label: 'API', href: '/admin-api' }
+            { label: 'API', href: '/admin-api' },
+            { label: 'MCP', href: '/admin-mcp' }
           ]
         }
       ]

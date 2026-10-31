@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>博铭科技 - 数据库设置</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
-  <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
+  <link rel="stylesheet" href="/css/pages/admin.css?v=20261030-1">
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260623-1503">
   <link rel="stylesheet" href="/css/admin-sidebar.css?v=20260622-1700">
 </head>
@@ -19,6 +19,7 @@
 
       <div class="settings-tabs">
         <button type="button" class="settings-tab active" data-tab="connection">数据库连接配置</button>
+        <button type="button" class="settings-tab" data-tab="schema">表结构维护</button>
         <button type="button" class="settings-tab" data-tab="backup">数据备份与恢复</button>
       </div>
 
@@ -27,31 +28,59 @@
 
         <div class="settings-card">
           <div class="settings-group">
-            <h3 class="settings-heading">MySQL 连接配置</h3>
+            <h3 class="settings-heading">MySQL 连接配置<span id="db-config-source" class="config-source-badge"></span></h3>
             <div class="field">
               <label>主机地址</label>
-              <input type="text" id="mysql-host" readonly>
+              <input type="text" id="mysql-host" autocomplete="off" spellcheck="false">
             </div>
             <div class="field-row">
               <div class="field">
                 <label>端口</label>
-                <input type="text" id="mysql-port" readonly>
+                <input type="text" id="mysql-port" inputmode="numeric" autocomplete="off">
               </div>
               <div class="field">
                 <label>数据库名</label>
-                <input type="text" id="mysql-database" readonly>
+                <input type="text" id="mysql-database" autocomplete="off" spellcheck="false">
               </div>
             </div>
             <div class="field-row">
               <div class="field">
                 <label>用户名</label>
-                <input type="text" id="mysql-user" readonly>
+                <input type="text" id="mysql-user" autocomplete="off" spellcheck="false">
               </div>
               <div class="field">
                 <label>密码</label>
-                <input type="password" id="mysql-password" readonly placeholder="******">
+                <input type="password" id="mysql-password" autocomplete="new-password" placeholder="******">
+                <p class="field-hint">留空或保持 ****** 表示不修改现有密码。</p>
               </div>
             </div>
+            <p class="field-hint" id="db-config-note" hidden></p>
+            <div class="form-actions-bar">
+              <button type="button" class="btn-secondary" id="btn-db-test">测试连接</button>
+              <button type="button" class="btn-primary" id="btn-db-save">写入 .env 并保存</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions-back">
+          <a href="/admin-product" class="link-back">← 返回</a>
+        </div>
+      </div>
+
+      <div class="settings-panel" id="panel-schema" hidden>
+        <div class="alert" id="schema-message"></div>
+
+        <div class="settings-card">
+          <div class="settings-group">
+            <h3 class="settings-heading">初始化 / 修复表结构</h3>
+            <p class="field-hint" style="margin-top: 0; margin-bottom: 14px;">
+              建表用 CREATE TABLE IF NOT EXISTS，补列用 ALTER TABLE（列已存在则跳过），
+              默认数据只在目标表为空时写入。整个过程幂等，可以重复执行。
+            </p>
+            <div class="form-actions-bar" style="margin-top: 0;">
+              <button type="button" class="btn-primary" id="btn-db-init">初始化 / 修复表结构</button>
+            </div>
+            <div id="schema-table-container"></div>
           </div>
         </div>
 
@@ -112,6 +141,10 @@
   </div>
 
   <script>
+    // 当前数据库配置来源（env / file / default）——
+    // 按钮状态要跟着它走，不能在 finally 里无条件点亮。
+    let currentConfigSource = 'default';
+
     async function loadSettings() {
       try {
         const response = await fetch('/api/settings', { credentials: 'include' });
@@ -143,21 +176,179 @@
           return;
         }
         const config = await response.json();
-        if (config && config.mysql) {
-          document.getElementById('mysql-host').value = config.mysql.host || '';
-          document.getElementById('mysql-port').value = config.mysql.port || '3306';
-          document.getElementById('mysql-user').value = config.mysql.user || '';
-          document.getElementById('mysql-password').value = config.mysql.password || '';
-          document.getElementById('mysql-database').value = config.mysql.database || '';
-        } else if (config) {
-          document.getElementById('mysql-host').value = config.host || '';
-          document.getElementById('mysql-port').value = config.port || '3306';
-          document.getElementById('mysql-user').value = config.user || '';
-          document.getElementById('mysql-password').value = config.password || '';
-          document.getElementById('mysql-database').value = config.database || '';
-        }
+        const mysql = (config && config.mysql) ? config.mysql : (config || {});
+        document.getElementById('mysql-host').value = mysql.host || '';
+        document.getElementById('mysql-port').value = mysql.port || '3306';
+        document.getElementById('mysql-user').value = mysql.user || '';
+        document.getElementById('mysql-database').value = mysql.database || '';
+        // 密码不回填到输入框 —— 服务端把 ****** 视为「不修改」
+        document.getElementById('mysql-password').value = '';
+        applyConfigSource(config && config.configSource);
       } catch (error) {
         console.error('Error loading db config:', error);
+      }
+    }
+
+    /**
+     * 配置来源徽标 —— .env 是数据库连接参数的唯一事实来源（安装向导生成）。
+     * 界面里保存的就是 .env 本身，因此**不再**有「保存了不生效」的锁；
+     * 但要明确告诉管理员改完后需要重启，否则会以为完全生效了。
+     */
+    function applyConfigSource(source) {
+      const badge = document.getElementById('db-config-source');
+      const note = document.getElementById('db-config-note');
+      const saveButton = document.getElementById('btn-db-save');
+      const labels = {
+        env: '来自 .env（唯一事实来源）',
+        file: '来自遗留的 data/db-config.json',
+        default: '使用内置默认值'
+      };
+      const key = source || 'default';
+      currentConfigSource = key;
+      badge.className = 'config-source-badge ' + key;
+      badge.textContent = labels[key] || key;
+
+      const notes = [];
+      if (key === 'env') {
+        notes.push('数据库连接参数保存在服务器的 .env 里（由安装向导生成，权限 0600）。'
+          + '在这里保存会改写 .env 中的 DB_* 并当场切换连接池；旧的 .env 会备份成 .env.bak。'
+          + '会话密钥与 session 存储池在启动时绑定，改完请重启一次服务。');
+      } else if (key === 'file') {
+        notes.push('当前连接参数来自遗留的 data/db-config.json。保存后会以 .env 为准（唯一事实来源），'
+          + '旧的 json 文件会同步一份，不再两份各说各话。');
+      } else {
+        notes.push('还没有 .env —— 保存后会生成一份，里面除了数据库参数，'
+          + '还会写入自动生成的会话密钥与定时任务令牌。');
+      }
+      note.hidden = false;
+      note.textContent = notes.join(' ');
+      saveButton.disabled = false;
+    }
+
+    /** 从表单收集一份数据库配置 */
+    function collectDbConfig() {
+      return {
+        type: 'mysql',
+        mysql: {
+          host: document.getElementById('mysql-host').value.trim(),
+          port: Number(document.getElementById('mysql-port').value.trim()) || 3306,
+          user: document.getElementById('mysql-user').value.trim(),
+          password: document.getElementById('mysql-password').value || '******',
+          database: document.getElementById('mysql-database').value.trim()
+        }
+      };
+    }
+
+    async function testDbConnection() {
+      const button = document.getElementById('btn-db-test');
+      button.disabled = true;
+      button.textContent = '测试中...';
+      try {
+        const res = await fetch('/api/db-test', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collectDbConfig())
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.status);
+        const version = data.version ? ' ' + data.version : '';
+        showMessage('连接成功' + version + '（数据库 ' + (data.database || '-') + '）', 'success');
+      } catch (error) {
+        showMessage('连接失败: ' + error.message, 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = '测试连接';
+      }
+    }
+
+    async function saveDbConfig() {
+      const button = document.getElementById('btn-db-save');
+      button.disabled = true;
+      button.textContent = '保存中...';
+      try {
+        const res = await fetch('/api/db-config', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collectDbConfig())
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || data.error || res.status);
+        showMessage(data.restartRequired
+          ? '连接配置已写入 .env 并生效（连接池已切换）。请重启一次服务，让会话存储池跟上。'
+          : '连接配置已保存并生效', 'success');
+        document.getElementById('mysql-password').value = '';
+        applyConfigSource(data.configSource);
+      } catch (error) {
+        showMessage('保存失败: ' + error.message, 'error');
+      } finally {
+        // 按钮状态由配置来源决定（.env 现在是可写的，没有锁）
+        applyConfigSource(currentConfigSource);
+        button.textContent = '写入 .env 并保存';
+      }
+    }
+
+    function showSchemaMessage(text, type) {
+      const msg = document.getElementById('schema-message');
+      msg.textContent = text;
+      msg.className = 'alert alert-' + type;
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 6000);
+    }
+
+    function renderSchemaTables(tables) {
+      const container = document.getElementById('schema-table-container');
+      if (!tables || !tables.length) {
+        container.innerHTML = '';
+        return;
+      }
+      // status 如实反映表的状态：ok / missing / error
+      const labels = { ok: ['ok', '已就绪'], missing: ['missing', '待创建'], error: ['missing', '检查失败'] };
+      const rows = tables.map(t => {
+        const entry = labels[t.status] || labels.ok;
+        return `
+        <tr>
+          <td>${escapeHtml(t.table)}</td>
+          <td class="num">${Number(t.count || 0)}</td>
+          <td><span class="schema-status ${entry[0]}">${entry[1]}</span></td>
+        </tr>
+      `;
+      }).join('');
+      container.innerHTML = `
+        <div class="schema-table-wrap">
+          <table class="schema-table">
+            <thead><tr>
+              <th>数据表</th>
+              <th style="text-align:right;">行数</th>
+              <th>状态</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    async function initDatabase() {
+      const button = document.getElementById('btn-db-init');
+      button.disabled = true;
+      button.textContent = '初始化中...';
+      try {
+        const res = await fetch('/api/db-init', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.status);
+        renderSchemaTables(data.tables);
+        showSchemaMessage(data.message || '数据库初始化完成', 'success');
+      } catch (error) {
+        showSchemaMessage('初始化失败: ' + error.message, 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = '初始化 / 修复表结构';
       }
     }
 
@@ -172,6 +363,9 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadSettings();
       loadDbConfig();
+      document.getElementById('btn-db-test').addEventListener('click', testDbConnection);
+      document.getElementById('btn-db-save').addEventListener('click', saveDbConfig);
+      document.getElementById('btn-db-init').addEventListener('click', initDatabase);
     });
   </script>
   <script>

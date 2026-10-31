@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>博铭科技 - 管理后台</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/admin-theme.css?v=20260621-1736">
   <style>
@@ -560,7 +560,8 @@
       }
 
       try {
-        const response = await fetch('/api/products/' + productId, { credentials: 'include' });
+        // 用后台接口：草稿产品（前台不可见）也要能在后台打开编辑
+        const response = await fetch('/api/admin/products/' + productId, { credentials: 'include' });
         const product = await response.json();
 
         currentProduct = product;

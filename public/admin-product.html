@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>博铭科技 - 产品管理</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <link rel="stylesheet" href="/css/pages/admin.css?v=20260623-1503">
@@ -54,11 +54,12 @@
               <th>价格方案</th>
               <th>版本</th>
               <th>平台</th>
+              <th>状态</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody id="products-table">
-            <tr><td colspan="8" class="empty-state">加载中...</td></tr>
+            <tr><td colspan="9" class="empty-state">加载中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -124,7 +125,8 @@
 
     async function loadProducts() {
       try {
-        const response = await fetch('/api/products', { credentials: 'include' });
+        // 用后台接口：/api/products 只返回已上架的产品，草稿在这里也要看到
+        const response = await fetch('/api/admin/products?pageSize=100', { credentials: 'include' });
         if (!response.ok) {
           if (response.status === 401) {
             window.location.href = '/login';
@@ -132,21 +134,21 @@
           }
         }
         const data = await response.json();
-        // 兼容 /api/products 两种返回格式: 旧版 array, 新版 {products, total, page, pageSize, totalPages}
+        // 兼容两种返回格式: 旧版 array, 新版 {products, total, page, pageSize, totalPages}
         products = Array.isArray(data) ? data : (data.products || []);
         renderTable();
         updateStats();
       } catch (error) {
         console.error('Error loading products:', error);
         document.getElementById('products-table').innerHTML =
-          '<tr><td colspan="8" class="empty-state" style="color:#ef4444;">加载失败</td></tr>';
+          '<tr><td colspan="9" class="empty-state" style="color:#ef4444;">加载失败</td></tr>';
       }
     }
 
     function renderTable() {
       const tbody = document.getElementById('products-table');
       if (!products || products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无产品</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无产品</td></tr>';
         return;
       }
       tbody.innerHTML = products.map(product => {
@@ -162,6 +164,14 @@
         } else {
           priceDisplay = '¥' + product.price;
         }
+        // status：published = 已上架（前台可见），draft = 草稿（前台不可见）
+        const isPublished = product.status === 'published';
+        const statusBadge = isPublished
+          ? '<span class="badge badge-success">已上架</span>'
+          : '<span class="badge badge-warning">草稿</span>';
+        const toggleBtn = isPublished
+          ? `<button class="btn-secondary btn-small" onclick="toggleProductStatus(${escapeHtml(product.id)}, false)">下架</button>`
+          : `<button class="btn-success btn-small" onclick="toggleProductStatus(${escapeHtml(product.id)}, true)">上架</button>`;
         return `
           <tr>
             <td>${escapeHtml(product.id)}</td>
@@ -171,8 +181,10 @@
             <td>${priceDisplay}</td>
             <td>${escapeHtml(product.version)}</td>
             <td>${escapeHtml(product.platform)}</td>
+            <td>${statusBadge}</td>
             <td class="table-actions">
               <button class="btn-edit" data-edit-id="${escapeHtml(product.id)}">编辑</button>
+              ${toggleBtn}
               <button class="btn-delete" onclick="deleteProduct(${escapeHtml(product.id)})">删除</button>
             </td>
           </tr>
@@ -208,6 +220,45 @@
       } catch (error) {
         console.error('Error deleting product:', error);
         Toast.error('删除产品时出错');
+      }
+    }
+
+    /**
+     * 上架 / 下架产品。
+     * 上架是**人工专属**动作 —— MCP 侧没有对应工具，AI 建出来的产品只能由人在这里放行。
+     */
+    async function toggleProductStatus(id, published) {
+      const action = published ? '上架' : '下架';
+      const confirmMsg = published
+        ? `确定上架产品 #${id} 吗？上架后前台立即可见。`
+        : `确定下架产品 #${id} 吗？下架后前台立即不可见。`;
+      if (!confirm(confirmMsg)) return;
+      try {
+        const endpoint = published ? 'publish' : 'unpublish';
+        const response = await fetch(`/api/admin/products/${id}/${endpoint}`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+          }
+          let message = `${action}失败`;
+          try {
+            const body = await response.json();
+            if (body && body.error) message = body.error;
+          } catch (parseError) {
+            // 响应体不是 JSON 时保留默认文案
+          }
+          Toast.error(message);
+          return;
+        }
+        Toast.success(`产品已${action}`);
+        loadProducts();
+      } catch (error) {
+        console.error('Error toggling product status:', error);
+        Toast.error(`${action}产品时出错`);
       }
     }
 

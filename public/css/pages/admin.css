@@ -1301,6 +1301,77 @@ body.sidebar-collapsed .admin-main {
   margin-top: 6px;
 }
 
+/* ---------- 数据库设置：配置来源徽标 ---------- */
+.settings-page .config-source-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.settings-page .config-source-badge.env { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; }
+.settings-page .config-source-badge.file { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+.settings-page .config-source-badge.default { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+
+/* ---------- 数据库设置：表结构清单 ---------- */
+.settings-page .schema-table-wrap {
+  margin-top: 16px;
+  border: 1px solid var(--admin-border, #e0e0e0);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.settings-page .schema-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.settings-page .schema-table th,
+.settings-page .schema-table td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--admin-border-light, #eee);
+}
+
+.settings-page .schema-table th {
+  font-weight: 600;
+  color: var(--admin-text-secondary, #6b7280);
+  background: var(--admin-bg-hover, #f8f9fa);
+}
+
+.settings-page .schema-table tr:last-child td {
+  border-bottom: none;
+}
+
+.settings-page .schema-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 表状态徽标 —— 表存在 / 待创建 / 检查失败 */
+.settings-page .schema-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.settings-page .schema-status.ok {
+  background: rgba(46, 160, 67, 0.14);
+  color: #1a7f37;
+}
+
+.settings-page .schema-status.missing {
+  background: rgba(210, 153, 34, 0.16);
+  color: #9a6700;
+}
+
 /* Alert Messages - Dark Theme */
 .settings-page .alert {
   padding: 14px 18px;

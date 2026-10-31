@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{product_name} - 博铭科技</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <link rel="stylesheet" href="/css/pages/share-buttons.css">
@@ -758,6 +758,11 @@
     async function addToCartWithTierIndex(productId, duration, label, price) {
       try {
         const response = await fetch('/api/products/' + productId);
+        // 产品已下架时返回 404；不检查 response.ok 会把 { error: ... } 当成商品
+        if (!response.ok) {
+          alert('该产品已下架，无法加入购物车');
+          return;
+        }
         const product = await response.json();
         // 找到对应的tier索引
         const tierIndex = product.pricingTiers.findIndex(t => t.duration === duration);
@@ -847,6 +852,11 @@
     async function addProductToCart(productId) {
       try {
         const response = await fetch('/api/products/' + productId);
+        // 产品已下架时返回 404；不检查 response.ok 会把 { error: ... } 当成商品
+        if (!response.ok) {
+          alert('该产品已下架，无法加入购物车');
+          return;
+        }
         const product = await response.json();
 
         if (product.pricingTiers && product.pricingTiers.length > 0) {

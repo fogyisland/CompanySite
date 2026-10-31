@@ -12,6 +12,35 @@
   --accent-rgb: 19, 60, 138;
 
   /* ============================================
+     Semantic Colors (语义色)
+     Fixed across all themes: success/error/info are
+     semantic signals, not brand colors, so they must
+     not shift when an operator switches theme.
+     ============================================ */
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #1976d2;
+  --info-bg: #e3f2fd;
+
+  /* ============================================
+     Primary Tint / Shadow Tokens (品牌色透明度层)
+     Use: rgba(var(--primary-rgb), 0.3) — follows whichever
+     theme is active instead of hardcoding #133c8a.
+     ============================================ */
+  --primary-tint-04: rgba(var(--primary-rgb), 0.04);
+  --primary-tint-06: rgba(var(--primary-rgb), 0.06);
+  --primary-tint-08: rgba(var(--primary-rgb), 0.08);
+  --primary-tint-10: rgba(var(--primary-rgb), 0.1);
+  --primary-tint-12: rgba(var(--primary-rgb), 0.12);
+  --primary-tint-15: rgba(var(--primary-rgb), 0.15);
+  --primary-tint-25: rgba(var(--primary-rgb), 0.25);
+  --primary-tint-30: rgba(var(--primary-rgb), 0.3);
+  --primary-tint-35: rgba(var(--primary-rgb), 0.35);
+  --primary-tint-40: rgba(var(--primary-rgb), 0.4);
+  --primary-tint-45: rgba(var(--primary-rgb), 0.45);
+
+  /* ============================================
      Theme 1: Hardcore Minimal (硬核极简)
      Pure B&W, maximum whitespace, subtle interactions
      ============================================ */

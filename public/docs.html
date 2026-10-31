@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>博铭科技 - 文档资料</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
   <style>
@@ -74,7 +74,7 @@
     .docs-nav a.active {
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: var(--white);
-      box-shadow: 0 4px 12px rgba(19, 60, 138, 0.3);
+      box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
     }
     .docs-content {
       flex: 1;
@@ -167,15 +167,15 @@
       font-weight: 600;
     }
     .info-box {
-      background: #e3f2fd;
-      border-left: 4px solid #1976d2;
+      background: var(--info-bg);
+      border-left: 4px solid var(--info);
       padding: 15px 20px;
       margin: 15px 0;
       border-radius: 0 8px 8px 0;
     }
     .info-box p {
       margin: 0;
-      color: #1976d2;
+      color: var(--info);
     }
   </style>
 </head>
@@ -336,7 +336,7 @@
           </ul>
 
           <h3>退款流程</h3>
-          <p>在30天退款保障期内，您可以申请全额退款：</p>
+          <p>在订阅生效后7天内，您可以申请全额退款：</p>
           <ol class="step-list">
             <li>联系客服提交退款申请</li>
             <li>提供订单信息和退款原因</li>
