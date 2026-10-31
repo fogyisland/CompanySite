@@ -27,6 +27,7 @@ const db = require('./db');
 const appPackage = require('./package.json');
 const { createMcpRouter } = require('./lib/mcp/server');
 const { ContentPolicyError, validateNewsIdentity } = require('./lib/content-policy');
+const { SettingsPolicyError, normalizeSupportPriority } = require('./lib/settings-policy');
 const { resolveProductType } = require('./lib/product-policy');
 const { resolveAndValidateOrderItem } = require('./lib/order-policy');
 const setupPolicy = require('./lib/setup-policy');
@@ -3280,28 +3281,38 @@ app.post('/api/products', requireAuth, async (req, res) => {
     throw err;
   }
 
-  const newProduct = await db.addProduct({
-    name,
-    shortName: shortName || '',
-    category: productType.category,
-    price: productType.price,
-    pricingTiers: productType.pricingTiers,
-    description: description || '',
-    version: version || '1.0.0',
-    platform: platform || 'Windows',
-    features: features || [],
-    icon: icon || 'software',
-    featured: featured || false,
-    downloadUrl: productType.downloadUrl,
-    externalLink: productType.externalLink,
-    detailPage: detailPage || '',
-    image: image || '',
-    imageDarkBg: imageDarkBg || false,
-    isCourse: productType.isCourse,
-    isSharedCode: productType.isSharedCode,
-    courseLinks: Array.isArray(courseLinks) ? courseLinks : [],
-    repoUrls: productType.repoUrls
-  });
+  // 产品配图地址过白名单（lib/settings-policy.js）：配图会被拼进首页 hero 的
+  // CSS url() 与各处 <img src="...">，不合法时翻译成 400，而不是 500。
+  let newProduct;
+  try {
+    newProduct = await db.addProduct({
+      name,
+      shortName: shortName || '',
+      category: productType.category,
+      price: productType.price,
+      pricingTiers: productType.pricingTiers,
+      description: description || '',
+      version: version || '1.0.0',
+      platform: platform || 'Windows',
+      features: features || [],
+      icon: icon || 'software',
+      featured: featured || false,
+      downloadUrl: productType.downloadUrl,
+      externalLink: productType.externalLink,
+      detailPage: detailPage || '',
+      image: image || '',
+      imageDarkBg: imageDarkBg || false,
+      isCourse: productType.isCourse,
+      isSharedCode: productType.isSharedCode,
+      courseLinks: Array.isArray(courseLinks) ? courseLinks : [],
+      repoUrls: productType.repoUrls
+    });
+  } catch (error) {
+    if (error instanceof SettingsPolicyError) {
+      return res.status(400).json({ error: error.message });
+    }
+    throw error;
+  }
 
   res.status(201).json(newProduct);
   // 记录操作日志
@@ -3380,6 +3391,11 @@ app.put('/api/products/:id', requireAuth, async (req, res) => {
     db.addOperationLog(username, 'PRODUCT_UPDATE', req.params.id, `Updated product: ${name || updated.name}, Price: ${price || updated.price}`);
     res.json(updated);
   } catch (err) {
+    // 配图地址不合法属于「数据不合法」，回 400 并带上原因；
+    // 其余才是真正的数据库错误。
+    if (err instanceof SettingsPolicyError) {
+      return res.status(400).json({ error: err.message });
+    }
     console.error('[PUT /api/products/:id] DB error:', err.code, err.sqlMessage || err.message);
     return res.status(500).json({ error: '保存失败：' + (err.sqlMessage || err.message) });
   }
@@ -4096,7 +4112,18 @@ app.put('/api/settings', requireAuth, async (req, res) => {
   if (carddav !== undefined) updates.carddav = carddav;
   if (siteTheme !== undefined) updates.siteTheme = siteTheme;
 
-  const settings = await db.updateSettings(updates);
+  // banners 的图片地址会在 db.updateSettings 里过白名单（lib/settings-policy.js），
+  // 不合法时抛 SettingsPolicyError —— 这里翻译成 400 + 明确文案，而不是 500。
+  let settings;
+  try {
+    settings = await db.updateSettings(updates);
+  } catch (error) {
+    if (error instanceof SettingsPolicyError) {
+      return res.status(400).json({ error: error.message });
+    }
+    throw error;
+  }
+
   // 记录操作日志
   const username = req.session.userName || req.session.username || 'admin';
   const changedFields = Object.keys(updates).join(', ');
@@ -4746,7 +4773,17 @@ app.post('/api/upload-logo', requireAuth, uploadLogo.single('logo'), multerError
   }
 
   const logoPath = '/uploads/' + req.file.filename;
-  const settings = await db.updateSettings({ logo: logoPath });
+  // logoPath 由服务端生成（文件名不含引号等危险字符），正常不会触发校验失败；
+  // 万一上传配置被改坏，也应该是 400 而不是 500。
+  let settings;
+  try {
+    settings = await db.updateSettings({ logo: logoPath });
+  } catch (error) {
+    if (error instanceof SettingsPolicyError) {
+      return res.status(400).json({ error: error.message });
+    }
+    throw error;
+  }
   res.json(settings);
 });
 
@@ -4768,7 +4805,17 @@ app.post('/api/banners', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Invalid banners data' });
   }
 
-  const settings = await db.updateSettings({ banners });
+  // 横条图片地址过白名单（lib/settings-policy.js）：它会被拼进 CSS url()
+  // 与 HTML 属性，不合法时翻译成 400，而不是 500。
+  let settings;
+  try {
+    settings = await db.updateSettings({ banners });
+  } catch (error) {
+    if (error instanceof SettingsPolicyError) {
+      return res.status(400).json({ error: error.message });
+    }
+    throw error;
+  }
   res.json(settings);
 });
 
@@ -6091,6 +6138,13 @@ app.post('/api/db-import', requireAuth, async (req, res) => {
     }
     res.json({ success: true });
   } catch (error) {
+    // 导入的数据里带了不合法的图片地址（logo / 横条 / 产品配图）时，
+    // 规则在 lib/settings-policy.js —— 这属于「数据不合法」，回 400 并说明原因，
+    // 别让管理员只看到一句没有线索的「导入失败」。
+    if (error instanceof SettingsPolicyError) {
+      return res.status(400).json({ error: `导入失败：${error.message}` });
+    }
+    console.error('[db-import] 导入失败:', error);
     res.status(500).json({ error: '导入失败' });
   }
 });
@@ -6345,13 +6399,18 @@ app.post('/api/support', async (req, res) => {
     return res.status(400).json({ error: '请填写必填字段' });
   }
 
+  // 优先级收敛到白名单（high / normal / low）。
+  // 这个接口是**匿名可访问**的，而优先级过去是原样入库的，
+  // 后台页面又把它拼进 class 属性 —— 匿名访客等于能在后台页面上执行脚本。
+  const safePriority = normalizeSupportPriority(priority);
+
   const ticket = await db.createSupportTicket({
     subject,
     description,
     userName,
     userEmail,
     userPhone,
-    priority
+    priority: safePriority
   });
 
   // 通知管理员
@@ -6386,7 +6445,7 @@ app.post('/api/support', async (req, res) => {
           </tr>
           <tr style="border-bottom: 1px solid #ddd;">
             <td style="padding: 8px; font-weight: bold;">优先级</td>
-            <td style="padding: 8px;">${priority === 'high' ? '高' : priority === 'low' ? '低' : '普通'}</td>
+            <td style="padding: 8px;">${safePriority === 'high' ? '高' : safePriority === 'low' ? '低' : '普通'}</td>
           </tr>
           <tr>
             <td style="padding: 8px; font-weight: bold;">问题描述</td>

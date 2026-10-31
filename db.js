@@ -3,6 +3,15 @@ const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
+// 图片地址 / 站点设置的校验规则放在 lib/ 里，REST、MCP、导入三条写路径共用一份，
+// 不在这里另抄一份正则（抄了就一定会漂）。
+const {
+  assertSafeLogoUrl,
+  assertSafeBanners,
+  assertSafeImageUrl,
+  sanitizeSettingsForRead
+} = require('./lib/settings-policy');
+
 const DATA_DIR = path.join(__dirname, 'data');
 const CONFIG_FILE = path.join(DATA_DIR, 'db-config.json');
 const SALT_ROUNDS = 12; // 修复 S19：bcrypt cost 12（2026 年 OWASP 推荐 12+，cost 10 离线破解成本过低）
@@ -824,12 +833,17 @@ async function createProduct(product) {
   // status：0 = 草稿（前台不可见），1 = 已上架。
   // 只有 MCP 建草稿时会显式传 0；后台表单不传 → 默认 1，保持「后台建完即上架」的现状。
   const statusVal = (product.status === 0 || product.status === 'draft') ? 0 : 1;
+  // 产品配图会被拼进首页 hero 的 CSS url() 和各处 <img src="...">，
+  // 写入前先过一遍地址白名单（规则见 lib/settings-policy.js）。
+  const image = product.image === undefined || product.image === null
+    ? ''
+    : assertSafeImageUrl(product.image, { field: '产品配图地址' });
   const [result] = await mysqlPool.query(
     `INSERT INTO products (name, short_name, category, price, pricing_tiers, description, version, platform, features, icon, featured, download_url, external_link, detail_page, image, image_dark_bg, is_course, is_shared_code, repo_urls, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
-     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal, isSharedCodeVal,
+     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, image, product.imageDarkBg ? 1 : 0, isCourseVal, isSharedCodeVal,
      JSON.stringify(product.repoUrls || []), statusVal]
   );
   const insertId = result.insertId;
@@ -842,11 +856,16 @@ async function createProduct(product) {
 async function updateProduct(id, product) {
   const isCourseVal = (product.isCourse === true || product.isCourse === 1) ? 1 : 0;
   const isSharedCodeVal = (product.isSharedCode === true || product.isSharedCode === 1) ? 1 : 0;
+  // 只在本轮确实带了 image 时才校验：updateProduct 是「全列覆盖」写法，
+  // 别的调用方（例如只更新详情页路径）根本不带这个字段，不该被拦下。
+  const image = product.image === undefined || product.image === null
+    ? product.image
+    : assertSafeImageUrl(product.image, { field: '产品配图地址' });
   await mysqlPool.query(
     `UPDATE products SET name=?, short_name=?, category=?, price=?, pricing_tiers=?, description=?, version=?, platform=?, features=?, icon=?, featured=?, download_url=?, external_link=?, detail_page=?, image=?, image_dark_bg=?, is_course=?, is_shared_code=?, repo_urls=? WHERE id=?`,
     [product.name, product.shortName || '', product.category, product.price, JSON.stringify(product.pricingTiers), product.description,
      product.version, product.platform, JSON.stringify(product.features), product.icon, product.featured ? 1 : 0,
-     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, product.image, product.imageDarkBg ? 1 : 0, isCourseVal, isSharedCodeVal,
+     product.downloadUrl, product.externalLink ? 1 : 0, product.detailPage, image, product.imageDarkBg ? 1 : 0, isCourseVal, isSharedCodeVal,
      JSON.stringify(product.repoUrls || []), id]
   );
   if (Array.isArray(product.courseLinks)) {
@@ -969,15 +988,50 @@ async function searchProducts(keyword) {
 
 // ============ 设置操作 ============
 
+/**
+ * 解析 settings 表里的 JSON 文本列。
+ *
+ * banners / ai_config / carddav_config 都是 text 列，存的是 JSON。
+ * 历史上如果被写坏过一次，JSON.parse 会直接把整个 /api/settings 打挂，
+ * 这里降级成空值并留下日志，不让一个坏字段拖垮整站设置接口。
+ *
+ * @param {string|null|undefined} raw 列的原始文本
+ * @param {*} fallback 解析失败 / 为空时的兜底值
+ * @param {string} label 日志里用的字段名
+ * @returns {*}
+ */
+function parseSettingsJson(raw, fallback, label) {
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed === null || parsed === undefined ? fallback : parsed;
+  } catch (err) {
+    console.error(`[settings] ${label} 字段不是合法 JSON，已按默认值处理:`, err.message);
+    return fallback;
+  }
+}
+
 async function getSettings() {
   const [rows] = await mysqlPool.query("SELECT * FROM settings WHERE id = 1");
   if (rows.length === 0) return null;
   const row = rows[0];
+
+  const parsedBanners = parseSettingsJson(row.banners, [], 'banners');
+  const rawBanners = Array.isArray(parsedBanners) ? parsedBanners : [];
+
+  // 读路径净化：logo / 横条图片地址会被 40 多个页面直接拼进 <img src="...">。
+  // 写路径已经收口（见 updateSettings），这里再挡一次是为了覆盖历史存量数据，
+  // 以及未来新增的写入口。被拦下的值会落日志，不静默丢弃。
+  const sanitized = sanitizeSettingsForRead({ logo: row.logo, banners: rawBanners });
+  for (const warning of sanitized.warnings) {
+    console.warn('[settings]', warning);
+  }
+
   return {
     companyName: row.company_name,
-    logo: row.logo,
+    logo: sanitized.logo,
     description: row.description,
-    banners: row.banners ? JSON.parse(row.banners) : [],
+    banners: sanitized.banners,
     sslDomain: row.ssl_domain,
     sslCertPath: row.ssl_cert_path,
     sslKeyPath: row.ssl_key_path,
@@ -992,8 +1046,8 @@ async function getSettings() {
     },
     wechatId: row.wechat_id,
     adminEmail: row.admin_email,
-    aiConfig: row.ai_config ? JSON.parse(row.ai_config) : null,
-    carddavConfig: row.carddav_config ? JSON.parse(row.carddav_config) : null,
+    aiConfig: parseSettingsJson(row.ai_config, null, 'ai_config'),
+    carddavConfig: parseSettingsJson(row.carddav_config, null, 'carddav_config'),
     siteTheme: row.site_theme || 'minimal',
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -1014,13 +1068,28 @@ async function getSmtpConfig() {
   };
 }
 
+/**
+ * 写入站点设置。
+ *
+ * logo 与 banners 在这里做**写路径收口**：
+ *   - logo 会被 40 多个页面直接拼进 `<img src="...">`；
+ *   - 横条的 image 会被拼进 CSS url() 与 HTML 属性。
+ * 它们的写入路径有好几条（上传、导入、MCP），逐条在前端转义不现实，
+ * 也不可靠 —— 在这里（所有写路径的汇合点）卡住一次，40 多个渲染点一次性受益。
+ *
+ * 校验规则见 lib/settings-policy.js（唯一事实来源）。
+ * 校验失败抛 SettingsPolicyError，由调用方（server.js）转成 400 + 明确文案。
+ *
+ * @param {object} settings
+ * @returns {Promise<object>} 写入后的最新设置
+ */
 async function updateSettings(settings) {
   const updates = [];
   const values = [];
   if (settings.companyName !== undefined) { updates.push("company_name = ?"); values.push(settings.companyName); }
-  if (settings.logo !== undefined) { updates.push("logo = ?"); values.push(settings.logo); }
+  if (settings.logo !== undefined) { updates.push("logo = ?"); values.push(assertSafeLogoUrl(settings.logo)); }
   if (settings.description !== undefined) { updates.push("description = ?"); values.push(settings.description); }
-  if (settings.banners !== undefined) { updates.push("banners = ?"); values.push(JSON.stringify(settings.banners)); }
+  if (settings.banners !== undefined) { updates.push("banners = ?"); values.push(JSON.stringify(assertSafeBanners(settings.banners))); }
   if (settings.sslDomain !== undefined) { updates.push("ssl_domain = ?"); values.push(settings.sslDomain); }
   if (settings.sslCertPath !== undefined) { updates.push("ssl_cert_path = ?"); values.push(settings.sslCertPath); }
   if (settings.sslKeyPath !== undefined) { updates.push("ssl_key_path = ?"); values.push(settings.sslKeyPath); }
