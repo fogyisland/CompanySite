@@ -6,8 +6,9 @@
 }
 
 :root {
-  --primary: #133c8a;
-  --primary-dark: #0a2644;
+  /* --primary / --primary-dark 定义在 css/themes/theme-variables.css ——
+     那边是品牌色与主题变量的唯一事实来源，这里不再重复定义一份，
+     免得两处漂移。 */
   --secondary: #f5f5f5;
   --text: #333;
   --text-light: #666;
@@ -231,7 +232,7 @@ nav a:hover {
   background: var(--primary);
   color: var(--white);
   border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(19,60,138,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: 0 2px 8px var(--primary-tint-30), inset 0 1px 0 rgba(255,255,255,0.2);
   text-shadow: none;
 }
 
@@ -468,7 +469,7 @@ nav a:hover {
   color: var(--primary);
   margin: 4px 8px 4px 0;
   padding: 4px 12px;
-  background: rgba(19, 60, 138, 0.08);
+  background: var(--primary-tint-08);
   border-radius: 4px;
 }
 
@@ -518,7 +519,7 @@ main {
 }
 
 .product-card:hover {
-  box-shadow: 0 12px 32px rgba(19, 60, 138, 0.12);
+  box-shadow: 0 12px 32px var(--primary-tint-12);
   transform: translateY(-4px);
 }
 
@@ -613,7 +614,7 @@ main {
 
 .price-tier-item:hover {
   border-color: var(--primary);
-  background: rgba(19, 60, 138, 0.05);
+  background: var(--primary-tint-05);
 }
 
 .price-tier-item.active {
@@ -766,7 +767,7 @@ main {
 
 .feature-item:hover {
   border-color: var(--primary);
-  box-shadow: 0 8px 24px rgba(19, 60, 138, 0.1);
+  box-shadow: 0 8px 24px var(--primary-tint-10);
   transform: translateY(-5px);
 }
 
@@ -2124,5 +2125,5 @@ footer .container {
 
 .glow-hover:hover {
   box-shadow: 0 8px 30px rgba(var(--primary-rgb, 19, 60, 138), 0.25),
-              0 0 0 1px var(--primary, #133c8a);
+              0 0 0 1px var(--primary);
 }

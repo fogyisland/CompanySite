@@ -68,6 +68,10 @@
           <h3 class="settings-heading">主题设置</h3>
           <div class="theme-grid" id="themePreview">
             <div class="theme-card active" data-theme="default" onclick="selectTheme('default')">
+              <!-- 取色样本：这里必须写死「系统默认」主题自己的颜色。
+                   不能用 var(--primary) —— 它解析的是当前生效主题，
+                   站点当前是 minimal 时这个卡片会预览成黑色，与实际主题不符。
+                   其余 9 张卡片同理，各自写死自己的主题色。 -->
               <div class="theme-swatch" style="background: linear-gradient(135deg, #133c8a 0%, #0a2644 100%);"></div>
               <span class="theme-label">系统默认</span>
             </div>

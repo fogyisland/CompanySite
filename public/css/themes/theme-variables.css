@@ -6,6 +6,11 @@
    ============================================ */
 
 :root {
+  /* 品牌色本身。原先定义在 css/style.css 的 :root 里，
+     那边已经不再重复定义 —— 品牌色属于主题变量，集中在这一处管理。 */
+  --primary: #133c8a;
+  --primary-dark: #0a2644;
+
   /* RGB values for glow effects */
   --primary-rgb: 19, 60, 138;
   --primary-dark-rgb: 10, 38, 68;
@@ -28,7 +33,9 @@
      Use: rgba(var(--primary-rgb), 0.3) — follows whichever
      theme is active instead of hardcoding #133c8a.
      ============================================ */
+  --primary-tint-03: rgba(var(--primary-rgb), 0.03);
   --primary-tint-04: rgba(var(--primary-rgb), 0.04);
+  --primary-tint-05: rgba(var(--primary-rgb), 0.05);
   --primary-tint-06: rgba(var(--primary-rgb), 0.06);
   --primary-tint-08: rgba(var(--primary-rgb), 0.08);
   --primary-tint-10: rgba(var(--primary-rgb), 0.1);
@@ -210,6 +217,9 @@
   --transition: all 0.3s ease;
   --primary: #133c8a;
   --primary-dark: #0a2644;
+  --primary-rgb: 19, 60, 138;
+  --primary-dark-rgb: 10, 38, 68;
+  --accent-rgb: 19, 60, 138;
 }
 
 /* ============================================
@@ -228,6 +238,9 @@
   --transition: var(--theme-minimal-transition);
   --primary: var(--theme-minimal-accent);
   --primary-dark: #000000;
+  --primary-rgb: 0, 0, 0;
+  --primary-dark-rgb: 0, 0, 0;
+  --accent-rgb: 0, 0, 0;
 }
 
 /* ============================================
@@ -268,6 +281,9 @@
   --backdrop: var(--theme-glass-backdrop);
   --primary: var(--theme-glass-accent);
   --primary-dark: #7c3aed;
+  --primary-rgb: 139, 92, 246;
+  --primary-dark-rgb: 124, 58, 237;
+  --accent-rgb: 139, 92, 246;
 }
 
 /* ============================================
@@ -286,6 +302,9 @@
   --transition: var(--theme-bento-transition);
   --primary: var(--theme-bento-accent);
   --primary-dark: #0055b3;
+  --primary-rgb: 0, 113, 227;
+  --primary-dark-rgb: 0, 85, 179;
+  --accent-rgb: 0, 113, 227;
 }
 
 /* ============================================
@@ -325,6 +344,9 @@
   --transition: var(--theme-warm-transition);
   --primary: var(--theme-warm-accent);
   --primary-dark: #a66338;
+  --primary-rgb: 201, 124, 74;
+  --primary-dark-rgb: 166, 99, 56;
+  --accent-rgb: 201, 124, 74;
 }
 
 /* ============================================
@@ -364,6 +386,9 @@
   --transition: var(--theme-editorial-transition);
   --primary: var(--theme-editorial-accent);
   --primary-dark: #b01f1f;
+  --primary-rgb: 214, 40, 40;
+  --primary-dark-rgb: 176, 31, 31;
+  --accent-rgb: 214, 40, 40;
 }
 
 /* ============================================
