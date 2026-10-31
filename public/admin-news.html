@@ -186,8 +186,13 @@
     function renderCoverPreview(url) {
       const preview = document.getElementById('cover-preview');
       const clearBtn = document.getElementById('cover-clear-btn');
-      if (url) {
-        preview.innerHTML = '<img src="' + escapeHtml(url) + '" alt="封面预览">';
+      // 预览地址先过图片地址白名单（SafeHtml.safeImageUrl）：
+      // escapeHtml 只挡 HTML 特殊字符，挡不住 javascript: 这类可执行协议 ——
+      // <img src="javascript:..."> 在部分浏览器上仍会被执行。
+      // safeImageUrl 同时挡掉协议相对地址（//evil.tld）与路径穿越（..）。
+      const safeUrl = SafeHtml.safeImageUrl(url);
+      if (safeUrl) {
+        preview.innerHTML = '<img src="' + safeUrl + '" alt="封面预览">';
         clearBtn.style.display = 'inline-block';
       } else {
         preview.innerHTML = '';

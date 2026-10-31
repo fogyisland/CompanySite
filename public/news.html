@@ -133,7 +133,12 @@
           const p = pinned[0];
           html += '<a href="?slug=' + encodeURIComponent(p.slug) + '" style="text-decoration: none; color: inherit;">';
           html += '<div class="news-pinned-card">';
-          if (p.cover_image) html += '<div class="news-cover" style="background-image:url(' + escapeHtml(p.cover_image) + ')"></div>';
+          // 封面地址先过 CSS url() 白名单（SafeHtml.safeCssUrl）——
+          // cover_image 是管理员可控的字段，未加引号的 url() 里一旦出现 ) 或 ,
+          // 就能闭合调用、叠加第二层背景（追踪像素 / 隐私泄漏）。
+          // 非法地址直接不渲染封面，而不是把脏值拼进去。
+          const pinnedCover = SafeHtml.safeCssUrl(p.cover_image);
+          if (pinnedCover) html += '<div class="news-cover" style="background-image:url(\'' + pinnedCover + '\')"></div>';
           else html += '<div class="news-cover"></div>';
           html += '<div class="news-body">';
           html += '<div class="news-meta"><span class="news-pinned-badge">📌 置顶</span>' + (p.category ? escapeHtml(p.category) + ' · ' : '') + formatDate(p.published_at) + ' · 👁 ' + (p.view_count || 0) + ' 阅读</div>';
@@ -146,7 +151,9 @@
         normal.forEach(n => {
           html += '<a href="?slug=' + encodeURIComponent(n.slug) + '" style="text-decoration: none; color: inherit;">';
           html += '<div class="news-card">';
-          if (n.cover_image) html += '<div class="news-cover" style="background-image:url(' + escapeHtml(n.cover_image) + ')"></div>';
+          // 同上：封面地址先过 CSS url() 白名单，非法值不渲染。
+          const cardCover = SafeHtml.safeCssUrl(n.cover_image);
+          if (cardCover) html += '<div class="news-cover" style="background-image:url(\'' + cardCover + '\')"></div>';
           else html += '<div class="news-cover"></div>';
           html += '<div class="news-body">';
           if (n.category) html += '<div class="news-category">' + escapeHtml(n.category) + '</div>';
@@ -194,7 +201,9 @@
         fetch('/api/news/' + n.id + '/view', { method: 'POST' }).catch(() => {});
         let html = '<div class="news-detail-container">';
         html += '<a href="/news.html" class="news-back-link">← 返回动态列表</a>';
-        if (n.cover_image) html += '<div class="news-detail-cover" style="background-image:url(' + escapeHtml(n.cover_image) + ')"></div>';
+        // 同上：详情页封面同样先过 CSS url() 白名单。
+        const detailCover = SafeHtml.safeCssUrl(n.cover_image);
+        if (detailCover) html += '<div class="news-detail-cover" style="background-image:url(\'' + detailCover + '\')"></div>';
         else html += '<div class="news-detail-cover"></div>';
         html += '<div class="news-detail-meta">' + (n.category ? escapeHtml(n.category) + ' · ' : '') + formatDate(n.published_at) + ' · 👁 ' + (n.view_count || 0) + ' 阅读</div>';
         html += '<h1 class="news-detail-title">' + escapeHtml(n.title) + '</h1>';
