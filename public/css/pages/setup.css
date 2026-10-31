@@ -327,21 +327,6 @@ a.setup-btn {
   color: #8d6e00;
 }
 
-/* ---------- 配置来源徽标 ---------- */
-.source-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  margin-left: 8px;
-  vertical-align: middle;
-}
-
-.source-badge.env { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; }
-.source-badge.file { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
-.source-badge.default { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
-
 /* ---------- 表清单 ---------- */
 .setup-table-wrap {
   margin-top: 16px;

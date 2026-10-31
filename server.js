@@ -1246,7 +1246,11 @@ app.get('/api/setup/status', requireSetupToken, async (req, res) => {
   }
 });
 
-// 测试数据库连接
+// 测试数据库连接（**服务器级**，不带库名）
+//
+// 用服务器级连接而不是带库名的连接：全新安装时目标库**还不存在**，
+// 带库名连接会直接回「未知数据库」—— 那是预期状态，不是配置错误。
+// 用户还没走到建库那一步就被告知「连不上」，流程就在这里断了。
 app.post('/api/setup/test-db', requireSetupConfig, async (req, res) => {
   const validated = setupPolicy.validateDbConfig(req.body);
   if (validated.error) {
@@ -1261,12 +1265,15 @@ app.post('/api/setup/test-db', requireSetupConfig, async (req, res) => {
     }
   }
   try {
-    const result = await db.testMySQLConnection(mysqlConfig);
+    const result = await db.testMySQLServerConnection(mysqlConfig);
     res.json({
       success: true,
-      message: '连接成功',
+      message: '数据库服务器连接成功',
       version: result.version,
-      database: result.database
+      server: result.server,
+      database: mysqlConfig.database,
+      // 库里已经存在 → 第 3 页建库那步会直接跳过（幂等）
+      databaseExists: result.databases.indexOf(mysqlConfig.database) !== -1
     });
   } catch (error) {
     res.status(400).json({
@@ -1390,6 +1397,149 @@ app.post('/api/setup/create-admin', requireSetupAccess, async (req, res) => {
     console.error('[setup] 创建管理员失败:', error.message);
     res.status(500).json({ error: 'SETUP_ADMIN_FAILED', message: '创建失败: ' + error.message });
   }
+});
+
+/**
+ * 一次性完成安装 —— 建库 → 写 .env → 建表 → 建管理员 → 销毁令牌。
+ *
+ * 为什么做成一个接口而不是分三步：
+ *   1. 分步的话，前一步成功、后一步失败，站点就卡在「配置写了但没装完」的
+ *      中间态。而安装状态的判定只看「有没有管理员」，中间态会被判成「未安装」，
+ *      闸门重新打开 —— 等于留了一个能被抢先建管理员接管站点的窗口期。
+ *   2. 一次性提交能保证「要么装完，要么只差最后一步」，不产生半成品状态。
+ *
+ * 中途失败可以重试（幂等）：
+ *   - .env 已写但表没建 → countAdmins 抛「表不存在」→ 判定「确定未安装」
+ *     → 闸门放行 → 可以直接重试本接口；
+ *   - 管理员用户名冲突 → 管理员行数仍为 0 → 同样放行，换个用户名重试即可。
+ *
+ * 失败时**不回滚 .env**（连不上除外）：连接参数已经填对了，回滚只会让用户
+ * 白填一遍；留着它，站点下次启动就会把表建好。只有「连不上」这种配置本身
+ * 就是错的场景才回滚 —— 那时候留着它等于让站点下次启动就带着坏配置。
+ */
+app.post('/api/setup/complete-install', requireSetupConfig, async (req, res) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+
+  const dbValidated = setupPolicy.validateDbConfig(body.db);
+  if (dbValidated.error) {
+    return res.status(400).json({ error: dbValidated.error, message: setupErrorMessage(dbValidated.error) });
+  }
+  const adminValidated = setupPolicy.validateAdminInput(body.admin);
+  if (adminValidated.error) {
+    return res.status(400).json({ error: adminValidated.error, message: setupErrorMessage(adminValidated.error) });
+  }
+
+  const mysqlConfig = dbValidated.config.mysql;
+  if (!mysqlConfig.password) {
+    // 界面不回显密码 —— 留空表示沿用已保存的密码
+    const stored = db.getDbConfig();
+    if (stored && stored.mysql && stored.mysql.password) {
+      mysqlConfig.password = stored.mysql.password;
+    }
+  }
+  const { username, password, email } = adminValidated.admin;
+
+  // ① 服务器级连通性 —— 连不上就别往下走
+  let serverInfo = null;
+  try {
+    serverInfo = await db.testMySQLServerConnection(mysqlConfig);
+  } catch (error) {
+    return res.status(400).json({
+      error: setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE,
+      message: '无法连接数据库服务器: ' + error.message
+    });
+  }
+
+  // ② 建库（幂等）
+  let databaseExisted = false;
+  try {
+    const created = await db.createDatabaseIfNotExists(mysqlConfig, mysqlConfig.database);
+    databaseExisted = created.existed;
+  } catch (error) {
+    console.error('[setup] 创建数据库失败:', error.message);
+    return res.status(400).json({
+      error: 'SETUP_CREATE_DB_FAILED',
+      message: '创建数据库失败: ' + error.message
+        + '（若提示权限不足，请用管理员账号在 MySQL 上执行 CREATE DATABASE 并把权限授予该账号）'
+    });
+  }
+
+  // ③ 写 .env —— 数据库连接参数从此只有这一个来源
+  const saved = envConfigService.saveDbConfigToEnv({ mysql: mysqlConfig });
+  if (!saved.ok) {
+    console.error('[setup] 写入 .env 失败:', saved.error);
+    return res.status(500).json({ error: 'ENV_WRITE_FAILED', message: saved.error });
+  }
+
+  // ④ 切换连接池 + 建表 + 灌默认数据
+  try {
+    await db.reconnectWithConfig(mysqlConfig);
+    await db.createTablesIfNotExist();
+    await db.initDefaultData();
+  } catch (error) {
+    if (setupPolicy.isConnectionError(error) || setupPolicy.isAuthError(error)) {
+      // 配置本身就是错的（连不上 / 认证不过）→ 必须回滚，
+      // 否则站点下次启动就带着这份坏配置
+      const rolled = envConfigService.rollbackDbConfigToEnv(saved);
+      console.error('[setup] 切换数据库连接失败，已回滚 .env:', error.message);
+      return res.status(400).json({
+        error: setupPolicy.SETUP_ERROR_CODES.DB_UNREACHABLE,
+        message: '无法连接新数据库（已保留原配置）: ' + error.message
+          + (rolled.ok ? '' : '；并且 .env 回滚也失败了，请手工检查 ' + envFile.ENV_FILE)
+      });
+    }
+    // 表结构 / 权限问题 —— 配置是对的，留着 .env，修正后重试本接口即可
+    console.error('[setup] 初始化表结构失败:', error.message);
+    return res.status(400).json({
+      error: 'SETUP_INIT_FAILED',
+      message: '初始化表结构失败（连接参数已写入 .env，修正后可直接重试）: ' + error.message
+    });
+  }
+
+  // ⑤ 创建首个管理员
+  try {
+    if (await db.getUserByUsername(username)) {
+      return res.status(409).json({
+        error: setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+        message: '用户名已被占用，请换一个'
+      });
+    }
+    if (email && await db.getUserByEmail(email)) {
+      return res.status(409).json({
+        error: setupPolicy.SETUP_ERROR_CODES.ADMIN_USERNAME_TAKEN,
+        message: '邮箱已被注册，请换一个'
+      });
+    }
+    await db.addUser({
+      username,
+      password,
+      email,
+      phone: '',
+      realName: '系统管理员',
+      company: '',
+      isAdmin: true,
+      // 管理员是本机安装者本人创建的，不走邮箱验证流程
+      emailVerified: 1
+    });
+  } catch (error) {
+    console.error('[setup] 创建管理员失败:', error.message);
+    return res.status(500).json({ error: 'SETUP_ADMIN_FAILED', message: '创建管理员失败: ' + error.message });
+  }
+
+  // ⑥ 令牌销毁 —— 之后所有安装接口永久返回 403
+  setupService.consumeSetupToken();
+  setupService.invalidateState();
+
+  res.json({
+    success: true,
+    message: '初始化完成',
+    database: mysqlConfig.database,
+    databaseCreated: !databaseExisted,
+    serverVersion: serverInfo ? serverInfo.version : null,
+    // 会话签名密钥与 session 存储池在启动时绑定 —— 重启才彻底对齐
+    restartRequired: true,
+    state: await buildSetupPayload(await setupService.getSetupState(db, { force: true }))
+  });
 });
 
 /**
@@ -5764,23 +5914,13 @@ app.post('/api/db-config', requireAuth, async (req, res) => {
       return res.status(500).json({ error: 'ENV_WRITE_FAILED', message: saved.error });
     }
 
-    // 旧部署遗留的 data/db-config.json 同步一份，免得两份配置各说各话。
-    // 只在它已经存在时更新 —— 不主动新建一份明文密码文件（.env 已是 0600）。
-    const previousStoredConfig = db.readStoredDbConfig();
-    if (previousStoredConfig !== null) {
-      db.updateDbConfig(newConfig);
-    }
-
     try {
       // 保存后立刻切换连接池 —— 否则新配置要等重启才生效
       await db.reconnectWithConfig(newConfig.mysql);
     } catch (error) {
-      // 新配置连不上 → 回滚 .env、进程 env 与旧配置文件，旧连接池原样保留，
+      // 新配置连不上 → 回滚 .env 与进程 env，旧连接池原样保留，
       // 不能把站点带挂
       const rolled = envConfigService.rollbackDbConfigToEnv(saved);
-      if (previousStoredConfig !== null) {
-        db.restoreDbConfig(previousStoredConfig);
-      }
       console.error('数据库配置保存失败:', error);
       return res.status(400).json({
         error: 'DB_UNREACHABLE',
@@ -6073,7 +6213,6 @@ app.post('/api/db-switch', requireAuth, async (req, res) => {
       if (sessionStore && typeof sessionStore.close === 'function') {
         try { await sessionStore.close(); } catch (_) { /* 旧 store 已断 */ }
       }
-      db.updateDbConfig({ type: 'mysql' });
       // 警告:db-switch 切换后,session store 用的是旧 pool,所有现有 session 会失效
       // 这通常是 admin 主动行为,可以接受
       res.json({ success: true, message: '已切换到 MySQL' });
@@ -6555,6 +6694,25 @@ app.use((err, req, res, next) => {
 // 启动服务器
 async function startServer() {
   try {
+    // 旧部署遗留的 data/db-config.json → 并入 .env 后删除。
+    //
+    // 数据库连接参数现在只有 .env 一个来源。那份 json 是明文密码文件
+    // （权限 0644，比 .env 的 0600 差一档），留着等于把生产凭据多存一份。
+    // 必须在 initDatabase() **之前**做 —— 迁移会写 .env 并同步到进程 env，
+    // 之后 initDatabase() 就能用上迁移过来的参数。
+    try {
+      const migration = envConfigService.migrateLegacyDbConfig();
+      if (migration.migrated) {
+        console.log('[startup] 遗留的 data/db-config.json 已并入 .env，原文件已删除');
+      } else if (migration.removed) {
+        console.log('[startup] 过期的 data/db-config.json 已删除（.env 是唯一配置来源）');
+      } else if (migration.error) {
+        console.warn('[startup] 遗留数据库配置文件处理失败:', migration.error);
+      }
+    } catch (migrationError) {
+      console.warn('[startup] 遗留数据库配置文件处理失败:', migrationError.message);
+    }
+
     // 初始化数据库。
     //
     // 关键：**不能**因为数据库连不上就退出进程。

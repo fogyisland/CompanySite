@@ -1313,7 +1313,6 @@ body.sidebar-collapsed .admin-main {
 }
 
 .settings-page .config-source-badge.env { background: #fff8e1; color: #8d6e00; border: 1px solid #ffe082; }
-.settings-page .config-source-badge.file { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
 .settings-page .config-source-badge.default { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
 
 /* ---------- 数据库设置：表结构清单 ---------- */

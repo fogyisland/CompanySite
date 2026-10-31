@@ -7,12 +7,24 @@
  *   2. 所有请求都走 apiRequest()，统一带令牌、统一解析错误文案。
  *   3. 任何一步失败都停在当前步，并把服务端返回的中文原因直接显示出来，
  *      不做「静默失败」。
+ *   4. 三页结构：数据库 → 管理员 → 创建并完成。
+ *      最后一步只发一次请求（/api/setup/complete-install），
+ *      由服务端原子地做完「建库 → 写 .env → 建表 → 建管理员 → 销毁令牌」。
+ *      客户端不再拆成多次调用 —— 那样会留下「配置写了但没装完」的中间态，
+ *      而安装状态的判定只看管理员是否存在，中间态等于把闸门重新打开。
  */
 (function () {
   'use strict';
 
   const TOKEN_STORAGE_KEY = 'booming_setup_token';
-  const TOTAL_STEPS = 5;
+  const TOTAL_STEPS = 4;
+
+  /** 库名合法字符集 —— 必须与服务端一致，否则最后一步才报错就太晚了 */
+  const DATABASE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+  const MAX_DATABASE_NAME_LENGTH = 64;
+  /** 服务端 lib/setup-policy.js 的同一套规则 */
+  const ADMIN_USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,32}$/;
+  const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
   let currentStep = 1;
   let setupState = null;
@@ -122,7 +134,68 @@
     return data || {};
   }
 
-  // ------------------------------------------------------------------ 步骤 1
+  // ------------------------------------------------------------------ 表单取值
+  function collectDbConfig() {
+    return {
+      type: 'mysql',
+      mysql: {
+        host: byId('db-host').value.trim(),
+        port: Number(byId('db-port').value.trim()) || 3306,
+        user: byId('db-user').value.trim(),
+        password: byId('db-password').value,
+        database: byId('db-database').value.trim()
+      }
+    };
+  }
+
+  function collectAdminInput() {
+    return {
+      username: byId('admin-username').value.trim(),
+      password: byId('admin-password').value,
+      email: byId('admin-email').value.trim()
+    };
+  }
+
+  /**
+   * 数据库表单的前端校验。
+   * 服务端还会再校验一遍 —— 这里是**为了早失败**：库名规则要在填完就提示，
+   * 不能等到最后一步建库时才报「数据库名不合法」。
+   * @returns {string|null} 出错原因；null 表示通过
+   */
+  function validateDbForm() {
+    const config = collectDbConfig().mysql;
+    if (!config.host) return '请填写数据库主机地址';
+    if (!Number.isInteger(config.port) || config.port <= 0 || config.port > 65535) return '端口必须是 1~65535 之间的整数';
+    if (!config.user) return '请填写数据库用户名';
+    if (!config.database) return '请填写数据库名';
+    if (config.database.length > MAX_DATABASE_NAME_LENGTH) {
+      return '数据库名不能超过 ' + MAX_DATABASE_NAME_LENGTH + ' 个字符';
+    }
+    if (!DATABASE_NAME_PATTERN.test(config.database)) {
+      return '数据库名只能包含字母、数字、下划线与连字符，且必须以字母或下划线开头';
+    }
+    return null;
+  }
+
+  /**
+   * 管理员表单的前端校验（与服务端 lib/setup-policy.js 同一套规则）。
+   * @returns {string|null} 出错原因；null 表示通过
+   */
+  function validateAdminForm() {
+    const admin = collectAdminInput();
+    if (!ADMIN_USERNAME_PATTERN.test(admin.username)) {
+      return '用户名需为 3~32 位，可用字母、数字、下划线、点、连字符';
+    }
+    if (admin.password.length < 8) return '密码至少 8 位';
+    if (Buffer.byteLength(admin.password, 'utf8') > 72) return '密码过长（最多 72 字节）';
+    if (!/[A-Za-z]/.test(admin.password)) return '密码必须同时包含字母和数字';
+    if (!/\d/.test(admin.password)) return '密码必须同时包含字母和数字';
+    if (admin.password !== byId('admin-password-confirm').value) return '两次输入的密码不一致';
+    if (admin.email && !EMAIL_PATTERN.test(admin.email)) return '邮箱格式不正确';
+    return null;
+  }
+
+  // ------------------------------------------------------------------ 令牌页
   async function handleVerifyToken() {
     const input = byId('setup-token');
     const value = input.value.trim();
@@ -144,7 +217,6 @@
       input.value = '';
       setupState = data.state || null;
       applyDbConfig(setupState);
-      renderSchemaSummary(setupState);
       goToStep(2);
     } catch (error) {
       clearToken();
@@ -161,7 +233,7 @@
     }
   }
 
-  // ------------------------------------------------------------------ 步骤 2
+  // ------------------------------------------------------------------ 第 1 页：数据库
   function applyDbConfig(state) {
     if (!state || !state.dbConfig || !state.dbConfig.mysql) return;
     const mysql = state.dbConfig.mysql;
@@ -175,35 +247,24 @@
       byId('db-password').placeholder = mysql.hasPassword ? '已配置（留空则保持不变）' : '尚未配置';
     }
 
-    const source = state.configSource || 'default';
-    const labels = {
-      env: '来自 .env（唯一事实来源）',
-      file: '来自遗留的 data/db-config.json',
-      default: '使用内置默认值'
-    };
-    const badge = byId('config-source-badge');
-    badge.className = 'source-badge ' + source;
-    badge.textContent = labels[source] || source;
-
     const note = byId('config-source-note');
     const notes = [];
 
     // 数据库当前不可用（连不上，或连上了但账号认证不过）——
     // 服务是以降级模式跑的，这时候「改连接配置」正是要干的事
     if (state.dbUnreachable === true) {
-      notes.push('数据库当前不可用（连不上，或账号/密码不对），服务以降级模式运行，'
-        + '依赖数据库的功能都返回 503。'
-        + '请在这里填好连接信息并先点「测试连接」，通了之后再点「写入 .env 并继续」。');
+      notes.push('数据库当前不可用（连不上，或账号/密码不对），服务正以降级模式运行，'
+        + '依赖数据库的功能都返回 503。请在这里填好连接信息并先点「测试连接」。');
     }
 
-    if (source === 'env') {
-      // .env 就是向导的产物 —— 这里保存会直接改写它，不再有「改了不生效」的锁
-      notes.push('数据库连接参数保存在 .env 里（由本向导生成）。在这里点「写入 .env 并继续」'
-        + '会改写 .env 中的 DB_* 并当场切换连接池；旧的 .env 会备份成 .env.bak。'
-        + '会话密钥与 session 存储池在启动时绑定，完成后需要重启一次服务。');
-    } else if (source === 'file') {
-      notes.push('当前连接参数来自遗留的 data/db-config.json。点「写入 .env 并继续」后会以 .env 为准'
-        + '（唯一事实来源），旧的 json 文件会同步一份，不再两份各说各话。');
+    if (state.configSource === 'env') {
+      // .env 就是向导的产物 —— 这里填的值最后一步会直接改写它
+      notes.push('数据库连接参数已保存在 .env 里（由本向导生成）。'
+        + '最后一步会按这里的值重写 .env 中的 DB_* 并当场切换连接池；'
+        + '旧的 .env 会备份成 .env.bak。会话密钥与 session 存储池在启动时绑定，完成后需要重启一次服务。');
+    } else {
+      notes.push('本站尚未配置过数据库连接参数。请填写下面的信息，'
+        + '最后一步会把它们写进 .env —— 数据库连接参数从此只有这一个存放处。');
     }
 
     if (notes.length) {
@@ -215,33 +276,24 @@
     }
   }
 
-  function collectDbConfig() {
-    return {
-      type: 'mysql',
-      mysql: {
-        host: byId('db-host').value.trim(),
-        port: Number(byId('db-port').value.trim()) || 3306,
-        user: byId('db-user').value.trim(),
-        password: byId('db-password').value,
-        database: byId('db-database').value.trim()
-      }
-    };
-  }
-
   /**
-   * 重新拉一次服务端状态并刷新界面。
-   * 服务端状态是唯一权威 —— 保存数据库配置后连接池会切换，
-   * 客户端缓存的表清单立刻就过期了。
+   * 测一次服务器连通性。
+   * @returns {Promise<object|null>} 成功返回服务端数据；失败返回 null（错误已显示）
    */
-  async function refreshState() {
+  async function runConnectionTest() {
+    const invalid = validateDbForm();
+    if (invalid) {
+      showAlert(invalid, 'error');
+      return null;
+    }
     try {
-      const data = await apiRequest('/api/setup/status', { method: 'GET' });
-      setupState = data.state || setupState;
-      applyDbConfig(setupState);
-      renderSchemaSummary(setupState);
-      return setupState;
+      return await apiRequest('/api/setup/test-db', {
+        method: 'POST',
+        body: collectDbConfig()
+      });
     } catch (error) {
-      return setupState;
+      showAlert(error.message, 'error');
+      return null;
     }
   }
 
@@ -249,148 +301,104 @@
     const button = byId('btn-test-db');
     setBusy(button, true, '测试中...');
     try {
-      const data = await apiRequest('/api/setup/test-db', {
-        method: 'POST',
-        body: collectDbConfig()
-      });
+      const data = await runConnectionTest();
+      if (!data) return;
       const version = data.version ? ' ' + data.version : '';
-      showAlert('连接成功' + version + '（数据库 ' + (data.database || '-') + '）', 'success');
-    } catch (error) {
-      showAlert(error.message, 'error');
+      const exists = data.databaseExists
+        ? '（数据库 ' + (data.database || '-') + ' 已存在，将直接使用）'
+        : '（数据库 ' + (data.database || '-') + ' 不存在，最后一步会创建它）';
+      showAlert('连接成功' + version + exists, 'success');
     } finally {
       setBusy(button, false);
     }
   }
 
-  async function handleSaveDb() {
-    const button = byId('btn-save-db');
-    setBusy(button, true, '写入 .env 中...');
+  async function handleNextDb() {
+    const button = byId('btn-next-db');
+    setBusy(button, true, '测试中...');
     try {
-      const data = await apiRequest('/api/setup/save-db-config', {
-        method: 'POST',
-        body: collectDbConfig()
-      });
+      // 「下一步」会先测一次 —— 不必让用户自己记得点「测试连接」
+      const data = await runConnectionTest();
+      if (!data) return;
       goToStep(3);
-      await refreshState();
-      showAlert((data.message || '配置已写入 .env')
-        + '。连接池已当场切换，最后一步会提示你重启服务。', 'success');
-    } catch (error) {
-      showAlert(error.message, 'error');
     } finally {
       setBusy(button, false);
     }
   }
 
-  // ------------------------------------------------------------------ 步骤 3
-  function renderSchemaSummary(state) {
-    const container = byId('schema-summary');
-    if (!container) return;
-    const required = (state && state.requiredTables) || [];
-    if (!required.length) {
-      container.innerHTML = '';
+  // ------------------------------------------------------------------ 第 2 页：管理员
+  function handleNextAdmin() {
+    const invalid = validateAdminForm();
+    if (invalid) {
+      showAlert(invalid, 'error');
       return;
     }
-    const missing = (state && state.missingTables) || [];
-    const rows = required.map(function (name) {
-      const ready = missing.indexOf(name) === -1;
-      return '<tr><td>' + escapeHtml(name) + '</td><td><span class="tag ' + (ready ? 'ok' : 'missing') + '">'
-        + (ready ? '已就绪' : '待创建') + '</span></td></tr>';
-    }).join('');
-    container.innerHTML = '<div class="setup-table-wrap"><table class="setup-table"><thead><tr>'
-      + '<th>数据表</th><th>状态</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    renderInstallSummary();
+    goToStep(4);
   }
 
-  function renderInitResult(tables) {
-    const container = byId('init-result');
+  /** 第 3 页的汇总 —— 显示即将落地的内容，避免「点了才知道填错了」 */
+  function renderInstallSummary() {
+    const container = byId('install-summary');
     if (!container) return;
-    if (!tables || !tables.length) {
-      container.innerHTML = '';
+    const dbConfig = collectDbConfig().mysql;
+    const admin = collectAdminInput();
+
+    const rows = [
+      ['数据库主机', dbConfig.host + ':' + dbConfig.port],
+      ['数据库名', dbConfig.database],
+      ['数据库用户', dbConfig.user],
+      ['管理员账号', admin.username],
+      ['管理员邮箱', admin.email || '（未填写）']
+    ];
+
+    const body = rows.map(function (row) {
+      return '<tr><td>' + escapeHtml(row[0]) + '</td><td>' + escapeHtml(row[1]) + '</td></tr>';
+    }).join('');
+
+    container.innerHTML = '<div class="setup-table-wrap"><table class="setup-table"><thead><tr>'
+      + '<th>项目</th><th>值</th></tr></thead><tbody>' + body + '</tbody></table></div>';
+  }
+
+  // ------------------------------------------------------------------ 第 3 页：完成安装
+  async function handleCompleteInstall() {
+    const dbInvalid = validateDbForm();
+    if (dbInvalid) {
+      showAlert(dbInvalid, 'error');
+      goToStep(2);
       return;
     }
-    // status 可能是 ok / missing / error —— 如实显示，不能一律报「已就绪」
-    const labels = { ok: ['ok', '已就绪'], missing: ['missing', '待创建'], error: ['missing', '检查失败'] };
-    const rows = tables.map(function (row) {
-      const entry = labels[row.status] || labels.ok;
-      return '<tr><td>' + escapeHtml(row.table) + '</td><td class="num">' + Number(row.count || 0)
-        + '</td><td><span class="tag ' + entry[0] + '">' + entry[1] + '</span></td></tr>';
-    }).join('');
-    container.innerHTML = '<div class="setup-table-wrap"><table class="setup-table"><thead><tr>'
-      + '<th>数据表</th><th>行数</th><th>状态</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
-  }
+    const adminInvalid = validateAdminForm();
+    if (adminInvalid) {
+      showAlert(adminInvalid, 'error');
+      goToStep(3);
+      return;
+    }
 
-  async function handleInitDb() {
-    const button = byId('btn-init-db');
+    const button = byId('btn-complete-install');
     setBusy(button, true, '初始化中...');
     try {
-      const data = await apiRequest('/api/setup/init-db', { method: 'POST', body: {} });
-      setupState = data.state || setupState;
-      renderSchemaSummary(setupState);
-      renderInitResult(data.tables || []);
-      byId('btn-next-admin').hidden = false;
-      byId('btn-init-db').textContent = '重新初始化';
-      showAlert(data.message || '数据库初始化完成', 'success');
-    } catch (error) {
-      showAlert(error.message, 'error');
-    } finally {
-      setBusy(button, false);
-    }
-  }
-
-  /**
-   * 进入「创建管理员」之前，向服务端确认表结构确实齐了 ——
-   * 服务端状态是唯一权威，客户端不自己判断。
-   */
-  async function handleNextAdmin() {
-    const button = byId('btn-next-admin');
-    setBusy(button, true, '检查中...');
-    try {
-      const data = await apiRequest('/api/setup/status', { method: 'GET' });
-      const state = data.state || {};
-      setupState = state;
-      renderSchemaSummary(state);
-      const missing = state.missingTables || [];
-      if (missing.length) {
-        showAlert('表结构还不完整，缺少：' + missing.join('、') + '。请先完成初始化。', 'error');
-        return;
-      }
-      goToStep(4);
-    } catch (error) {
-      showAlert(error.message, 'error');
-    } finally {
-      setBusy(button, false);
-    }
-  }
-
-  // ------------------------------------------------------------------ 步骤 4
-  async function handleCreateAdmin() {
-    const username = byId('admin-username').value.trim();
-    const password = byId('admin-password').value;
-    const passwordConfirm = byId('admin-password-confirm').value;
-    const email = byId('admin-email').value.trim();
-
-    if (!username) {
-      showAlert('请填写管理员用户名', 'error');
-      return;
-    }
-    if (password !== passwordConfirm) {
-      showAlert('两次输入的密码不一致', 'error');
-      return;
-    }
-
-    const button = byId('btn-create-admin');
-    setBusy(button, true, '创建中...');
-    try {
-      const data = await apiRequest('/api/setup/create-admin', {
+      const data = await apiRequest('/api/setup/complete-install', {
         method: 'POST',
-        body: { username, password, email }
+        body: {
+          db: collectDbConfig(),
+          admin: collectAdminInput()
+        }
       });
       // 令牌已被服务端销毁，本地也要清掉
       clearToken();
       byId('admin-password').value = '';
       byId('admin-password-confirm').value = '';
       byId('setup-token').value = '';
-      showAlert(data.message || '管理员创建成功', 'success');
-      goToStep(5);
+
+      byId('install-form-part').hidden = true;
+      byId('install-done').hidden = false;
+      goToStep(4);
+      showAlert(
+        (data.message || '初始化完成')
+        + (data.databaseCreated ? '（数据库 ' + data.database + ' 已创建）' : ''),
+        'success'
+      );
     } catch (error) {
       if (error.code === 'ALREADY_INSTALLED') {
         showAlert('站点已完成安装，正在跳转到登录页…', 'info');
@@ -409,32 +417,27 @@
   function bindEvents() {
     byId('btn-verify-token').addEventListener('click', handleVerifyToken);
     byId('btn-test-db').addEventListener('click', handleTestDb);
-    byId('btn-save-db').addEventListener('click', handleSaveDb);
-    byId('btn-next-db').addEventListener('click', function () {
-      goToStep(3);
-      refreshState();
-    });
+    byId('btn-next-db').addEventListener('click', handleNextDb);
     byId('btn-back-db').addEventListener('click', function () {
       goToStep(2);
     });
-    byId('btn-init-db').addEventListener('click', handleInitDb);
     byId('btn-next-admin').addEventListener('click', handleNextAdmin);
-    byId('btn-back-init').addEventListener('click', function () {
+    byId('btn-back-admin').addEventListener('click', function () {
       goToStep(3);
     });
-    byId('btn-create-admin').addEventListener('click', handleCreateAdmin);
+    byId('btn-complete-install').addEventListener('click', handleCompleteInstall);
 
     byId('setup-token').addEventListener('keydown', function (event) {
       if (event.key === 'Enter') handleVerifyToken();
     });
     byId('admin-password-confirm').addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') handleCreateAdmin();
+      if (event.key === 'Enter') handleNextAdmin();
     });
   }
 
   /**
    * 页面加载：若 sessionStorage 里还留着令牌（刷新页面），
-   * 自动重校验并恢复到第 2 步，避免用户重新粘贴令牌。
+   * 自动重校验并恢复到第 1 页，避免用户重新粘贴令牌。
    */
   async function resumeIfTokenPresent() {
     const token = getToken();
@@ -446,7 +449,6 @@
       });
       setupState = data.state || null;
       applyDbConfig(setupState);
-      renderSchemaSummary(setupState);
       goToStep(2);
     } catch (error) {
       clearToken();

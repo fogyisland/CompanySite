@@ -204,8 +204,7 @@
       const saveButton = document.getElementById('btn-db-save');
       const labels = {
         env: '来自 .env（唯一事实来源）',
-        file: '来自遗留的 data/db-config.json',
-        default: '使用内置默认值'
+        default: '尚未配置'
       };
       const key = source || 'default';
       currentConfigSource = key;
@@ -217,9 +216,6 @@
         notes.push('数据库连接参数保存在服务器的 .env 里（由安装向导生成，权限 0600）。'
           + '在这里保存会改写 .env 中的 DB_* 并当场切换连接池；旧的 .env 会备份成 .env.bak。'
           + '会话密钥与 session 存储池在启动时绑定，改完请重启一次服务。');
-      } else if (key === 'file') {
-        notes.push('当前连接参数来自遗留的 data/db-config.json。保存后会以 .env 为准（唯一事实来源），'
-          + '旧的 json 文件会同步一份，不再两份各说各话。');
       } else {
         notes.push('还没有 .env —— 保存后会生成一份，里面除了数据库参数，'
           + '还会写入自动生成的会话密钥与定时任务令牌。');

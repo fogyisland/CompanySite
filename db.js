@@ -1,5 +1,3 @@
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
@@ -12,58 +10,59 @@ const {
   sanitizeSettingsForRead
 } = require('./lib/settings-policy');
 
-const DATA_DIR = path.join(__dirname, 'data');
-const CONFIG_FILE = path.join(DATA_DIR, 'db-config.json');
 const SALT_ROUNDS = 12; // 修复 S19：bcrypt cost 12（2026 年 OWASP 推荐 12+，cost 10 离线破解成本过低）
+
+/**
+ * 数据库名的合法字符集 —— 建库语句要把库名拼进 SQL，必须白名单。
+ *
+ * 允许：字母、数字、下划线、连字符；首字符必须是字母或下划线。
+ * 不允许：反引号（会破坏标识符引用）、空格、点（`.` 在库名里是库.表的意思）、
+ *         任何 SQL 元字符、任何非 ASCII 字符。
+ */
+const DATABASE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+/** MySQL 标识符最长 64 字符 */
+const MAX_DATABASE_NAME_LENGTH = 64;
 
 let mysqlPool = null;
 
+/**
+ * 当前生效的数据库连接参数。
+ *
+ * **唯一事实来源是 .env**（启动时由 dotenv 注入 process.env）。
+ * 这里刻意不再回落 data/db-config.json —— 那份文件是旧部署遗留的
+ * 明文凭据副本（权限 0644，比 .env 的 0600 差一档），两条并行来源必然漂移：
+ * 历史上就出现过「界面保存把它覆盖成空壳 → 重启后连不上库」的故障。
+ * 遗留文件由 lib/env-config-service.js 的 migrateLegacyDbConfig() 在启动时
+ * 一次性并入 .env 并删除，之后不再被读取。
+ *
+ * 未配置时各字段留空（host / user / database 为空串），**不**回落到
+ * localhost / root / softvault：
+ * 「没配」和「配成了默认值」必须能被区分 —— 前者要走安装向导，
+ * 后者是一个真实存在、指向生产库的连接配置。混为一谈会让站点
+ * 在全新部署时悄悄连到一个不该碰的库上。
+ */
 function getDbConfig() {
-  // 优先从环境变量读取数据库配置
-  const envConfig = {
+  return {
     type: 'mysql',
     mysql: {
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER || 'root',
+      host: process.env.DB_HOST || '',
+      port: parseInt(process.env.DB_PORT, 10) || 3306,
+      user: process.env.DB_USER || '',
       password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'softvault'
+      database: process.env.DB_NAME || ''
     }
   };
-
-  // 如果环境变量有配置，优先使用
-  if (process.env.DB_HOST) {
-    return envConfig;
-  }
-
-  // 否则从配置文件读取
-  const configFile = path.join(DATA_DIR, 'db-config.json');
-  if (fs.existsSync(configFile)) {
-    try {
-      return JSON.parse(fs.readFileSync(configFile, 'utf8'));
-    } catch (e) {}
-  }
-  return envConfig;
-}
-
-function updateDbConfig(newConfig) {
-  const configFile = path.join(DATA_DIR, 'db-config.json');
-  fs.writeFileSync(configFile, JSON.stringify(newConfig, null, 2), 'utf8');
-  return newConfig;
 }
 
 /**
  * 当前生效的数据库配置来自哪里。
- *   'env'    —— .env 里的 DB_HOST 等环境变量（优先级最高）
- *   'file'   —— data/db-config.json
- *   'default'—— 都没配，用的是内置默认值
- * 安装向导要靠它决定「界面里改连接配置有没有用」——
- * env 优先时界面保存的配置不会生效，必须提示用户去改 .env。
+ *   'env'    —— .env 里的 DB_HOST 等环境变量（唯一事实来源）
+ *   'default'—— 尚未配置，需要走安装向导填写
+ *
+ * 旧的 'file'（data/db-config.json）分支已随并行配置源收口而删除。
  */
 function getDbConfigSource() {
-  if (process.env.DB_HOST) return 'env';
-  if (fs.existsSync(CONFIG_FILE)) return 'file';
-  return 'default';
+  return process.env.DB_HOST ? 'env' : 'default';
 }
 
 /**
@@ -97,6 +96,121 @@ async function testMySQLConnection(mysqlConfig) {
 }
 
 /**
+ * 只连 MySQL **服务器**本身（不指定具体数据库），并列出该账号能看到的库。
+ *
+ * 为什么需要这个版本：全新安装时目标库**还不存在**，带库名连接会直接回
+ * 「未知数据库」—— 那是预期状态，不是配置错误。安装向导的「测试连接」
+ * 必须走服务器级连接，否则用户还没走到建库那一步就被告知「连不上」，
+ * 流程在这里就断了。
+ *
+ * 不碰全局连接池 —— 测试失败绝不能影响正在跑的站点。
+ *
+ * @param {object} mysqlConfig
+ * @returns {Promise<{success: boolean, version: string|null, server: string|null, databases: string[]}>}
+ */
+async function testMySQLServerConnection(mysqlConfig) {
+  const mysql = require('mysql2/promise');
+  let connection = null;
+  try {
+    connection = await mysql.createConnection({
+      host: mysqlConfig.host,
+      port: mysqlConfig.port || 3306,
+      user: mysqlConfig.user,
+      password: mysqlConfig.password || '',
+      connectTimeout: 8000
+    });
+    await connection.ping();
+    const [versionRows] = await connection.query('SELECT VERSION() AS version, @@hostname AS server');
+    const [databaseRows] = await connection.query('SHOW DATABASES');
+    const databases = [];
+    for (const row of databaseRows) {
+      const name = row && Object.values(row)[0];
+      if (typeof name === 'string') databases.push(name);
+    }
+    return {
+      success: true,
+      version: versionRows && versionRows[0] ? versionRows[0].version : null,
+      server: versionRows && versionRows[0] ? versionRows[0].server : null,
+      databases
+    };
+  } finally {
+    if (connection) {
+      try { await connection.end(); } catch (_) { /* 连接关闭失败不影响测试结论 */ }
+    }
+  }
+}
+
+/**
+ * 库名是否合法（建库前必须先过这一关）。
+ * @param {string} name
+ * @returns {boolean}
+ */
+function isValidDatabaseName(name) {
+  if (typeof name !== 'string') return false;
+  const trimmed = name.trim();
+  if (trimmed === '' || trimmed.length > MAX_DATABASE_NAME_LENGTH) return false;
+  return DATABASE_NAME_PATTERN.test(trimmed);
+}
+
+/**
+ * 建库（幂等）—— 全新安装时目标库往往还不存在。
+ *
+ * 库名来自用户输入，必须严防 SQL 注入。这里用两道防线：
+ *   1. 白名单校验（isValidDatabaseName）：只放行字母、数字、下划线、连字符，
+ *      首字符为字母或下划线，长度 ≤ 64。**反引号本身不在白名单里**，
+ *      所以标识符引用不可能被打破。
+ *   2. 即便如此仍然用反引号包一层 —— 双保险，且不依赖驱动是否导出 escapeId。
+ *
+ * 不指定 database —— 要连的正是「那个还不存在的库之外」的服务器。
+ *
+ * @param {object} mysqlConfig 连接参数（其中的 database 字段会被忽略）
+ * @param {string} databaseName 要建的库名
+ * @returns {Promise<{database: string, existed: boolean}>}
+ */
+async function createDatabaseIfNotExists(mysqlConfig, databaseName) {
+  const name = typeof databaseName === 'string' ? databaseName.trim() : '';
+  if (!isValidDatabaseName(name)) {
+    const error = new Error(
+      '数据库名不合法：只允许字母、数字、下划线与连字符，且必须以字母或下划线开头（不超过 64 字符）'
+    );
+    error.code = 'INVALID_DB_NAME';
+    throw error;
+  }
+
+  const mysql = require('mysql2/promise');
+  let connection = null;
+  try {
+    connection = await mysql.createConnection({
+      host: mysqlConfig.host,
+      port: mysqlConfig.port || 3306,
+      user: mysqlConfig.user,
+      password: mysqlConfig.password || '',
+      connectTimeout: 8000
+    });
+    await connection.ping();
+
+    const [existingRows] = await connection.query('SHOW DATABASES');
+    let existed = false;
+    for (const row of existingRows) {
+      const candidate = row && Object.values(row)[0];
+      if (candidate === name) { existed = true; break; }
+    }
+
+    if (!existed) {
+      // 反引号包裹 —— 白名单已排除反引号，这里不可能被内容突破
+      await connection.query(
+        'CREATE DATABASE IF NOT EXISTS `' + name + '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
+      );
+    }
+    return { database: name, existed };
+  } finally {
+    if (connection) {
+      try { await connection.end(); } catch (_) { /* 关闭失败不影响建库结论 */ }
+    }
+  }
+}
+
+/**
  * 统计管理员账号数（is_admin = 1）。
  *
  * 这是「站点是否已安装」的唯一权威依据。
@@ -113,41 +227,6 @@ async function countAdmins() {
   }
   const [rows] = await mysqlPool.query('SELECT COUNT(*) AS c FROM users WHERE is_admin = 1');
   return rows.length ? Number(rows[0].c) : 0;
-}
-
-/**
- * 读取 data/db-config.json 里的原始内容（**不**合并环境变量）。
- * 没有配置文件或文件损坏时返回 null —— 与 getDbConfig() 的「生效配置」区分开，
- * 否则回滚时会把环境变量配置写进文件，反而改掉了用户没打算改的东西。
- */
-function readStoredDbConfig() {
-  try {
-    if (!fs.existsSync(CONFIG_FILE)) return null;
-    const parsed = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-    return parsed && typeof parsed === 'object' ? parsed : null;
-  } catch (e) {
-    console.error('[db] 读取数据库配置文件失败:', e.message);
-    return null;
-  }
-}
-
-/**
- * 回滚数据库配置文件。
- * @param {object|null} storedConfig 旧的文件内容；null 表示「之前没有配置文件」
- * @returns {boolean} 是否回滚成功
- */
-function restoreDbConfig(storedConfig) {
-  try {
-    if (storedConfig === null) {
-      if (fs.existsSync(CONFIG_FILE)) fs.unlinkSync(CONFIG_FILE);
-      return true;
-    }
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(storedConfig, null, 2), 'utf8');
-    return true;
-  } catch (error) {
-    console.error('[db] 回滚数据库配置失败:', error.message);
-    return false;
-  }
 }
 
 /** 表是否存在。SHOW TABLES LIKE 不需要 information_schema 权限。 */
@@ -193,18 +272,23 @@ async function withTransaction(fn) {
 
 async function initDatabase() {
   const config = getDbConfig();
-  if (config.type === 'mysql' && config.mysql && config.mysql.host) {
-    try {
-      await initMySQL(config.mysql);
-      await createTablesIfNotExist();
-      await initDefaultData();
-      console.log('Database initialized (MySQL)');
-    } catch (e) {
-      console.error('MySQL初始化失败:', e.message);
-      throw e;
-    }
-  } else {
-    throw new Error('未配置MySQL数据库');
+  if (!config.mysql.host || !config.mysql.user || !config.mysql.database) {
+    // 「没配」不是错误 —— 它就是「站点还没装好」的状态。
+    // 抛出带明确指引的错误，让调用方降级启动并引导到 /setup。
+    const error = new Error(
+      '未配置数据库连接参数（.env 缺少 DB_HOST / DB_USER / DB_NAME）—— 请打开 /setup 完成初始化'
+    );
+    error.code = 'DB_NOT_CONFIGURED';
+    throw error;
+  }
+  try {
+    await initMySQL(config.mysql);
+    await createTablesIfNotExist();
+    await initDefaultData();
+    console.log('Database initialized (MySQL)');
+  } catch (e) {
+    console.error('MySQL初始化失败:', e.message);
+    throw e;
   }
 }
 
@@ -2678,14 +2762,14 @@ module.exports = {
   initDefaultData,
   getDbConfig,
   getDbConfigSource,
-  readStoredDbConfig,
-  restoreDbConfig,
   reconnectWithConfig,
   testMySQLConnection,
+  testMySQLServerConnection,
+  createDatabaseIfNotExists,
+  isValidDatabaseName,
   countAdmins,
   tableExists,
   withTransaction,
-  updateDbConfig,
   query,
   dbQuery,
   runQuery,

@@ -249,20 +249,20 @@
 
 ### 6. 配置文件
 
-数据库配置文件: `data/db-config.json`
+数据库连接参数**只有一处存放**：仓库根目录的 `.env`（git 忽略，权限 0600）。
 
-```json
-{
-  "type": "mysql",
-  "mysql": {
-    "host": "localhost",
-    "port": 3306,
-    "user": "root",
-    "password": "",
-    "database": "booming"
-  }
-}
+```ini
+DB_HOST='127.0.0.1'
+DB_PORT='3306'
+DB_USER='root'
+DB_PASSWORD='...'
+DB_NAME='booming'
 ```
+
+- `.env` **由初始化向导生成** —— 仓库只提供 `.env.example` 模板。
+  首次部署启动服务后打开 `/setup`，向导会依次完成：填数据库凭据 → 填管理员账号 →
+  创建数据库并写入 `.env`、建表、建管理员。
+- 旧部署遗留的 `data/db-config.json`（第二处明文凭据副本）会在**启动时自动并入 `.env` 并删除**。
 
 ---
 
@@ -280,22 +280,22 @@
 # 安装依赖
 npm install
 
-# 配置 .env（必须，fail-closed 启动检查）
-cp .env.example .env
-# 编辑 .env 填入真实值,至少需要:
-#   SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64'))")
-#   CRON_TOKEN=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
-#   DB_HOST / DB_USER / DB_PASSWORD / DB_NAME
-
-# 配置数据库
-# 编辑 data/db-config.json
-
-# 启动服务器
+# 启动服务器（首次启动时数据库尚未配置 —— 服务以降级模式起来，
+# /setup 安装向导可用，其余依赖数据库的接口返回 503）
 node server.js
 
-# 访问网站
-http://localhost:15000
+# 浏览器打开 http://localhost:15000/setup
+# 1) 从服务器控制台取安装令牌
+# 2) 第 1 步：填 MySQL 连接信息（点「测试连接」验证）
+# 3) 第 2 步：填首个管理员账号
+# 4) 第 3 步：点「创建数据库并完成初始化」
+#    —— 向导会建库、生成 .env（0600）、建表、建管理员、销毁安装令牌
+# 5) 重启一次服务，让会话密钥与 session 存储池对齐
 ```
+
+> 需要提前手工准备 `.env` 吗？**不需要** —— 仓库只提供 `.env.example` 模板，
+> `.env` 由向导生成（数据库参数来自表单，密钥由机器随机生成）。
+> 已有 `.env` 的部署可以直接改里面的 `DB_*`。
 
 ## Secrets Management
 
@@ -312,10 +312,11 @@ MywebServer/
 ├── server.js           # Express 服务器
 ├── db.js               # 数据库操作
 ├── package.json        # 依赖配置
-├── data/               # 数据目录
-│   └── db-config.json  # 数据库配置
+├── .env                # 数据库连接参数（git 忽略，由 /setup 向导生成）
+├── data/               # 数据目录（git 忽略）
 ├── public/             # 前端文件
 │   ├── index.html      # 首页
+│   ├── setup.html      # 初始化向导
 │   ├── admin/          # 管理后台
 │   ├── css/            # 样式文件
 │   └── js/             # 脚本文件
