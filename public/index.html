@@ -189,7 +189,9 @@
         'GitHub 仓库': 'badge-github-repo',
         '开源产品': 'badge-open-source'
       };
-      return map[category] || 'product-card-category-badge';
+      // 未知分类返回空串：元素上已有 .hero-card-badge 兜底底色，
+      // 这里再挂一个没有定义的类名只会留下悬空引用。
+      return map[category] || '';
     }
 
     // 转义统一走 SafeHtml（public/js/safe-html.js）。

@@ -1483,6 +1483,15 @@ footer .container {
   margin-left: 5px;
 }
 
+/* 多档位产品的档位容器 —— 首页产品卡片由 public/js/main.js 生成
+   （tiers.className = 'product-pricing-tiers'）。容器此前没有任何样式定义，
+   档位按钮会挤成一团，这里补一个横向 flex 布局，窄屏自动换行。 */
+.product-pricing-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* ============ Admin Sidebar Layout ============ */
 .admin-layout {
   display: flex;
@@ -1686,10 +1695,6 @@ footer .container {
   background: #dc2626;
   color: #fff;
   transform: translateX(2px);
-}
-  color: white;
-  border-color: transparent;
-  transform: translateX(4px);
 }
 
 /* 主内容区 */

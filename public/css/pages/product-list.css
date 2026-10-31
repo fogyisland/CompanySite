@@ -241,6 +241,41 @@
   font-weight: 500;
 }
 
+/* 分类色 —— 与后台（public/css/pages/admin.css）同一套配色。
+   本页不加载 admin.css，分类色在这里补一份；上面那条 .product-list-row
+   规则特异性更高，尺寸由它决定，这里只负责底色与文字色。 */
+.badge-enterprise-product {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+.badge-external-course {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+.badge-enterprise-internal {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+}
+.badge-github-repo {
+  background: linear-gradient(135deg, #24292e 0%, #0d1117 100%);
+  color: white;
+}
+.badge-open-source {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: white;
+}
+/* 课程型徽章（product-list.html 的 isCourse 分支用）。
+   这两个类原本只定义在 admin.css，而本页不加载它，
+   于是「课程型」徽章没有任何底色，退化成一段裸文字。 */
+.badge-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+}
+.badge-neutral {
+  background: #e5e5e5;
+  color: #333;
+}
+
 /* 分页 */
 .product-list-pagination {
   display: flex;

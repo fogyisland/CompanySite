@@ -148,7 +148,9 @@
         'GitHub 仓库': 'badge-github-repo',
         '开源产品': 'badge-open-source'
       };
-      return map[category] || 'product-card-category-badge';
+      // 未知分类用中性灰底色兜底：.product-card-category-badge 只管尺寸不管底色，
+      // 兜底若继续返回它自己，未知分类就会渲染成没有底色的裸文字。
+      return map[category] || 'badge-neutral';
     }
 
     // ============ State ============
