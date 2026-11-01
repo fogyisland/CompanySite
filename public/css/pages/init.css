@@ -327,6 +327,25 @@ a.init-btn {
   color: #8d6e00;
 }
 
+/* ---------- 面板内的就近错误位 ----------
+   校验失败时消息就显示在按钮行正上方 —— 表单再长也不会滚出视口，
+   用户点了「下一步」一定能立刻看到原因。 */
+.init-step-error {
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  word-break: break-word;
+}
+
+.init-step-error[hidden] {
+  display: none;
+}
+
 /* ---------- 表清单 ---------- */
 .init-table-wrap {
   margin-top: 16px;

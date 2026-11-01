@@ -32,6 +32,8 @@
   const MAX_LOGO_SIZE = 2 * 1024 * 1024;
   /** 与服务端 lib/init-policy.js 的 DEFAULT_SITE_NAME 保持一致 */
   const DEFAULT_SITE_NAME = '博铭科技';
+  /** bcrypt 只取前 72 字节，超出部分会被静默截断 —— 与服务端 lib/init-policy.js 同一套规则 */
+  const BCRYPT_MAX_PASSWORD_BYTES = 72;
 
   /**
    * 初始化过程清单 —— 键与服务端 complete-install 返回的 steps[].key 对应。
@@ -63,6 +65,33 @@
     });
   }
 
+  /**
+   * UTF-8 字节数 —— 等价于 Node 的 Buffer.byteLength(str, 'utf8')。
+   *
+   * 浏览器里没有 Buffer 这个全局对象：直接写 Buffer.byteLength 会在
+   * 「管理员」这一步抛 ReferenceError，表现为「点下一步毫无反应、
+   * 控制台报 Buffer is not defined」。所以这里用 TextEncoder 换算，
+   * 并为没有 TextEncoder 的老浏览器留一条手算的兜底路径。
+   *
+   * @param {string} text 待统计的字符串
+   * @returns {number} UTF-8 编码后的字节数
+   */
+  function utf8ByteLength(text) {
+    const value = typeof text === 'string' ? text : '';
+    if (typeof TextEncoder === 'function') {
+      return new TextEncoder().encode(value).length;
+    }
+    let bytes = 0;
+    for (const character of value) {
+      const code = character.codePointAt(0);
+      if (code <= 0x7f) bytes += 1;
+      else if (code <= 0x7ff) bytes += 2;
+      else if (code <= 0xffff) bytes += 3;
+      else bytes += 4;
+    }
+    return bytes;
+  }
+
   function showAlert(message, kind) {
     const element = byId('init-alert');
     element.textContent = message;
@@ -74,6 +103,39 @@
     const element = byId('init-alert');
     element.hidden = true;
     element.textContent = '';
+  }
+
+  /**
+   * 面板内的就近错误位。
+   *
+   * 顶部横幅在卡片的最上方，表单一长就滚出视口 —— 校验失败时只写横幅，
+   * 用户看到的现象是「点了下一步什么都没发生」。所以错误优先写到
+   * 当前面板按钮行的正上方，保证点击位置附近一定有反馈；
+   * 只有在页面结构是旧版本（浏览器缓存了没带这个位置的 HTML）时
+   * 才退回顶部横幅。
+   *
+   * @param {string} message 错误文案
+   * @param {number} step    出错的面板序号（1~4）
+   */
+  function showStepError(message, step) {
+    clearStepErrors();
+    hideAlert();
+    const target = byId('step-error-' + step);
+    if (target) {
+      target.textContent = message;
+      target.hidden = false;
+      return;
+    }
+    showAlert(message, 'error');
+  }
+
+  /** 清空所有面板的就近错误位 —— 换步骤时必须一起清 */
+  function clearStepErrors() {
+    const targets = document.querySelectorAll('.init-step-error');
+    for (let index = 0; index < targets.length; index += 1) {
+      targets[index].hidden = true;
+      targets[index].textContent = '';
+    }
   }
 
   /** 按钮进入/退出忙碌态 */
@@ -100,6 +162,7 @@
       item.classList.toggle('done', index < step);
     }
     hideAlert();
+    clearStepErrors();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -193,7 +256,9 @@
       return '用户名需为 3~32 位，可用字母、数字、下划线、点、连字符';
     }
     if (admin.password.length < 8) return '密码至少 8 位';
-    if (Buffer.byteLength(admin.password, 'utf8') > 72) return '密码过长（最多 72 字节）';
+    if (utf8ByteLength(admin.password) > BCRYPT_MAX_PASSWORD_BYTES) {
+      return '密码过长（最多 72 字节）';
+    }
     if (!/[A-Za-z]/.test(admin.password)) return '密码必须同时包含字母和数字';
     if (!/\d/.test(admin.password)) return '密码必须同时包含字母和数字';
     if (admin.password !== byId('admin-password-confirm').value) return '两次输入的密码不一致';
@@ -275,7 +340,7 @@
   async function runConnectionTest() {
     const invalid = validateDbForm();
     if (invalid) {
-      showAlert(invalid, 'error');
+      showStepError(invalid, 1);
       return null;
     }
     try {
@@ -284,7 +349,7 @@
         body: collectDbConfig()
       });
     } catch (error) {
-      showAlert(error.message, 'error');
+      showStepError(error.message, 1);
       return null;
     }
   }
@@ -299,6 +364,7 @@
       const exists = data.databaseExists
         ? '（数据库 ' + (data.database || '-') + ' 已存在，将直接使用）'
         : '（数据库 ' + (data.database || '-') + ' 不存在，最后一步会创建它）';
+      clearStepErrors();
       showAlert('连接成功' + version + exists, 'success');
     } finally {
       setBusy(button, false);
@@ -322,7 +388,7 @@
   function handleNextAdmin() {
     const invalid = validateAdminForm();
     if (invalid) {
-      showAlert(invalid, 'error');
+      showStepError(invalid, 2);
       return;
     }
     goToStep(3);
@@ -398,7 +464,7 @@
   function handleNextSite() {
     const invalid = validateSiteForm();
     if (invalid) {
-      showAlert(invalid, 'error');
+      showStepError(invalid, 3);
       return;
     }
     renderInstallSummary();
@@ -470,20 +536,20 @@
   async function handleCompleteInstall() {
     const dbInvalid = validateDbForm();
     if (dbInvalid) {
-      showAlert(dbInvalid, 'error');
       goToStep(1);
+      showStepError(dbInvalid, 1);
       return;
     }
     const adminInvalid = validateAdminForm();
     if (adminInvalid) {
-      showAlert(adminInvalid, 'error');
       goToStep(2);
+      showStepError(adminInvalid, 2);
       return;
     }
     const siteInvalid = validateSiteForm();
     if (siteInvalid) {
-      showAlert(siteInvalid, 'error');
       goToStep(3);
+      showStepError(siteInvalid, 3);
       return;
     }
 
@@ -522,7 +588,7 @@
         }, 1200);
         return;
       }
-      showAlert(error.message, 'error');
+      showStepError(error.message, 4);
     } finally {
       setBusy(button, false);
     }

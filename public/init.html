@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/themes/theme-variables.css">
-  <link rel="stylesheet" href="/css/pages/init.css?v=20261031-2">
+  <link rel="stylesheet" href="/css/pages/init.css?v=20261031-3">
 </head>
 <body class="init-body">
   <div class="init-shell">
@@ -73,6 +73,8 @@
           </div>
         </div>
 
+        <p class="init-step-error" id="step-error-1" hidden></p>
+
         <div class="init-actions">
           <button type="button" class="init-btn secondary" id="btn-test-db">测试连接</button>
           <button type="button" class="init-btn" id="btn-next-db">下一步</button>
@@ -105,6 +107,8 @@
           <input type="email" id="admin-email" spellcheck="false" autocomplete="off" placeholder="admin@example.com">
           <p class="field-hint">用于接收安全通知；填写后仍需自行完成邮箱验证。</p>
         </div>
+        <p class="init-step-error" id="step-error-2" hidden></p>
+
         <div class="init-actions">
           <button type="button" class="init-btn secondary" id="btn-back-db">返回上一步</button>
           <button type="button" class="init-btn" id="btn-next-admin">下一步</button>
@@ -140,6 +144,8 @@
           <p class="field-hint" id="logo-status"></p>
         </div>
 
+        <p class="init-step-error" id="step-error-3" hidden></p>
+
         <div class="init-actions">
           <button type="button" class="init-btn secondary" id="btn-back-admin">返回上一步</button>
           <button type="button" class="init-btn" id="btn-next-site">下一步</button>
@@ -162,6 +168,7 @@
           <div id="install-summary"></div>
           <h3 class="init-subtitle">初始化过程</h3>
           <ol class="init-progress" id="install-progress"></ol>
+          <p class="init-step-error" id="step-error-4" hidden></p>
           <div class="init-actions">
             <button type="button" class="init-btn secondary" id="btn-back-site">返回上一步</button>
             <button type="button" class="init-btn" id="btn-complete-install">开始初始化</button>
@@ -192,6 +199,6 @@
     </main>
   </div>
 
-  <script src="/js/init.js?v=20261031-2"></script>
+  <script src="/js/init.js?v=20261031-3"></script>
 </body>
 </html>
