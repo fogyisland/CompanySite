@@ -601,7 +601,104 @@ async function createTablesIfNotExist() {
       last_used_at TIMESTAMP NULL,
       revoked_at TIMESTAMP NULL,
       INDEX idx_mcp_tokens_active (revoked_at, expires_at)
-    )`
+    )`,
+    // ============ 以下 5 张表原本靠独立迁移脚本建 ============
+    //
+    // 那些脚本早被删掉了，建表语句没并进这里 —— 于是**只有上面那批表**是自动建的。
+    // 老库（手工建过）是全的，所以问题一直没暴露；一旦走 /init 向导建一个全新的库，
+    // 缺表就直接变成 500。已确认的现场：
+    //   system_settings —— 后台「主题 / 明暗模式」读写的就是它，缺了 → /api/admin/settings 500
+    //   news            —— 公告/公司动态
+    //   product_docs    —— 产品文档
+    //   product_links   —— 课程型产品的下载链接
+    //   device_software_expire —— 设备心跳（per-MAC 一行）
+    //
+    // DDL 沿用当初迁移脚本与 activate.md / prisma/schema.js 里记录的结构，
+    // 避免新库与既有生产库结构漂移。
+    `CREATE TABLE IF NOT EXISTS system_settings (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      setting_key VARCHAR(100) NOT NULL UNIQUE,
+      setting_value TEXT,
+      description VARCHAR(500),
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      updated_by VARCHAR(100),
+      INDEX idx_setting_key (setting_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+    `CREATE TABLE IF NOT EXISTS news (
+      id INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      slug VARCHAR(255) NOT NULL UNIQUE,
+      excerpt TEXT,
+      content_html MEDIUMTEXT,
+      cover_image VARCHAR(500),
+      category VARCHAR(50),
+      is_pinned TINYINT(1) DEFAULT 0,
+      status ENUM('draft','published') DEFAULT 'draft',
+      view_count INT(11) DEFAULT 0,
+      published_at TIMESTAMP NULL,
+      sort_order INT(11) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_status_published (status, published_at),
+      INDEX idx_is_pinned (is_pinned)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+    // 外键指向 products：产品被删时，配套文档与链接一并清掉。
+    // （删除产品的代码不手动清理这两张表，靠的就是这条 ON DELETE CASCADE。）
+    `CREATE TABLE IF NOT EXISTS product_docs (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      product_id INT NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      slug VARCHAR(255) NOT NULL,
+      content_html MEDIUMTEXT NOT NULL,
+      excerpt VARCHAR(500),
+      sort_order INT DEFAULT 0,
+      status ENUM('draft','published') DEFAULT 'draft',
+      author_username VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      published_at TIMESTAMP NULL,
+      UNIQUE KEY uk_product_slug (product_id, slug),
+      INDEX idx_product_status (product_id, status),
+      INDEX idx_sort_order (product_id, sort_order),
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+    `CREATE TABLE IF NOT EXISTS product_links (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      product_id INT NOT NULL,
+      platform VARCHAR(50) NOT NULL,
+      url VARCHAR(500) NOT NULL,
+      sort_order INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_product (product_id),
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+    // 心跳表：一个 (software_name, mac_address) 一行。
+    // 只被 /api/heartbeat 更新（不新建行），行由安装/激活侧写进来。
+    `CREATE TABLE IF NOT EXISTS device_software_expire (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      software_name VARCHAR(255) NOT NULL,
+      software_short_name VARCHAR(100),
+      mac_address VARCHAR(255) NOT NULL,
+      is_installed TINYINT(1) DEFAULT 0,
+      is_activated TINYINT(1) DEFAULT 0,
+      install_date TIMESTAMP NULL,
+      register_date TIMESTAMP NULL,
+      activate_date TIMESTAMP NULL,
+      last_activate_date TIMESTAMP NULL,
+      activation_duration INT DEFAULT 0,
+      expire_date VARCHAR(100) NOT NULL,
+      activation_key VARCHAR(255),
+      user_email VARCHAR(255),
+      user_name VARCHAR(255),
+      organization VARCHAR(255),
+      status VARCHAR(50) DEFAULT 'active',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      last_heartbeat_at TIMESTAMP NULL,
+      UNIQUE KEY uniq_software_mac (software_name, mac_address),
+      INDEX idx_mac_address (mac_address),
+      INDEX idx_expire_date (expire_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
   ];
 
   for (const sql of queries) {
@@ -689,6 +786,24 @@ async function initDefaultData() {
     for (let i = 0; i < defaultFaqs.length; i++) {
       await mysqlPool.query("INSERT INTO faqs (question, answer, sort_order) VALUES (?, ?, ?)", defaultFaqs[i].concat([i]));
     }
+  }
+
+  // 系统设置（key/value）的默认行 —— 后台「主题 / 明暗模式」就存在这儿。
+  //
+  // 这两行必须有：setSystemSetting 写的是 `WHERE setting_key = ?`，
+  // 行不存在时 UPDATE 命中 0 行 → 接口回「成功」，主题其实一点没存。
+  // 幂等：已存在的行原样保留，不覆盖用户改过的值。
+  try {
+    await mysqlPool.query(
+      `INSERT INTO system_settings (setting_key, setting_value, description) VALUES
+        ('admin_theme', 'b', '后台界面主题：b / c / d'),
+        ('admin_dark_mode', '0', '后台界面明暗模式：0 浅色 / 1 深色')
+       ON DUPLICATE KEY UPDATE setting_key = setting_key`
+    );
+  } catch (e) {
+    // 播种失败不该拖垮启动 —— 表在、默认值没有，最坏结果是主题改动不落库，
+    // 记一条日志，等下次 initDefaultData 再补。
+    console.error('[db] 初始化 system_settings 默认值失败:', e.message);
   }
 }
 
@@ -2485,9 +2600,18 @@ async function getSystemSetting(key) {
 }
 
 async function setSystemSetting(key, value, username) {
+  // 用 upsert 而不是纯 UPDATE。
+  //
+  // 纯 UPDATE 在「这一行还不存在」时会命中 0 行 —— 接口照回成功，
+  // 但值根本没落库（主题切换就是这种表现：点了没反应，下次打开又变回去）。
+  // 行可能不存在的原因：老库没播种过、或被人删过。
+  //
+  // 不用 VALUES()/别名两种 8.0 写法 —— 项目在 MySQL 5.7 上跑，
+  // 这里用「重复列显式给值」的写法，5.7 与 8.x 行为一致。
   const [result] = await mysqlPool.query(
-    'UPDATE system_settings SET setting_value = ?, updated_by = ? WHERE setting_key = ?',
-    [value, username || 'system', key]
+    `INSERT INTO system_settings (setting_key, setting_value, updated_by) VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE setting_value = ?, updated_by = ?`,
+    [key, value, username || 'system', value, username || 'system']
   );
   return { affectedRows: result.affectedRows };
 }
