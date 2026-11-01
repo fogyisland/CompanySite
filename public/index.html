@@ -343,37 +343,6 @@
       loadSettings();
     });
 
-    // Newsletter subscription
-    const newsletterForm = document.getElementById('newsletter-form');
-    if (newsletterForm) {
-    newsletterForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const email = document.getElementById('newsletter-email').value;
-      const messageEl = document.getElementById('newsletter-message');
-
-      try {
-        const response = await fetch('/api/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        const data = await response.json();
-
-        if (response.ok) {
-          messageEl.textContent = data.message;
-          messageEl.className = 'newsletter-message success';
-          document.getElementById('newsletter-email').value = '';
-        } else {
-          messageEl.textContent = data.error;
-          messageEl.className = 'newsletter-message error';
-        }
-      } catch (error) {
-        messageEl.textContent = '订阅失败，请稍后重试';
-        messageEl.className = 'newsletter-message error';
-      }
-    });
-    }
-
     // Email subscription modal
     function toggleEmailSubscribe(e) {
       e.preventDefault();
